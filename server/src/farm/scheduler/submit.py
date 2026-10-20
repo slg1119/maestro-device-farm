@@ -36,6 +36,9 @@ class RunRequest:
     origin: str = "ci"
     created_by: str = ""
     reservation_id: str | None = None
+    workspace_id: str | None = None
+    ref: str | None = None
+    commit_sha: str | None = None
 
 
 def candidate_devices(session: Session, req: RunRequest) -> list[Device]:
@@ -76,7 +79,7 @@ def create_run(session: Session, req: RunRequest) -> Run:
         flow_source=req.flow_source, flows_dir=str(req.flows_dir), flow_paths=req.flow_paths,
         include_tags=list(req.include_tags), exclude_tags=list(req.exclude_tags), env=dict(req.env),
         ci_meta=dict(req.ci_meta), task_timeout_sec=req.task_timeout_sec, reservation_id=req.reservation_id,
-        created_by=req.created_by,
+        created_by=req.created_by, workspace_id=req.workspace_id, ref=req.ref, commit_sha=req.commit_sha,
     )
     session.add(run)
     if req.mode == "matrix":

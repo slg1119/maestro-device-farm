@@ -1,10 +1,12 @@
 import json
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -13,7 +15,9 @@ from farm.api.errors import ApiError
 from farm.api.uploads import MB, UploadTooLarge, save_upload
 from farm.apps.apk import ApkParseError
 from farm.apps.library import AppResolveError, ingest_apk, resolve_app
-from farm.db.models import ApiToken, AppBuild, Device, Run, Task, TestResult
+from farm.config import Settings
+from farm.db.engine import Database
+from farm.db.models import ApiToken, AppBuild, Device, Run, Task, TestResult, Workspace
 from farm.flows.archive import UnsafeArchiveError, safe_extract_zip
 from farm.ids import new_id
 from farm.results import CaseResult
@@ -21,6 +25,12 @@ from farm.runner.junit import merge_junit
 from farm.scheduler.finish import cancel_run
 from farm.scheduler.selector import DeviceSelector
 from farm.scheduler.submit import RunRequest, SubmitError, create_run
+from farm.workspaces.changes import MB as CHANGE_MB
+from farm.workspaces.changes import Change, validate_changes
+from farm.workspaces.errors import WorkspaceError
+from farm.workspaces.git import SHA_RE
+from farm.workspaces.registry import load_workspace, resolve_ref
+from farm.workspaces.snapshot import apply_changes, snapshot_commit
 
 router = APIRouter()
 TASK_STATUSES = ("queued", "running", "passed", "failed", "error", "cancelled")
@@ -31,7 +41,11 @@ class RunOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["matrix", "split"]
-    flow_source: Literal["upload"] = "upload"
+    flow_source: Literal["upload", "workspace", "draft"] = "upload"
+    workspace: str | None = None
+    ref: str | None = None
+    base_sha: str | None = Field(default=None, pattern=SHA_RE.pattern)
+    changes: list[Change] | None = None
     device_selector: DeviceSelector = Field(default_factory=DeviceSelector)
     app_build_id: str | None = None
     app: str | None = None
@@ -43,6 +57,19 @@ class RunOptions(BaseModel):
     task_timeout_sec: int | None = Field(default=None, gt=0)
     reservation_id: str | None = None
     origin: Literal["ci", "dashboard", "editor"] = "ci"
+
+    @model_validator(mode="after")
+    def _source_fields(self) -> "RunOptions":
+        given = {name for name in ("workspace", "ref", "base_sha", "changes") if getattr(self, name) is not None}
+        allowed = {"upload": set(), "workspace": {"workspace", "ref"},
+                   "draft": {"workspace", "base_sha", "changes"}}[self.flow_source]
+        required = {"upload": set(), "workspace": {"workspace"},
+                    "draft": {"workspace", "base_sha", "changes"}}[self.flow_source]
+        if given - allowed:
+            raise ValueError(f"{', '.join(sorted(given - allowed))} not allowed with flow_source {self.flow_source}")
+        if required - given:
+            raise ValueError(f"flow_source {self.flow_source} needs {', '.join(sorted(required - given))}")
+        return self
 
 
 class AppRef(BaseModel):
@@ -63,6 +90,9 @@ class RunSummary(BaseModel):
     started_at: str | None
     finished_at: str | None
     ci_meta: dict
+    workspace_id: str | None
+    ref: str | None
+    commit_sha: str | None
     app: AppRef
     counts: dict[str, int]
 
@@ -123,11 +153,43 @@ def _summary(run: Run, app: AppBuild, counts: dict[str, int]) -> dict:
     return {
         "id": run.id, "origin": run.origin, "mode": run.mode, "status": run.status, "flow_source": run.flow_source,
         "created_by": run.created_by, "created_at": run.created_at, "started_at": run.started_at,
-        "finished_at": run.finished_at, "ci_meta": run.ci_meta or {},
+        "finished_at": run.finished_at, "ci_meta": run.ci_meta or {}, "workspace_id": run.workspace_id,
+        "ref": run.ref, "commit_sha": run.commit_sha,
         "app": AppRef(id=app.id, package_name=app.package_name, version_name=app.version_name,
                       version_code=app.version_code),
         "counts": counts,
     }
+
+
+@dataclass
+class FlowSnapshot:
+    root: Path
+    workspace_id: str | None = None
+    ref: str | None = None
+    commit_sha: str | None = None
+
+
+def _snapshot(db: Database, settings: Settings, opts: RunOptions, flows: UploadFile | None,
+              upload_dir: Path) -> FlowSnapshot:
+    """Builds the run's immutable flows directory from the chosen source (spec §5.1 step 2)."""
+    limit = settings.max_flows_mb * MB * EXTRACT_RATIO
+    if opts.flow_source == "upload":
+        zip_path = save_upload(flows, upload_dir / "flows.zip", settings.max_flows_mb * MB)
+        root = safe_extract_zip(zip_path, upload_dir / "flows", limit)
+        zip_path.unlink()
+        return FlowSnapshot(root)
+    ws = load_workspace(db, opts.workspace or "")
+    if opts.flow_source == "workspace":
+        sha = resolve_ref(settings, ws, opts.ref)
+        return FlowSnapshot(snapshot_commit(settings, ws, sha, upload_dir / "flows", limit), ws.id, opts.ref, sha)
+    changes, issues = validate_changes(opts.changes or [], max_bytes=settings.max_media_mb * CHANGE_MB, checker=None)
+    if issues:
+        raise WorkspaceError(422, "invalid_flow", "some files are invalid",
+                             issues=[issue.model_dump() for issue in issues])
+    sha = resolve_ref(settings, ws, opts.base_sha)
+    root = snapshot_commit(settings, ws, sha, upload_dir / "flows", limit, allow_missing=True)
+    apply_changes(root, changes)
+    return FlowSnapshot(root, ws.id, None, sha)
 
 
 def _get_run(session: Session, run_id: str) -> Run:
@@ -152,16 +214,16 @@ def submit_run(
         raise ApiError(400, "invalid_options", "options JSON is invalid", details=json.loads(exc.json())) from exc
     if sum(x is not None for x in (apk, opts.app_build_id, opts.app)) != 1:
         raise ApiError(400, "invalid_app", "specify exactly one of an apk upload, app_build_id or app")
-    if flows is None:
+    if opts.flow_source == "upload" and flows is None:
         raise ApiError(400, "flows_required", "a flows zip is required when flow_source is upload")
+    if opts.flow_source != "upload" and flows is not None:
+        raise ApiError(400, "invalid_flow_source", "a flows zip is only accepted when flow_source is upload")
 
     run_id = new_id()
     upload_dir = settings.path("uploads", run_id)
     tmp_apk = settings.path("tmp", f"{run_id}.apk")
     try:
-        zip_path = save_upload(flows, upload_dir / "flows.zip", settings.max_flows_mb * MB)
-        flows_root = safe_extract_zip(zip_path, upload_dir / "flows", settings.max_flows_mb * MB * EXTRACT_RATIO)
-        zip_path.unlink()
+        snapshot = _snapshot(get_db(request), settings, opts, flows, upload_dir)
         with get_db(request).session() as s:
             if apk is not None:
                 tmp = save_upload(apk, tmp_apk, settings.max_apk_mb * MB)
@@ -173,8 +235,9 @@ def submit_run(
             else:
                 build = resolve_app(s, app_build_id=opts.app_build_id, app_spec=opts.app)
             create_run(s, RunRequest(
-                run_id=run_id, mode=opts.mode, selector=opts.device_selector, app_build=build, flows_dir=flows_root,
-                flow_source=opts.flow_source, flow_paths=opts.flow_paths, include_tags=opts.include_tags,
+                run_id=run_id, mode=opts.mode, selector=opts.device_selector, app_build=build,
+                flows_dir=snapshot.root, flow_source=opts.flow_source, workspace_id=snapshot.workspace_id,
+                ref=snapshot.ref, commit_sha=snapshot.commit_sha, flow_paths=opts.flow_paths, include_tags=opts.include_tags,
                 exclude_tags=opts.exclude_tags, env=opts.env, ci_meta=opts.ci_meta,
                 task_timeout_sec=opts.task_timeout_sec or settings.task_timeout_sec, origin=opts.origin,
                 created_by=token.name, reservation_id=opts.reservation_id,
@@ -194,6 +257,9 @@ def submit_run(
     except SubmitError as exc:
         shutil.rmtree(upload_dir, ignore_errors=True)
         raise ApiError(400, exc.code, str(exc)) from exc
+    except WorkspaceError as exc:
+        shutil.rmtree(upload_dir, ignore_errors=True)
+        raise ApiError(exc.status, exc.code, exc.message, **exc.extra) from exc
     except Exception:
         shutil.rmtree(upload_dir, ignore_errors=True)
         raise
@@ -207,6 +273,7 @@ def list_runs(
     request: Request,
     status: str | None = None,
     origin: str | None = None,
+    workspace: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     before: str | None = None,
 ) -> list[RunSummary]:
@@ -216,6 +283,9 @@ def list_runs(
             query = query.where(Run.status == status)
         if origin:
             query = query.where(Run.origin == origin)
+        if workspace:
+            named = s.scalar(select(Workspace.id).where(Workspace.name == workspace))
+            query = query.where(Run.workspace_id == (named or workspace))
         if before:
             anchor = s.get(Run, before)
             if anchor is None:
