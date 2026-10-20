@@ -5,9 +5,11 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from farm.db.models import AppBuild, Device, Run
+from farm.devices.registry import heartbeat
 from farm.ids import new_id
 from farm.scheduler.selector import DeviceSelector
 from farm.scheduler.submit import RunRequest, create_run
+from farm.timeutil import now
 
 
 def add_device(session: Session, serial: str = "d1", *, state: str = "available", sdk_int: int = 34,
@@ -60,3 +62,9 @@ def submit(session: Session, *, app: AppBuild, flows_dir: Path, mode: str = "spl
         flow_paths=flow_paths, include_tags=list(include_tags), exclude_tags=list(exclude_tags), env=env or {},
         task_timeout_sec=timeout, origin=origin, created_by="test", reservation_id=reservation_id,
     ))
+
+
+def beat(db) -> None:
+    """Record a fresh agent heartbeat so the API reports real device states."""
+    with db.session() as s:
+        heartbeat(s, "test-host", "0.1.0", now())
