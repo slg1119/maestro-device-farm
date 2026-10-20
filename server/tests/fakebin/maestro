@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fake maestro for tests. FAKE_MAESTRO_MODE: pass | fail | hang | nojunit | disconnect | badhierarchy."""
+"""Fake maestro modes: pass | fail | hang | nojunit | notconnected | disconnect | badhierarchy."""
 import json
 import os
 import sys
@@ -72,6 +72,9 @@ def main() -> int:
         return 0
     if mode == "nojunit":
         print("boom: driver failed to start")
+        return 1
+    if mode == "notconnected":
+        print("Device A1 was requested, but it is not connected.")
         return 1
     if mode == "disconnect":
         (Path(os.environ["FAKE_STATE_DIR"]) / "adb_state").write_text("offline")

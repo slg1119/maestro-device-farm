@@ -63,6 +63,16 @@ async def test_missing_junit_is_an_infra_error(fakebin, tmp_path, monkeypatch):
     assert "driver failed to start" in outcome.error_message
 
 
+async def test_maestro_not_connected_is_a_disconnect(fakebin, tmp_path, monkeypatch):
+    monkeypatch.setenv("FAKE_MAESTRO_MODE", "notconnected")
+    spec = _spec(tmp_path)
+    outcome = await _runner().run(spec, CancelToken())
+    assert (outcome.status, outcome.error_code) == ("error", "device_disconnected")
+    assert outcome.exit_code == 1
+    assert "Device A1 was requested, but it is not connected." in outcome.error_message
+    assert not (spec.artifacts_dir / "junit.xml").exists()
+
+
 async def test_device_lost_during_run(fakebin, tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_MAESTRO_MODE", "disconnect")
     outcome = await _runner().run(_spec(tmp_path), CancelToken())

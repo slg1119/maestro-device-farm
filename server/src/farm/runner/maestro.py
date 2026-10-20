@@ -112,6 +112,9 @@ class MaestroRunner:
         if await self.adb.get_state(spec.serial) != "device":
             return TaskOutcome("error", exit_code=result.returncode, error_code="device_disconnected",
                                error_message="device went away during the run")
+        log_tail = _tail_file(spec.artifacts_dir / "maestro.log")
+        if "is not connected" in log_tail:
+            return TaskOutcome("error", exit_code=result.returncode, error_code="device_disconnected",
+                               error_message=log_tail)
         return TaskOutcome("error", exit_code=result.returncode, error_code="no_junit",
-                           error_message=_tail_file(spec.artifacts_dir / "maestro.log")
-                           or "maestro produced no JUnit report")
+                           error_message=log_tail or "maestro produced no JUnit report")
