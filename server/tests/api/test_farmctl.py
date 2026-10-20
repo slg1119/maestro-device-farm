@@ -2,6 +2,7 @@ import io
 import zipfile
 from pathlib import Path
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -81,6 +82,23 @@ def test_sse_parser():
              ": ping", ""]
     events = [event for event in (parser.feed(line) for line in lines) if event]
     assert events == [("7", "run.updated", '{"payload": {"status": "passed"}}')]
+
+
+def test_wait_for_run_uses_current_stdout(capsys):
+    def handle_request(request):
+        if request.url.path == "/api/v1/runs/run-1":
+            return httpx.Response(200, json={"status": "running"})
+        assert request.url.path == "/api/v1/events"
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'id: 1\nevent: task.updated\n'
+            'data: {"payload": {"id": "task-1", "status": "passed", "device_serial": "fake-1", "attempt": 1}}\n\n'
+            'id: 2\nevent: run.updated\n'
+            'data: {"payload": {"status": "passed"}}\n\n'
+        ))
+
+    with httpx.Client(transport=httpx.MockTransport(handle_request), base_url="http://farm") as client:
+        assert farmctl.wait_for_run(client, "run-1", 10) == "passed"
+    assert capsys.readouterr().out == "  task task-1 passed on fake-1 attempt 1\n  run passed\n"
 
 
 def test_exit_codes():

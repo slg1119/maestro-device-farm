@@ -154,7 +154,8 @@ def _run_status(client: httpx.Client, run_id: str) -> str | None:
     return res.json().get("status") if res.status_code == 200 else None
 
 
-def wait_for_run(client: httpx.Client, run_id: str, timeout: float, out=sys.stdout) -> str | None:
+def wait_for_run(client: httpx.Client, run_id: str, timeout: float, out=None) -> str | None:
+    out = out or sys.stdout
     deadline = time.monotonic() + timeout
     last_id = "0"
     while time.monotonic() < deadline:
