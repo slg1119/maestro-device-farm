@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from farm import __version__
 from farm.api.errors import register_error_handlers
-from farm.api.routes import devices, health, runs, tasks
+from farm.api.routes import apps, devices, events, health, runs, tasks
 from farm.apps.apk import AndroguardApkParser, ApkParser
 from farm.config import Settings
 from farm.db.engine import Database
@@ -16,6 +16,6 @@ def create_app(settings: Settings | None = None, *, db: Database | None = None,
     app.state.db = db or Database(settings.database_path)
     app.state.apk_parser = apk_parser or AndroguardApkParser()
     register_error_handlers(app)
-    for module in (health, devices, runs, tasks):
+    for module in (health, devices, runs, tasks, apps, events):
         app.include_router(module.router, prefix="/api/v1")
     return app
