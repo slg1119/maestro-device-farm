@@ -1,0 +1,41 @@
+[project]
+name = "maestro-device-farm"
+version = "0.1.0"
+description = "Maestro real-device farm"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy>=2.0.30",
+  "alembic>=1.13",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "python-multipart>=0.0.9",
+  "pyyaml>=6.0",
+  "httpx>=0.27",
+  "python-ulid>=2.7",
+  "androguard>=4.1",
+]
+
+[project.scripts]
+farm = "farm.cli.farm:main"
+farmctl = "farm.cli.farmctl:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/farm"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+data/
+server/data/
+docs/spikes/artifacts/
+node_modules/
+web/dist/
