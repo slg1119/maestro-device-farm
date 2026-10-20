@@ -39,3 +39,6 @@ class Database:
 
     def create_all(self) -> None:
         Base.metadata.create_all(self.engine)
+
+    def dispose(self) -> None:
+        self.engine.dispose()

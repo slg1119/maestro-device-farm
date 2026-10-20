@@ -36,6 +36,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+  "ignore:^Using `httpx` with `starlette[.]testclient` is deprecated; install `httpx2` instead[.]$:starlette.exceptions.StarletteDeprecationWarning",
+  "ignore:^You should not use the 'timeout' argument with the TestClient[.]:starlette.exceptions.StarletteDeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 110

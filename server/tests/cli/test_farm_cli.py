@@ -1,6 +1,22 @@
 import pytest
 
 from farm.cli.farm import main
+from farm.db.engine import Database
+
+
+@pytest.fixture(autouse=True)
+def close_cli_databases(monkeypatch):
+    databases = []
+
+    def tracked_database(*args, **kwargs):
+        database = Database(*args, **kwargs)
+        databases.append(database)
+        return database
+
+    monkeypatch.setattr("farm.cli.farm.Database", tracked_database)
+    yield
+    for database in databases:
+        database.dispose()
 
 
 @pytest.fixture

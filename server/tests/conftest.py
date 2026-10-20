@@ -1,5 +1,6 @@
 import json
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,10 +18,13 @@ def settings(tmp_path, monkeypatch) -> Settings:
 
 
 @pytest.fixture
-def db(settings) -> Database:
+def db(settings) -> Iterator[Database]:
     database = Database(settings.database_path)
-    database.create_all()
-    return database
+    try:
+        database.create_all()
+        yield database
+    finally:
+        database.dispose()
 
 
 FAKEBIN = Path(__file__).parent / "fakebin"
