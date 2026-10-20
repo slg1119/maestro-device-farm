@@ -1,5 +1,7 @@
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,8 +27,9 @@ class Settings(BaseSettings):
     git_bot_email: str = "maestro-device-farm@users.noreply.github.com"
     git_poll_sec: int = 60
     git_remote_template: str = "https://github.com/{repo}.git"
+    web_dist: Path = REPO_ROOT / "web" / "dist"
 
-    @field_validator("data_dir", "db_path", mode="after")
+    @field_validator("data_dir", "db_path", "web_dist", mode="after")
     @classmethod
     def _expand_user(cls, value: Path | None) -> Path | None:
         return value.expanduser() if value is not None else None

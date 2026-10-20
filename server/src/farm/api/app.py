@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from farm import __version__
 from farm.api.errors import register_error_handlers
 from farm.api.routes import apps, devices, events, health, runs, tasks, workspaces
+from farm.api.web import mount_dashboard
 from farm.apps.apk import AndroguardApkParser, ApkParser
 from farm.config import Settings
 from farm.db.engine import Database
@@ -36,4 +37,5 @@ def create_app(settings: Settings | None = None, *, db: Database | None = None,
     register_error_handlers(app)
     for module in (health, devices, runs, tasks, apps, events, workspaces):
         app.include_router(module.router, prefix="/api/v1")
+    mount_dashboard(app, settings.web_dist)  # last, so the catch-all never shadows an API route
     return app

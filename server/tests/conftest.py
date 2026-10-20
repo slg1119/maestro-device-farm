@@ -14,7 +14,8 @@ from farm.db.engine import Database
 def settings(tmp_path, monkeypatch) -> Settings:
     for key in [k for k in os.environ if k.startswith("FARM_")]:
         monkeypatch.delenv(key)
-    return Settings(data_dir=tmp_path / "data")
+    # web_dist points nowhere so API tests never depend on a local web build.
+    return Settings(data_dir=tmp_path / "data", web_dist=tmp_path / "web-dist")
 
 
 @pytest.fixture
