@@ -124,6 +124,8 @@ def sync_workspace(db: Database, settings: Settings, key: str) -> Workspace:
         current = find_workspace(s, ws.id)
         if current.branch != ws.branch:
             return current  # re-pointed while we fetched; the next sync covers the new branch
+        if current.head_sha != ws.head_sha:
+            head = None  # a commit recorded a newer head while we fetched; ours may be older
         changed = error != current.sync_error or (head is not None and head != current.head_sha)
         current.synced_at = now()
         current.sync_error = error

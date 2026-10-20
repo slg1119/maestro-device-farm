@@ -27,10 +27,24 @@ def snapshot_commit(settings: Settings, ws: Workspace, sha: str, dest: Path, max
         raise WorkspaceError(502, "git_unavailable", str(exc)) from exc
 
 
-def apply_changes(root: Path, changes: list[Change]) -> None:
-    """Applies already-normalized draft changes on top of a snapshot."""
+def _plain_path(root: Path, rel: str) -> Path:
+    """`root / rel`, refusing any symlink on the way: moving or writing through one could leave the snapshot."""
+    current = root
+    for part in rel.split("/"):
+        current = current / part
+        if current.is_symlink():
+            raise WorkspaceError(400, "invalid_path", f"{rel} goes through a symlink; drafts cannot change it")
+    return current
+
+
+def snapshot_size(root: Path) -> int:
+    return sum(path.stat().st_size for path in root.rglob("*") if path.is_file() and not path.is_symlink())
+
+
+def apply_changes(root: Path, changes: list[Change], max_bytes: int | None = None) -> None:
+    """Applies already-normalized draft changes on top of a snapshot, keeping the result under `max_bytes`."""
     for change in changes:
-        target = root / change.path
+        target = _plain_path(root, change.path)
         if change.op == "put":
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(decode(change))
@@ -39,6 +53,8 @@ def apply_changes(root: Path, changes: list[Change]) -> None:
         else:
             if not target.is_file():
                 raise WorkspaceError(400, "path_not_found", f"{change.path} does not exist at base_sha")
-            dest = root / (change.to or "")
+            dest = _plain_path(root, change.to or "")
             dest.parent.mkdir(parents=True, exist_ok=True)
             target.replace(dest)
+    if max_bytes is not None and snapshot_size(root) > max_bytes:
+        raise WorkspaceError(413, "snapshot_too_large", f"the draft snapshot is larger than {max_bytes} bytes")

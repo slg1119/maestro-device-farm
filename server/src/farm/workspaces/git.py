@@ -108,6 +108,8 @@ class GitRepo:
         env.update({
             "GIT_DIR": str(self.git_dir), "GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_GLOBAL": os.devnull, "LC_ALL": "C",
+            # Paths come from users: never read ":(exclude)*" and friends as pathspec magic.
+            "GIT_LITERAL_PATHSPECS": "1",
         })
         env.update(self._auth_env)
         env.update(extra or {})

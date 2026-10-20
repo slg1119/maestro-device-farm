@@ -97,3 +97,40 @@ def test_draft_rejects_bad_paths(client, auth, ws):
                                "base_sha": workspace["head_sha"],
                                "changes": [{"op": "put", "path": "../x.yaml", "content": FLOW}]})
     assert _error(res) == (422, "invalid_flow")
+
+
+def test_draft_cannot_write_through_symlinks(client, auth, ws, settings):
+    origin, _ = ws
+    deep = origin.work / ".maestro/deep/inner"
+    deep.mkdir(parents=True)
+    (deep / "link.txt").symlink_to("../../login.yaml")
+    (origin.work / ".maestro/alias.txt").symlink_to("moved.txt")
+    head = origin.commit({".maestro/marker.txt": "inside"}, "relative symlinks")
+    outside = settings.path("uploads", "moved.txt")
+    for changes in ([{"op": "move", "path": "deep/inner/link.txt", "to": "moved.txt"},
+                     {"op": "put", "path": "alias.txt", "content": "OVERWRITTEN"}],
+                    [{"op": "put", "path": "alias.txt", "content": "OVERWRITTEN"}]):
+        res = _post(client, auth, {"mode": "matrix", "flow_source": "draft", "workspace": "app", "base_sha": head,
+                                   "changes": changes})
+        assert _error(res) == (400, "invalid_path"), res.text
+    assert not outside.exists()
+    uploads = settings.path("uploads")
+    assert not uploads.exists() or not any(uploads.iterdir())
+
+
+def test_draft_snapshot_size_includes_changes(client, auth, ws, settings, app):
+    origin, _ = ws
+    app.state.settings = settings.model_copy(update={"max_flows_mb": 1, "git_remote_template":
+                                                     app.state.settings.git_remote_template})
+    base = origin.commit({".maestro/base.bin": "b" * (3 * 1024 * 1024)})
+    res = _post(client, auth, {"mode": "matrix", "flow_source": "draft", "workspace": "app", "base_sha": base,
+                               "changes": [{"op": "put", "path": "large.txt", "content": "x" * (2 * 1024 * 1024)}]})
+    assert _error(res) == (413, "snapshot_too_large")
+
+
+def test_draft_content_over_one_megabyte_is_accepted(client, auth, ws):
+    _, workspace = ws
+    res = _post(client, auth, {"mode": "matrix", "flow_source": "draft", "workspace": "app",
+                               "base_sha": workspace["head_sha"],
+                               "changes": [{"op": "put", "path": "big.txt", "content": "x" * (3 * 1024 * 1024)}]})
+    assert res.status_code == 201, res.text
