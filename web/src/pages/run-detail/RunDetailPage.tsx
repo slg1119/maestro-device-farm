@@ -10,6 +10,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader } from "../../components/ui";
 import { elapsed, formatTime, githubCommitUrl, shortSha } from "../../lib/format";
 import { useSettings } from "../../lib/settings";
+import { useTicker } from "../../lib/useTicker";
 import { MatrixGrid } from "./MatrixGrid";
 import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
@@ -74,6 +75,7 @@ function RunOptions({ run }: { run: RunDetail }) {
 }
 
 function RunContent({ run }: { run: RunDetail }) {
+  useTicker(run.status === "running");
   const { token } = useSettings();
   const devices = useDevices();
   const workspaces = useWorkspaces();

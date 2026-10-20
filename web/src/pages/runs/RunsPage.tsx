@@ -6,6 +6,7 @@ import { TokenNotice } from "../../components/Layout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Button, Card, Empty, ErrorBox, Field, Loading, PageHeader, Select } from "../../components/ui";
 import { elapsed, formatTime, shortSha, timeAgo } from "../../lib/format";
+import { useTicker } from "../../lib/useTicker";
 
 const PAGE_SIZE = 50;
 const STATUS: Record<RunStatus, string> = {
@@ -22,6 +23,7 @@ export function RunsPage() {
   const before = search.get("before") ?? "";
   const runs = useRuns({ status, origin, workspace, before, limit: PAGE_SIZE });
   const workspaces = useWorkspaces();
+  useTicker(runs.data?.some((run) => run.status === "running") ?? false);
   const workspaceNames = new Map(workspaces.data?.map((item) => [item.id, item.name]));
   const lastRun = runs.data?.length === PAGE_SIZE ? runs.data.at(-1) : undefined;
 
