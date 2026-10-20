@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     api_port: int = 8700
     public_url: str = "http://localhost:8700"
     task_timeout_sec: int = 1800
+    retry_backoff_sec: int = 15
     min_battery: int = 20
     pinned_wait_sec: int = 600
     reservation_ttl_sec: int = 900

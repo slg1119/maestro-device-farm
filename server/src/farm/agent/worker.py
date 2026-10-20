@@ -136,7 +136,7 @@ class DeviceWorker:
 
     def _finish(self, task_id: str, outcome: TaskOutcome) -> None:
         with self.db.session() as s:
-            finish_task(s, task_id, outcome)
+            finish_task(s, task_id, outcome, retry_backoff_sec=self.settings.retry_backoff_sec)
 
     def _claim_command(self) -> str | None:
         with self.db.session() as s:

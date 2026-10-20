@@ -17,6 +17,7 @@ def test_defaults_match_spec(monkeypatch):
     assert (s.api_host, s.api_port) == ("0.0.0.0", 8700)
     assert s.public_url == "http://localhost:8700"
     assert s.task_timeout_sec == 1800
+    assert s.retry_backoff_sec == 15
     assert s.min_battery == 20
     assert s.pinned_wait_sec == 600
     assert s.reservation_ttl_sec == 900
@@ -36,6 +37,12 @@ def test_env_overrides(monkeypatch, tmp_path):
 def test_explicit_db_path_wins(settings, tmp_path):
     s = settings.model_copy(update={"db_path": tmp_path / "x.db"})
     assert s.database_path == tmp_path / "x.db"
+
+
+def test_retry_backoff_env_override(monkeypatch):
+    _clear_farm_env(monkeypatch)
+    monkeypatch.setenv("FARM_RETRY_BACKOFF_SEC", "3")
+    assert Settings().retry_backoff_sec == 3
 
 
 def test_path_helper(settings):

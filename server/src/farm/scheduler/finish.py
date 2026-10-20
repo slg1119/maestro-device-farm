@@ -6,7 +6,7 @@ from farm.devices.state import idle_state, set_device_state
 from farm.events import emit
 from farm.results import TaskOutcome
 from farm.scheduler.payloads import run_payload, task_payload
-from farm.timeutil import now
+from farm.timeutil import now, shift
 
 INFRA_ERROR_CODES = frozenset({"device_disconnected", "install_failed", "timeout", "agent_restarted", "no_junit"})
 MAX_ATTEMPTS = 2
@@ -57,7 +57,7 @@ def _complete(session: Session, task: Task, outcome: TaskOutcome) -> None:
     emit(session, "task.updated", task_payload(task), run_id=task.run_id)
 
 
-def finish_task(session: Session, task_id: str, outcome: TaskOutcome) -> Task:
+def finish_task(session: Session, task_id: str, outcome: TaskOutcome, *, retry_backoff_sec: int = 0) -> Task:
     task = session.get(Task, task_id)
     if task is None:
         raise LookupError(task_id)
@@ -76,6 +76,7 @@ def finish_task(session: Session, task_id: str, outcome: TaskOutcome) -> Task:
         task.status = "queued"
         task.attempt += 1
         task.started_at = None
+        task.not_before = shift(now(), retry_backoff_sec) if retry_backoff_sec > 0 else None
         task.exit_code = outcome.exit_code
         task.error_code = outcome.error_code
         task.error_message = outcome.error_message

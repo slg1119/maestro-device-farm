@@ -13,6 +13,7 @@ from farm.scheduler.claim import claim_next
 from farm.scheduler.commands import create_inspect_command
 from farm.scheduler.finish import cancel_run
 from farm.scheduler.reservations import create_reservation
+from farm.timeutil import now
 from tests.factories import add_app, add_device, flow_yaml, submit, write_flows
 
 
@@ -30,8 +31,9 @@ def flows(tmp_path):
 async def make_agent(settings, db):
     agents: list[Agent] = []
 
-    def factory(provider, runner, inspector=None) -> Agent:
-        agent = Agent(settings, db, provider, runner, inspector, agent_id="test-agent", poll_sec=0.05,
+    def factory(provider, runner, inspector=None, *, retry_backoff_sec=0) -> Agent:
+        agent_settings = settings.model_copy(update={"retry_backoff_sec": retry_backoff_sec})
+        agent = Agent(agent_settings, db, provider, runner, inspector, agent_id="test-agent", poll_sec=0.05,
                       sweep_sec=0.2, heartbeat_sec=0.2, unhealthy_recheck_sec=0.2, worker_idle_sleep=0.02,
                       cancel_poll_sec=0.05)
         agents.append(agent)
@@ -121,6 +123,35 @@ async def test_restart_recovery_requeues_running_tasks(db, settings, flows, make
         assert s.get(Device, "d1").state == "offline"
     await agent.poll_devices_once()
     await wait_for(lambda: _run_status(db, run.id) == "passed")
+
+
+async def test_disconnect_retry_waits_for_backoff(db, flows, make_agent):
+    provider = FakeProvider([_info("d1"), _info("d2")])
+    runner = FakeRunner(delay=30)
+    agent = make_agent(provider, runner, retry_backoff_sec=1)
+    await agent.start()
+    await agent.poll_devices_once()
+    run_id = _submit(db, flows, flow_paths=["a.yaml"])
+    await wait_for(lambda: _running_serial(db, run_id) is not None)
+    serial = _running_serial(db, run_id)
+    runner.delay = 0.05
+    provider.remove(serial)
+    await agent.poll_devices_once()
+
+    def retry_queued():
+        with db.session() as s:
+            task = s.scalar(select(Task).where(Task.run_id == run_id))
+            return task.status == "queued" and task.attempt == 2
+
+    await wait_for(retry_queued)
+    await asyncio.sleep(0.2)
+    with db.session() as s:
+        task = s.scalar(select(Task).where(Task.run_id == run_id))
+        assert task.status == "queued" and task.not_before > now()
+    assert len(runner.runs) == 1
+    await wait_for(lambda: _run_status(db, run_id) == "passed")
+    assert len(runner.runs) == 2
+    assert runner.runs[1].serial != serial
 
 
 async def test_user_cancel_stops_running_task(db, flows, make_agent):

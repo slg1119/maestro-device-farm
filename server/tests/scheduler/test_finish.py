@@ -11,6 +11,7 @@ from farm.scheduler.finish import (
     requeue_after_precheck,
     terminate_task,
 )
+from farm.timeutil import now, parse, shift
 from tests.factories import add_app, add_device, flow_yaml, submit, write_flows
 
 
@@ -83,6 +84,37 @@ def test_pinned_retry_keeps_its_device(db, settings, flows):
     with db.session() as s:
         t = s.get(Task, task.id)
         assert (t.status, t.attempt, t.device_serial, t.pinned) == ("queued", 2, "d1", True)
+
+
+def test_retry_waits_for_backoff_before_claim(db, settings, flows):
+    with db.session() as s:
+        add_device(s, "d1")
+        submit(s, app=add_app(s), flows_dir=flows, flow_paths=["a.yaml"])
+    first = _claim(db, settings, "d1")
+    before = now()
+    with db.session() as s:
+        finish_task(s, first.id, TaskOutcome("error", error_code="timeout"), retry_backoff_sec=15)
+    with db.session() as s:
+        task = s.get(Task, first.id)
+        assert task.status == "queued" and task.attempt == 2
+        assert abs((parse(task.not_before) - parse(before)).total_seconds() - 15) <= 2
+    assert _claim(db, settings, "d1") is None
+    with db.session() as s:
+        s.get(Task, first.id).not_before = shift(now(), -1)
+    second = _claim(db, settings, "d1")
+    assert second.id == first.id
+    assert second.not_before is None
+
+
+def test_retry_defaults_to_no_backoff(db, settings, flows):
+    with db.session() as s:
+        add_device(s, "d1")
+        submit(s, app=add_app(s), flows_dir=flows, flow_paths=["a.yaml"])
+    first = _claim(db, settings, "d1")
+    _finish(db, first.id, TaskOutcome("error", error_code="timeout"))
+    with db.session() as s:
+        assert s.get(Task, first.id).not_before is None
+    assert _claim(db, settings, "d1").id == first.id
 
 
 def test_non_infra_error_is_not_retried(db, settings, flows):

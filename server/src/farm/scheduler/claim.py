@@ -29,6 +29,7 @@ def claim_next(session: Session, serial: str, data_dir: Path) -> Task | None:
         .join(AppBuild, Run.app_build_id == AppBuild.id)
         .where(
             Task.status == "queued",
+            or_(Task.not_before.is_(None), Task.not_before <= now()),
             Run.cancel_requested.is_(False),
             reservation_match,
             or_(and_(Task.pinned.is_(True), Task.device_serial == serial), Task.pinned.is_(False)),
@@ -48,6 +49,7 @@ def claim_next(session: Session, serial: str, data_dir: Path) -> Task | None:
 def _start(session: Session, device: Device, task: Task, run: Run, data_dir: Path) -> Task:
     ts = now()
     task.status = "running"
+    task.not_before = None
     task.device_serial = device.serial
     task.started_at = ts
     task.artifacts_dir = str(data_dir / "runs" / run.id / "tasks" / task.id / f"attempt-{task.attempt}")

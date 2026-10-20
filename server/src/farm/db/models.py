@@ -87,6 +87,7 @@ class Task(Base):
     flows: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String, default="queued", index=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1)
+    not_before: Mapped[str | None] = mapped_column(String, nullable=True)
     exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from farm.db.models import Device, Run, Task
 from farm.scheduler.claim import claim_next
 from farm.scheduler.selector import DeviceSelector
+from farm.timeutil import now, shift
 from tests.factories import add_app, add_device, flow_yaml, submit, write_flows
 
 
@@ -36,6 +37,19 @@ def test_busy_device_claims_nothing(db, settings, flows):
         assert claim_next(s, "d1", settings.data_dir) is not None
     with db.session() as s:
         assert claim_next(s, "d1", settings.data_dir) is None
+
+
+def test_future_task_is_skipped_while_another_is_claimed(db, settings, flows):
+    with db.session() as s:
+        add_device(s, "d1")
+        run = submit(s, app=add_app(s), flows_dir=flows, flow_paths=["a.yaml", "b.yaml"])
+        delayed = s.scalar(select(Task).where(Task.run_id == run.id, Task.seq == 0))
+        delayed.not_before = shift(now(), 60)
+        delayed_id = delayed.id
+    with db.session() as s:
+        claimed = claim_next(s, "d1", settings.data_dir)
+        assert claimed.seq == 1 and claimed.not_before is None
+        assert s.get(Task, delayed_id).status == "queued"
 
 
 def test_unknown_or_offline_device_claims_nothing(db, settings, flows):
