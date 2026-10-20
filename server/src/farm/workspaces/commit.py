@@ -9,7 +9,15 @@ from farm.db.models import Workspace
 from farm.events import emit
 from farm.flows.syntax import SyntaxChecker
 from farm.timeutil import now
-from farm.workspaces.changes import MB, Change, decode, touched_paths, validate_changes
+from farm.workspaces.changes import (
+    MB,
+    Change,
+    check_content,
+    decode,
+    is_yaml,
+    touched_paths,
+    validate_changes,
+)
 from farm.workspaces.errors import WorkspaceError
 from farm.workspaces.git import (
     SHA_RE,
@@ -61,6 +69,21 @@ def _files(repo: GitRepo, sha: str, root: str) -> dict[str, TreeEntry]:
     return {repo_path(base, entry.path): entry for entry in repo.tree(sha, root)}
 
 
+def _type_conflicts(repo: GitRepo, sha: str, paths: list[str]) -> list[str]:
+    """Repo paths a write would silently replace at `sha`: a file where a parent directory is needed,
+    or a directory where a file is written."""
+    found: list[str] = []
+    for path in paths:
+        parts = path.split("/")
+        ancestors = ["/".join(parts[:i]) for i in range(1, len(parts))]
+        blocker = next((a for a in ancestors if repo.object_type(sha, a) == "blob"), None)
+        if blocker is None and repo.object_type(sha, path) == "tree":
+            blocker = path
+        if blocker is not None and blocker not in found:
+            found.append(blocker)
+    return found
+
+
 def _ensure_commit(repo: GitRepo, sha: str, code: str) -> None:
     try:
         repo.fetch_commit(sha)
@@ -95,11 +118,12 @@ def _commit_loop(db: Database, settings: Settings, ws: Workspace, repo: GitRepo,
             except GitError as exc:
                 raise WorkspaceError(502, "git_unavailable", str(exc)) from exc
             break
-    with db.session() as s:
-        current = find_workspace(s, ws.id)
-        if current.branch == ws.branch:
-            current.head_sha, current.synced_at, current.sync_error = sha, now(), None
-            emit(s, "workspace.updated", workspace_payload(current))
+        # Still under the repo lock, so a slower concurrent commit cannot record an older head after us.
+        with db.session() as s:
+            current = find_workspace(s, ws.id)
+            if current.branch == ws.branch:
+                current.head_sha, current.synced_at, current.sync_error = sha, now(), None
+                emit(s, "workspace.updated", workspace_payload(current))
     return {"sha": sha, "parent": remote_head}
 
 
@@ -113,12 +137,17 @@ def commit_changes(db: Database, settings: Settings, key: str, req: CommitReques
     repo = open_repo(settings, ws.repo)
     _ensure_commit(repo, req.base_sha, "base_not_found")
     touched = [repo_path(ws.path, p) for p in touched_paths(changes)]
+    written = [repo_path(ws.path, c.to if c.op == "move" else c.path) for c in changes if c.op != "delete"]
 
     def build_ops(remote_head: str) -> list[IndexOp]:
         conflicts = repo.changed_paths(req.base_sha, remote_head, touched)
         if conflicts:
             raise WorkspaceError(409, "conflict", "files changed on the branch since base_sha",
                                  paths=[strip_root(ws.path, p) for p in conflicts], remote_head=remote_head)
+        blocked = _type_conflicts(repo, remote_head, written)
+        if blocked:
+            raise WorkspaceError(409, "conflict", "a file and a directory would collide",
+                                 paths=[strip_root(ws.path, p) for p in blocked], remote_head=remote_head)
         ops: list[IndexOp] = []
         for change in changes:
             path = repo_path(ws.path, change.path)
@@ -130,6 +159,11 @@ def commit_changes(db: Database, settings: Settings, key: str, req: CommitReques
                 source = _files(repo, remote_head, path).get(path)
                 if source is None:
                     raise WorkspaceError(400, "path_not_found", f"{change.path} is not a file on {ws.branch}")
+                if change.to and is_yaml(change.to):
+                    moved = check_content(change.to, repo.read_blob(remote_head, path) or b"", checker)
+                    if moved:
+                        raise WorkspaceError(422, "invalid_flow", "some files are invalid",
+                                             issues=[issue.model_dump() for issue in moved])
                 ops += [IndexOp(path), IndexOp(repo_path(ws.path, change.to or ""), blob=source.blob,
                                                mode=source.mode)]
         return ops

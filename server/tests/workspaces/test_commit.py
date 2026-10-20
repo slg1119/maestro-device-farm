@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from farm.workspaces.commit import Author, CommitRequest, RestoreRequest, commit_changes, restore
 from farm.workspaces.errors import WorkspaceError
 from farm.workspaces.git import GitRepo
-from farm.workspaces.registry import load_workspace
+from farm.workspaces.registry import load_workspace, update_workspace
 from tests.fakes import FakeSyntaxChecker
 from tests.gitfixtures import FLOW, git
 
@@ -123,3 +123,40 @@ def test_restore_whole_workspace_and_single_file(db, gsettings, workspace, origi
     with pytest.raises(WorkspaceError) as exc:
         restore(db, gsettings, "app", RestoreRequest(sha=first, author=Author(**AUTHOR)))
     assert exc.value.code == "no_changes"
+
+
+def test_pathspec_magic_names_are_literal(db, gsettings, workspace, origin):
+    # A file literally named ":(exclude)*" must not be read as git pathspec magic in the conflict check.
+    update_workspace(db, gsettings, "app", {"path": ""})  # root workspace: the repo path starts with ":"
+    base = origin.commit({":(exclude)*": "base"})
+    origin.commit({":(exclude)*": "remote edit"})
+    with pytest.raises(WorkspaceError) as exc:
+        _commit(db, gsettings, base, [{"op": "put", "path": ":(exclude)*", "content": "stale edit"}])
+    assert (exc.value.code, exc.value.extra["paths"]) == ("conflict", [":(exclude)*"])
+
+
+def test_file_where_a_directory_is_needed_conflicts(db, gsettings, workspace, origin):
+    origin.commit({".maestro/sub/helper.yaml": None})
+    (origin.work / ".maestro/sub").rmdir()
+    remote = origin.commit({".maestro/sub": "IMPORTANT REMOTE CONTENT"})
+    with pytest.raises(WorkspaceError) as exc:
+        _commit(db, gsettings, workspace.head_sha, [{"op": "put", "path": "sub/new.yaml", "content": FLOW}])
+    assert (exc.value.status, exc.value.code) == (409, "conflict")
+    assert exc.value.extra == {"paths": ["sub"], "remote_head": remote}
+    assert origin.show(origin.head(), ".maestro/sub") == "IMPORTANT REMOTE CONTENT"
+
+
+def test_directory_where_a_file_is_written_conflicts(db, gsettings, workspace):
+    with pytest.raises(WorkspaceError) as exc:
+        _commit(db, gsettings, workspace.head_sha, [{"op": "put", "path": "sub", "content": "x"}])
+    assert (exc.value.code, exc.value.extra["paths"]) == ("conflict", ["sub"])
+
+
+def test_move_into_yaml_is_validated(db, gsettings, workspace, origin):
+    base = origin.commit({".maestro/invalid.txt": "invalid: [\n", ".maestro/notes.txt": "- notACommand: 1\n"})
+    for source, target in (("invalid.txt", "invalid.yaml"), ("notes.txt", "notes.yaml")):
+        with pytest.raises(WorkspaceError) as exc:
+            _commit(db, gsettings, base, [{"op": "move", "path": source, "to": target}])
+        assert (exc.value.status, exc.value.code) == (422, "invalid_flow")
+        assert exc.value.extra["issues"][0]["path"] == target
+    assert origin.head() == base

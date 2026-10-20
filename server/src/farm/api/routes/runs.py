@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -35,6 +37,7 @@ from farm.workspaces.snapshot import apply_changes, snapshot_commit
 router = APIRouter()
 TASK_STATUSES = ("queued", "running", "passed", "failed", "error", "cancelled")
 EXTRACT_RATIO = 4  # extracted flows may be at most 4x the upload limit (zip bomb guard)
+OPTIONS_MEDIA_FILES = 4  # the options field may hold about this many max-size (base64) draft files
 
 
 class RunOptions(BaseModel):
@@ -169,7 +172,7 @@ class FlowSnapshot:
     commit_sha: str | None = None
 
 
-def _snapshot(db: Database, settings: Settings, opts: RunOptions, flows: UploadFile | None,
+def _snapshot(db: Database, settings: Settings, opts: RunOptions, flows: StarletteUploadFile | None,
               upload_dir: Path) -> FlowSnapshot:
     """Builds the run's immutable flows directory from the chosen source (spec §5.1 step 2)."""
     limit = settings.max_flows_mb * MB * EXTRACT_RATIO
@@ -188,7 +191,7 @@ def _snapshot(db: Database, settings: Settings, opts: RunOptions, flows: UploadF
                              issues=[issue.model_dump() for issue in issues])
     sha = resolve_ref(settings, ws, opts.base_sha)
     root = snapshot_commit(settings, ws, sha, upload_dir / "flows", limit, allow_missing=True)
-    apply_changes(root, changes)
+    apply_changes(root, changes, max_bytes=limit)
     return FlowSnapshot(root, ws.id, None, sha)
 
 
@@ -199,14 +202,35 @@ def _get_run(session: Session, run_id: str) -> Run:
     return run
 
 
-@router.post("/runs", status_code=201)
-def submit_run(
-    request: Request,
-    options: str = Form(...),
-    flows: UploadFile | None = File(None),
-    apk: UploadFile | None = File(None),
-    token: ApiToken = Depends(require_token),
-) -> dict:
+RUN_FORM = {"requestBody": {"required": True, "content": {"multipart/form-data": {"schema": {
+    "type": "object", "required": ["options"], "properties": {
+        "options": {"type": "string", "description": "RunOptions as JSON"},
+        "flows": {"type": "string", "format": "binary", "description": "flows zip (flow_source=upload)"},
+        "apk": {"type": "string", "format": "binary"},
+    }}}}}}
+
+
+@router.post("/runs", status_code=201, openapi_extra=RUN_FORM)
+async def submit_run(request: Request, token: ApiToken = Depends(require_token)) -> dict:
+    # Parsed by hand: Starlette caps non-file form fields at 1 MB, and draft runs carry file contents in `options`.
+    settings = get_settings(request)
+    form = await request.form(max_part_size=OPTIONS_MEDIA_FILES * settings.max_media_mb * MB)
+    try:
+        options = form.get("options")
+        if not isinstance(options, str):
+            raise ApiError(400, "invalid_options", "the options form field is required")
+        flows, apk = (form.get(name) for name in ("flows", "apk"))
+        return await run_in_threadpool(
+            _submit_run, request, token, options,
+            flows if isinstance(flows, StarletteUploadFile) else None,
+            apk if isinstance(apk, StarletteUploadFile) else None,
+        )
+    finally:
+        await form.close()
+
+
+def _submit_run(request: Request, token: ApiToken, options: str, flows: StarletteUploadFile | None,
+                apk: StarletteUploadFile | None) -> dict:
     settings = get_settings(request)
     try:
         opts = RunOptions.model_validate_json(options)

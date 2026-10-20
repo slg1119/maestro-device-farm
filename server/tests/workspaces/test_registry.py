@@ -110,3 +110,35 @@ def test_poller_picks_up_new_commits(db, gsettings, workspace, origin):
     finally:
         poller.stop()
     assert not poller._thread.is_alive()
+
+
+def test_stale_sync_does_not_regress_a_commit_head(db, gsettings, workspace, origin, monkeypatch):
+    import threading
+
+    from farm.workspaces.commit import Author, CommitRequest, commit_changes
+    from farm.workspaces.git import GitRepo
+    from tests.fakes import FakeSyntaxChecker
+    from tests.gitfixtures import FLOW
+
+    fetched, release = threading.Event(), threading.Event()
+    real_fetch = GitRepo.fetch_branch
+
+    def delayed_fetch(self, branch):
+        head = real_fetch(self, branch)
+        if threading.current_thread().name == "stale-sync":
+            fetched.set()
+            assert release.wait(10)
+        return head
+
+    monkeypatch.setattr(GitRepo, "fetch_branch", delayed_fetch)
+    thread = threading.Thread(target=sync_workspace, args=(db, gsettings, "app"), name="stale-sync")
+    thread.start()
+    try:
+        assert fetched.wait(10)
+        result = commit_changes(db, gsettings, "app", CommitRequest(
+            base_sha=workspace.head_sha, message="m", author=Author(name="K", email="k@x.io"),
+            changes=[{"op": "put", "path": "new.yaml", "content": FLOW}]), FakeSyntaxChecker())
+    finally:
+        release.set()
+        thread.join(10)
+    assert load_workspace(db, "app").head_sha == result["sha"] == origin.head()

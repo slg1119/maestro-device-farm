@@ -76,6 +76,26 @@ def _yaml_issue(path: str, text: str) -> Issue | None:
     return None
 
 
+def is_yaml(path: str) -> bool:
+    return _is_yaml(path)
+
+
+def check_content(path: str, data: bytes, checker: SyntaxChecker | None) -> list[Issue]:
+    """YAML and check-syntax problems for one file that will live at `path` (used for moves into .yaml)."""
+    if not _is_yaml(path):
+        return []
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return [Issue(path=path, message="YAML files must be UTF-8")]
+    problem = _yaml_issue(path, text)
+    if problem:
+        return [problem]
+    if checker is None or not _is_flow(path):
+        return []
+    return [Issue(path=path, message=i.message, line=i.line, column=i.column) for i in checker.check(text)]
+
+
 def normalize_changes(changes: list[Change]) -> tuple[list[Change], list[Issue]]:
     """Normalizes paths in place of the originals and reports unsafe or duplicated paths."""
     issues: list[Issue] = []
