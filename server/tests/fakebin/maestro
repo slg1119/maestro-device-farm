@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Fake maestro for tests. FAKE_MAESTRO_MODE: pass | fail | hang | nojunit | disconnect | badhierarchy."""
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+VALUE_FLAGS = {"--format", "--output", "--test-output-dir", "--config", "--include-tags", "--exclude-tags", "-e"}
+
+
+def log(argv: list[str]) -> None:
+    path = os.environ.get("FAKE_LOG")
+    if path:
+        with open(path, "a") as fh:
+            fh.write(json.dumps({"tool": "maestro", "argv": argv}) + "\n")
+
+
+def parse(args: list[str]) -> dict:
+    opts: dict = {"targets": []}
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in VALUE_FLAGS:
+            opts[arg] = args[i + 1]
+            i += 2
+            continue
+        if not arg.startswith("-"):
+            opts["targets"].append(arg)
+        i += 1
+    return opts
+
+
+def flow_names(targets: list[str]) -> list[str]:
+    names = []
+    for target in targets:
+        path = Path(target)
+        if path.is_dir():
+            names += sorted(p.stem for p in path.glob("*.yaml") if p.name != "config.yaml")
+        else:
+            names.append(path.stem)
+    return names
+
+
+def write_junit(path: str, names: list[str], fail_first: bool) -> None:
+    cases = []
+    for index, name in enumerate(names):
+        failure = "<failure>Assertion is false: fake failure</failure>" if fail_first and index == 0 else ""
+        cases.append(f'<testcase id="{name}" name="{name}" classname="{name}" time="1.5">{failure}</testcase>')
+    Path(path).write_text(f'<?xml version="1.0"?><testsuites><testsuite name="Test Suite">{"".join(cases)}'
+                          f"</testsuite></testsuites>")
+
+
+def main() -> int:
+    argv = sys.argv[1:]
+    log(argv)
+    args = argv[2:] if argv[:1] == ["--device"] else argv
+    mode = os.environ.get("FAKE_MAESTRO_MODE", "pass")
+    if args[:1] == ["hierarchy"]:
+        if mode == "badhierarchy":
+            print("not json at all")
+            return 0
+        print("Running on fake device")
+        print(json.dumps({"attributes": {"resource-id": "root", "bounds": "[0,0][1080,2400]"}, "children": []}))
+        return 0
+    if args[:1] != ["test"]:
+        return 2
+    opts = parse(args[1:])
+    print("fake maestro starting", flush=True)
+    if mode == "hang":
+        time.sleep(3600)
+        return 0
+    if mode == "nojunit":
+        print("boom: driver failed to start")
+        return 1
+    if mode == "disconnect":
+        (Path(os.environ["FAKE_STATE_DIR"]) / "adb_state").write_text("offline")
+        print("device disconnected")
+        return 1
+    Path(opts["--test-output-dir"]).mkdir(parents=True, exist_ok=True)
+    write_junit(opts["--output"], flow_names(opts["targets"]), fail_first=mode == "fail")
+    return 1 if mode == "fail" else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
