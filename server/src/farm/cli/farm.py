@@ -4,6 +4,8 @@ import sys
 
 from farm.config import Settings
 from farm.db import migrate
+from farm.auth import TokenExistsError, create_token, list_tokens, revoke_token
+from farm.db.engine import Database
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,6 +18,11 @@ def build_parser() -> argparse.ArgumentParser:
     revision = db_sub.add_parser("revision", help="autogenerate a migration (developers)")
     revision.add_argument("-m", "--message", required=True)
     revision.add_argument("--rev-id")
+    token = sub.add_parser("token", help="API tokens")
+    token_sub = token.add_subparsers(dest="token_cmd", required=True)
+    token_sub.add_parser("create", help="create a token and print it once").add_argument("name")
+    token_sub.add_parser("list", help="list tokens")
+    token_sub.add_parser("revoke", help="delete a token").add_argument("name")
     return parser
 
 
@@ -28,7 +35,31 @@ def _cmd_db(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
-HANDLERS = {"db": _cmd_db}
+def _cmd_token(args: argparse.Namespace, settings: Settings) -> int:
+    db = Database(settings.database_path)
+    if args.token_cmd == "create":
+        try:
+            with db.session() as s:
+                token = create_token(s, args.name)
+        except TokenExistsError:
+            print(f"token '{args.name}' already exists", file=sys.stderr)
+            return 1
+        print(token)
+        return 0
+    if args.token_cmd == "list":
+        with db.session() as s:
+            for row in list_tokens(s):
+                print(f"{row.name}\tcreated {row.created_at}\tlast used {row.last_used_at or '-'}")
+        return 0
+    with db.session() as s:
+        removed = revoke_token(s, args.name)
+    if not removed:
+        print(f"token '{args.name}' not found", file=sys.stderr)
+        return 1
+    return 0
+
+
+HANDLERS = {"db": _cmd_db, "token": _cmd_token}
 
 
 def main(argv: list[str] | None = None) -> int:
