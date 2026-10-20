@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Fake adb for tests. Behaviour comes from FAKE_* environment variables; every call is logged to FAKE_LOG."""
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+PROPS = {"ro.product.model": "Pixel 7", "ro.product.manufacturer": "Google", "ro.build.version.release": "14",
+         "ro.build.version.sdk": "34"}
+
+
+def state_dir() -> Path:
+    return Path(os.environ["FAKE_STATE_DIR"])
+
+
+def log(argv: list[str]) -> None:
+    path = os.environ.get("FAKE_LOG")
+    if path:
+        with open(path, "a") as fh:
+            fh.write(json.dumps({"tool": "adb", "argv": argv}) + "\n")
+
+
+def shell(args: list[str]) -> int:
+    if args[:1] == ["getprop"]:
+        print(PROPS.get(args[1], ""))
+    elif args[:2] == ["dumpsys", "battery"]:
+        print("Current Battery Service state:")
+        print(f"  level: {os.environ.get('FAKE_ADB_BATTERY', '80')}")
+    return 0  # input, wm, svc and settings succeed silently
+
+
+def install() -> int:
+    mode = os.environ.get("FAKE_ADB_INSTALL", "ok")
+    if mode == "fail":
+        print("adb: failed to install app.apk: Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]")
+        return 1
+    if mode == "incompatible" and not (state_dir() / "uninstalled").exists():
+        print("adb: failed to install app.apk: Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package "
+              "com.example.app signatures do not match newer version; ignoring!]")
+        return 1
+    print("Performing Streamed Install")
+    print("Success")
+    return 0
+
+
+def main() -> int:
+    argv = sys.argv[1:]
+    log(argv)
+    if argv[:1] == ["-s"]:
+        argv = argv[2:]
+    cmd = argv[0] if argv else ""
+    if cmd == "devices":
+        print("List of devices attached")
+        for entry in filter(None, os.environ.get("FAKE_ADB_DEVICES", "").split(",")):
+            serial, _, state = entry.partition(":")
+            print(f"{serial}\t{state or 'device'} product:fake model:Fake transport_id:1")
+        print()
+        return 0
+    if cmd == "get-state":
+        override = state_dir() / "adb_state"
+        print(override.read_text().strip() if override.exists() else os.environ.get("FAKE_ADB_STATE", "device"))
+        return 0
+    if cmd == "shell":
+        return shell(argv[1:])
+    if cmd == "install":
+        return install()
+    if cmd == "uninstall":
+        (state_dir() / "uninstalled").write_text("1")
+        print("Success")
+        return 0
+    if cmd == "logcat":
+        if "-c" in argv:
+            return 0
+        print("10-20 12:00:00.000  100  100 I Fake: logcat line", flush=True)
+        time.sleep(3600)
+        return 0
+    if cmd == "exec-out":
+        sys.stdout.buffer.write(b"\x89PNG\r\n\x1a\nfake-png")
+        return 0
+    print(f"fake adb: unsupported {argv}", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
