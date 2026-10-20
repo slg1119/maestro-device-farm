@@ -30,6 +30,21 @@ class Device(Base):
     reservation_id: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
+class Workspace(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String, unique=True)
+    repo: Mapped[str] = mapped_column(String)
+    branch: Mapped[str] = mapped_column(String)
+    path: Mapped[str] = mapped_column(String, default="")
+    default_app_package: Mapped[str | None] = mapped_column(String, nullable=True)
+    head_sha: Mapped[str | None] = mapped_column(String, nullable=True)
+    synced_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    sync_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=now)
+
+
 class AppBuild(Base):
     __tablename__ = "app_builds"
 
@@ -68,6 +83,10 @@ class Run(Base):
     ci_meta: Mapped[dict] = mapped_column(JSON, default=dict)
     task_timeout_sec: Mapped[int] = mapped_column(Integer)
     reservation_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    # No foreign key: unregistering a workspace keeps its runs.
+    workspace_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    commit_sha: Mapped[str | None] = mapped_column(String, nullable=True)
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by: Mapped[str] = mapped_column(String, default="")
     artifacts_purged: Mapped[bool] = mapped_column(Boolean, default=False)
