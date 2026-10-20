@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Fake maestro modes: pass | fail | hang | nojunit | notconnected | disconnect | badhierarchy."""
+"""Fake maestro modes: pass | fail | hang | nojunit | notconnected | disconnect | badhierarchy.
+
+`check-syntax FILE` ignores the mode: a line containing `notACommand` is reported like real maestro does.
+"""
 import json
 import os
 import sys
@@ -51,11 +54,23 @@ def write_junit(path: str, names: list[str], fail_first: bool) -> None:
                           f"</testsuite></testsuites>")
 
 
+def check_syntax(path: Path) -> int:
+    for number, line in enumerate(path.read_text().splitlines(), start=1):
+        column = line.find("notACommand")
+        if column >= 0:
+            print(f"Invalid Command: notACommand at /syntax-checker:{number}:{column + 1}", file=sys.stderr)
+            return 1
+    print("OK")
+    return 0
+
+
 def main() -> int:
     argv = sys.argv[1:]
     log(argv)
     args = argv[2:] if argv[:1] == ["--device"] else argv
     mode = os.environ.get("FAKE_MAESTRO_MODE", "pass")
+    if args[:1] == ["check-syntax"]:
+        return check_syntax(Path(args[1]))
     if args[:1] == ["hierarchy"]:
         if mode == "badhierarchy":
             print("not json at all")
