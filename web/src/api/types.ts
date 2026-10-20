@@ -168,6 +168,21 @@ export interface WorkspaceTree {
   files: ArtifactFile[];
 }
 
+export interface WorkspaceCommit {
+  sha: string;
+  author_name: string;
+  author_email: string;
+  authored_at: string; // ISO 8601 with offset (git %aI), not the server's Z format
+  message: string;
+  co_authors: { name: string; email: string }[];
+  files_changed: number;
+}
+
+export interface WorkspaceHistory {
+  sha: string;
+  commits: WorkspaceCommit[];
+}
+
 export interface Health {
   status: "ok";
   agent: { id: string; version: string; started_at: string; last_heartbeat_at: string; age_sec: number } | null;

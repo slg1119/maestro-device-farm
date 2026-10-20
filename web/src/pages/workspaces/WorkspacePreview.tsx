@@ -2,10 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { apiJson } from "../../api/client";
-import type { Workspace, WorkspaceTree } from "../../api/types";
+import type { Workspace, WorkspaceHistory, WorkspaceTree } from "../../api/types";
 import { Empty, ErrorBox, Loading } from "../../components/ui";
 import { formatBytes, githubCommitUrl, shortSha } from "../../lib/format";
-import type { WorkspaceHistory } from "./types";
 
 export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
   const [open, setOpen] = useState(false);
