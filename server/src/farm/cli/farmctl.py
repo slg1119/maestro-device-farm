@@ -37,7 +37,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     run = sub.add_parser("run", help="submit a run")
-    run.add_argument("--flows", type=Path, required=True, help="directory of Maestro flows to zip and upload")
+    source = run.add_mutually_exclusive_group(required=True)
+    source.add_argument("--flows", type=Path, help="directory of Maestro flows to zip and upload")
+    source.add_argument("--workspace", help="registered workspace name or id")
+    run.add_argument("--ref", help="branch or commit SHA for --workspace (default: the workspace branch)")
     app = run.add_mutually_exclusive_group(required=True)
     app.add_argument("--apk", type=Path, help="APK file to upload")
     app.add_argument("--app", help="<package>@latest from the APK library")
@@ -79,6 +82,11 @@ def build_options(args: argparse.Namespace) -> dict:
         "mode": args.mode, "device_selector": selector, "include_tags": args.include_tags,
         "exclude_tags": args.exclude_tags, "env": dict(args.env), "ci_meta": ci_meta, "origin": "ci",
     }
+    if args.workspace:
+        options["flow_source"] = "workspace"
+        options["workspace"] = args.workspace
+        if args.ref:
+            options["ref"] = args.ref
     if args.flow_paths:
         options["flow_paths"] = args.flow_paths
     if args.app:
@@ -187,15 +195,18 @@ def cmd_run(args: argparse.Namespace, client: httpx.Client) -> int:
     if not args.token:
         print("farmctl: --token or FARM_TOKEN is required", file=sys.stderr)
         return EXIT_ERROR
-    if not args.flows.is_dir():
+    if args.ref and not args.workspace:
+        print("farmctl: --ref needs --workspace", file=sys.stderr)
+        return EXIT_ERROR
+    if args.flows and not args.flows.is_dir():
         print(f"farmctl: {args.flows} is not a directory", file=sys.stderr)
         return EXIT_ERROR
     with contextlib.ExitStack() as stack:
-        files = {"flows": ("flows.zip", zip_dir(args.flows), "application/zip")}
+        files = {"flows": ("flows.zip", zip_dir(args.flows), "application/zip")} if args.flows else {}
         if args.apk:
             files["apk"] = (args.apk.name, stack.enter_context(args.apk.open("rb")),
                             "application/vnd.android.package-archive")
-        res = client.post("/api/v1/runs", data={"options": json.dumps(build_options(args))}, files=files,
+        res = client.post("/api/v1/runs", data={"options": json.dumps(build_options(args))}, files=files or None,
                           headers=_headers(args), timeout=300)
     if res.status_code != 201:
         print(f"farmctl: submit failed: {_describe(res)}", file=sys.stderr)

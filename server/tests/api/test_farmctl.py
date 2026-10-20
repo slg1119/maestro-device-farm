@@ -37,6 +37,28 @@ def test_build_options_from_flags(project):
     }
 
 
+def test_workspace_options():
+    args = _args("--token", "t", "run", "--workspace", "example-app", "--ref", "abc", "--app", "com.x@latest")
+    options = farmctl.build_options(args)
+    assert (options["flow_source"], options["workspace"], options["ref"]) == ("workspace", "example-app", "abc")
+    no_ref = farmctl.build_options(_args("run", "--workspace", "example-app", "--app", "com.x@latest"))
+    assert "ref" not in no_ref
+
+
+def test_flows_and_workspace_are_exclusive():
+    with pytest.raises(SystemExit):
+        _args("run", "--flows", "x", "--workspace", "w", "--app", "a@latest")
+    with pytest.raises(SystemExit):
+        _args("run", "--app", "a@latest")
+
+
+def test_ref_without_workspace_returns_2(client, token, project, capsys):
+    flows, apk = project
+    assert farmctl.dispatch(_args("--token", token, "run", "--flows", str(flows), "--apk", str(apk), "--ref", "x"),
+                            client) == 2
+    assert "--ref needs --workspace" in capsys.readouterr().err
+
+
 def test_bad_env_flag_is_rejected():
     with pytest.raises(SystemExit):
         _args("run", "--flows", "x", "--apk", "y", "-e", "NOEQUALS")

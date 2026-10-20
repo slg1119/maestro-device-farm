@@ -19,6 +19,8 @@ from farm.devices.provider import DeviceInfo
 from farm.runner.fake import FakeInspector, FakeRunner
 from farm.runner.inspect import AdbInspector
 from farm.runner.maestro import MaestroRunner
+from farm.workspaces.errors import WorkspaceError
+from farm.workspaces.registry import create_workspace, delete_workspace, list_workspaces
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,6 +38,16 @@ def build_parser() -> argparse.ArgumentParser:
     token_sub.add_parser("create", help="create a token and print it once").add_argument("name")
     token_sub.add_parser("list", help="list tokens")
     token_sub.add_parser("revoke", help="delete a token").add_argument("name")
+    workspace = sub.add_parser("workspace", help="flow workspaces (GitHub repo + branch + path)")
+    ws_sub = workspace.add_subparsers(dest="ws_cmd", required=True)
+    add = ws_sub.add_parser("add", help="register a workspace (fetches the branch to check access)")
+    add.add_argument("--name", required=True)
+    add.add_argument("--repo", required=True, help="owner/name")
+    add.add_argument("--branch", default="main")
+    add.add_argument("--path", default="", help="workspace root inside the repo, e.g. .maestro")
+    add.add_argument("--app-package", dest="default_app_package")
+    ws_sub.add_parser("list", help="list workspaces")
+    ws_sub.add_parser("remove", help="unregister a workspace (the repo is untouched)").add_argument("name")
     sub.add_parser("api", help="run farm-api (applies migrations first)")
     agent = sub.add_parser("agent", help="run farm-agent")
     agent.add_argument("--fake", type=int, default=0, metavar="N",
@@ -72,6 +84,26 @@ def _cmd_token(args: argparse.Namespace, settings: Settings) -> int:
         removed = revoke_token(s, args.name)
     if not removed:
         print(f"token '{args.name}' not found", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _cmd_workspace(args: argparse.Namespace, settings: Settings) -> int:
+    db = Database(settings.database_path)
+    try:
+        if args.ws_cmd == "add":
+            ws = create_workspace(db, settings, name=args.name, repo=args.repo, branch=args.branch, path=args.path,
+                                  default_app_package=args.default_app_package)
+            print(f"workspace {ws.name} added at {ws.head_sha[:7]}")
+        elif args.ws_cmd == "list":
+            for ws in list_workspaces(db):
+                head = (ws.head_sha or "-------")[:7]
+                status = f"error: {ws.sync_error}" if ws.sync_error else f"synced {ws.synced_at}"
+                print(f"{ws.name}\t{ws.repo}@{ws.branch}:{ws.path or '/'}\t{head}\t{status}")
+        else:
+            delete_workspace(db, args.name)
+    except WorkspaceError as exc:
+        print(f"{exc.code}: {exc.message}", file=sys.stderr)
         return 1
     return 0
 
@@ -117,7 +149,7 @@ def _cmd_api(_args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
-HANDLERS = {"db": _cmd_db, "token": _cmd_token, "api": _cmd_api, "agent": _cmd_agent}
+HANDLERS = {"db": _cmd_db, "token": _cmd_token, "workspace": _cmd_workspace, "api": _cmd_api, "agent": _cmd_agent}
 
 
 def main(argv: list[str] | None = None) -> int:

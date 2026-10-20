@@ -21,7 +21,19 @@ def test_defaults_match_spec(monkeypatch):
     assert s.min_battery == 20
     assert s.pinned_wait_sec == 600
     assert s.reservation_ttl_sec == 900
-    assert (s.max_apk_mb, s.max_flows_mb) == (500, 50)
+    assert (s.max_apk_mb, s.max_flows_mb, s.max_media_mb) == (500, 50, 10)
+    assert s.github_token is None
+    assert (s.git_bot_name, s.git_bot_email) == ("maestro-device-farm", "maestro-device-farm@users.noreply.github.com")
+    assert s.git_poll_sec == 60
+    assert s.git_remote_template == "https://github.com/{repo}.git"
+
+
+def test_github_token_is_secret(monkeypatch):
+    _clear_farm_env(monkeypatch)
+    monkeypatch.setenv("FARM_GITHUB_TOKEN", "github_pat_secret")
+    s = Settings()
+    assert s.github_token.get_secret_value() == "github_pat_secret"
+    assert "github_pat_secret" not in repr(s)
 
 
 def test_env_overrides(monkeypatch, tmp_path):

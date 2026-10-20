@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     reservation_ttl_sec: int = 900
     max_apk_mb: int = 500
     max_flows_mb: int = 50
+    max_media_mb: int = 10
+    github_token: SecretStr | None = None
+    git_bot_name: str = "maestro-device-farm"
+    git_bot_email: str = "maestro-device-farm@users.noreply.github.com"
+    git_poll_sec: int = 60
+    git_remote_template: str = "https://github.com/{repo}.git"
 
     @field_validator("data_dir", "db_path", mode="after")
     @classmethod
