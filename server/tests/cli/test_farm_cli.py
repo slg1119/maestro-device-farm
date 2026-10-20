@@ -2,6 +2,7 @@ import pytest
 
 from farm.cli.farm import main
 from farm.db.engine import Database
+from tests.gitfixtures import SAMPLE_FILES, make_origin
 
 
 @pytest.fixture(autouse=True)
@@ -65,3 +66,18 @@ def test_agent_refuses_to_start_without_schema(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("FARM_DATA_DIR", str(tmp_path / "empty"))
     assert main(["agent"]) == 2
     assert "farm db upgrade" in capsys.readouterr().err
+
+
+def test_workspace_commands(cli_env, tmp_path, monkeypatch, capsys):
+    remotes = tmp_path / "remotes"
+    origin = make_origin(remotes, "acme/app", SAMPLE_FILES)
+    monkeypatch.setenv("FARM_GIT_REMOTE_TEMPLATE", f"file://{remotes}/{{repo}}.git")
+    capsys.readouterr()
+    assert main(["workspace", "add", "--name", "app", "--repo", "acme/app", "--path", ".maestro"]) == 0
+    assert f"workspace app added at {origin.head()[:7]}" in capsys.readouterr().out
+    assert main(["workspace", "add", "--name", "app", "--repo", "acme/app"]) == 1
+    assert "workspace_exists" in capsys.readouterr().err
+    assert main(["workspace", "list"]) == 0
+    assert f"app\tacme/app@main:.maestro\t{origin.head()[:7]}\tsynced" in capsys.readouterr().out
+    assert main(["workspace", "remove", "app"]) == 0
+    assert main(["workspace", "remove", "app"]) == 1
