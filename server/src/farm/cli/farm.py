@@ -19,6 +19,7 @@ from farm.devices.provider import DeviceInfo
 from farm.runner.fake import FakeInspector, FakeRunner
 from farm.runner.inspect import AdbInspector
 from farm.runner.maestro import MaestroRunner
+from farm.stream.manager import StreamManager
 from farm.workspaces.errors import WorkspaceError
 from farm.workspaces.registry import create_workspace, delete_workspace, list_workspaces
 
@@ -114,13 +115,15 @@ def schema_ready(db: Database) -> bool:
 
 def build_agent(settings: Settings, *, db: Database | None = None, fake_devices: int = 0) -> Agent:
     db = db or Database(settings.database_path)
+    adb = Adb()
+    stream_manager = StreamManager(adb, settings, db=db, control_hooks=[])
     if fake_devices:
         infos = [DeviceInfo(f"fake-{i}", "device", model="Fake Pixel", manufacturer="Fake", os_version="14",
                             sdk_int=34, battery=100) for i in range(1, fake_devices + 1)]
-        return Agent(settings, db, FakeProvider(infos), FakeRunner(delay=2.0), FakeInspector())
-    adb = Adb()
+        return Agent(settings, db, FakeProvider(infos), FakeRunner(delay=2.0), FakeInspector(),
+                     stream_manager=stream_manager)
     return Agent(settings, db, AndroidAdbProvider(adb), MaestroRunner(adb, min_battery=settings.min_battery),
-                 AdbInspector(adb))
+                 AdbInspector(adb), stream_manager=stream_manager)
 
 
 async def _run_agent(agent: Agent) -> None:
