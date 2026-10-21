@@ -25,7 +25,7 @@ function mount() {
 
 test("maps touch including captured movement outside, scroll, toolbar keys and text", () => {
   const { canvas } = mount();
-  expect(screen.getByRole("alert")).toHaveTextContent("CI 테스트 실행 중 · 조작하면 결과가 달라질 수 있음");
+  expect(screen.getByRole("alert").textContent).toBe("테스트 실행 중 · 조작하면 결과가 달라질 수 있음");
   expect(screen.getByText("시청자 3명")).toBeInTheDocument(); expect(screen.getByText("조작자 운영자")).toBeInTheDocument(); expect(screen.getByText("녹화 중")).toBeInTheDocument();
   pointer(canvas, "pointerdown", 0, 200); expect(send).not.toHaveBeenCalled();
   pointer(canvas, "pointerdown", 200, 200); pointer(canvas, "pointermove", 1000, 1000, 2); pointer(canvas, "pointermove", 1000, 1000); pointer(canvas, "pointerup", 1000, 1000);
@@ -36,7 +36,7 @@ test("maps touch including captured movement outside, scroll, toolbar keys and t
   expect(send).toHaveBeenLastCalledWith({ type: "text", text: "한글 입력" }); expect(input).toHaveValue(""); expect(input).toHaveAttribute("maxlength", "300");
 });
 
-test("view-only blocks pointer, wheel, keys and text and omits the CI control warning", () => {
+test("view-only blocks pointer, wheel, keys and text and omits the running-task warning", () => {
   mock.stream.mockReturnValue(state(false)); const { canvas } = mount();
   expect(screen.getByText("보기 전용")).toBeInTheDocument(); expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   pointer(canvas, "pointerdown", 200, 200); pointer(canvas, "pointerup", 200, 200); fireEvent.wheel(canvas, { clientX: 200, clientY: 200, deltaY: 100 });
