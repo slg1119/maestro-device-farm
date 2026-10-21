@@ -141,6 +141,32 @@ class Event(Base):
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class AiJob(Base):
+    __tablename__ = "ai_jobs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    kind: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="queued", index=True)
+    workspace_id: Mapped[str] = mapped_column(String, index=True)
+    base_sha: Mapped[str] = mapped_column(String)
+    reservation_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_task_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    prompt: Mapped[str] = mapped_column(Text)
+    options: Mapped[dict] = mapped_column(JSON, default=dict)
+    attempts: Mapped[list] = mapped_column(JSON, default=list)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    model: Mapped[str] = mapped_column(String)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str] = mapped_column(String, default="")
+    author_name: Mapped[str] = mapped_column(String, default="")
+    prompt_purged: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[str] = mapped_column(String, default=now, index=True)
+    finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
 class ApiToken(Base):
     __tablename__ = "api_tokens"
 
