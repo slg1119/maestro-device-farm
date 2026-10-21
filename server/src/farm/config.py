@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     db_path: Path | None = None
     api_host: str = "0.0.0.0"
     api_port: int = 8700
+    agent_stream_port: int = 8701
+    stream_max_size: int = 1280
+    stream_max_fps: int = 30
+    scrcpy_server_path: Path = REPO_ROOT / "ops" / "scrcpy" / "scrcpy-server-v4.1"
+    scrcpy_version: str = "4.1"
     public_url: str = "http://localhost:8700"
     task_timeout_sec: int = 1800
     retry_backoff_sec: int = 15
@@ -39,7 +44,7 @@ class Settings(BaseSettings):
     # Internal network only by default: anyone may write. Turn on to demand a token from `farm token create`.
     require_token: bool = False
 
-    @field_validator("data_dir", "db_path", "web_dist", mode="after")
+    @field_validator("data_dir", "db_path", "web_dist", "scrcpy_server_path", mode="after")
     @classmethod
     def _expand_user(cls, value: Path | None) -> Path | None:
         return value.expanduser() if value is not None else None
