@@ -93,7 +93,8 @@ test("keeps five session runs newest first and loads the timeline only after the
       { seq: 0, command: "launchApp", label: "앱 시작", status: "passed", duration_ms: 500, depth: 0, screenshot: null, hierarchy: null },
       { seq: 1, command: "tapOn", label: "로그인 누르기", status: "failed", duration_ms: 1500, depth: 1, screenshot: "screenshots/failure.png", hierarchy: null },
     ] }] }),
-    "GET /api/v1/tasks/task1/artifacts/screenshots/failure.png": new Response(new Blob(["png"], { type: "image/png" })),
+    // Node's Response cannot consume jsdom's Blob, which has no stream() method.
+    "GET /api/v1/tasks/task1/artifacts/screenshots/failure.png": new Response("png", { headers: { "Content-Type": "image/png" } }),
   };
   for (let i = 1; i <= 6; i++) routes[`GET /api/v1/runs/editor-run-${i}`] = i === 6 ? running : runDetail({ id: `editor-run-${i}`, origin: "editor", status: i === 5 ? "cancelled" : i === 4 ? "error" : "passed", tasks: [] });
   const NativeURL = URL;
@@ -116,6 +117,7 @@ test("keeps five session runs newest first and loads the timeline only after the
   expect(await within(results).findByText("로그인 누르기")).toBeInTheDocument();
   expect(await screen.findByText("로그인 버튼을 찾을 수 없습니다.")).toBeInTheDocument();
   expect(await screen.findByRole("img", { name: "실패 단계 스크린샷" })).toHaveAttribute("src", "blob:failed-step");
+  expect(URL.createObjectURL).toHaveBeenCalledWith(expect.objectContaining({ type: "image/png", size: 3 }));
   fireEvent.click(screen.getByRole("button", { name: "화면 탭에서 보기" })); expect(view.onShowScreen).toHaveBeenCalledOnce();
   expect(JSON.parse(sessionStorage.getItem("farm.editor.runs.ws1")!)).toHaveLength(5);
 });

@@ -251,6 +251,7 @@ export interface TaskSteps { task_id: string; attempt: number; flows: FlowSteps[
 export interface AiStatus {
   enabled: boolean;
   model: string;
+  max_repairs: number;
   month: string;
   month_input_tokens: number;
   month_output_tokens: number;

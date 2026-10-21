@@ -56,7 +56,8 @@ def status(request: Request):
         input_tokens, output_tokens, count = s.execute(select(
             func.coalesce(func.sum(AiJob.input_tokens), 0), func.coalesce(func.sum(AiJob.output_tokens), 0),
             func.count(AiJob.id)).where(AiJob.created_at.like(month + "-%"))).one()
-    return {"enabled": enabled(request.app), "model": get_settings(request).openai_model, "month": month,
+    settings = get_settings(request)
+    return {"enabled": enabled(request.app), "model": settings.openai_model, "max_repairs": settings.ai_max_repairs, "month": month,
             "month_input_tokens": input_tokens, "month_output_tokens": output_tokens, "month_jobs": count}
 
 

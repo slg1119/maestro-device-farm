@@ -33,11 +33,12 @@ def ai_setup(settings, db, remotes):
             app.state.ai_runner.stop()
 
 
-def test_ai_disabled_status_and_create(client):
+def test_ai_disabled_status_and_create(client, settings):
     status = client.get("/api/v1/ai/status")
     assert status.status_code == 200
     assert status.json()["enabled"] is False
     assert status.json()["model"] == "gpt-6.1-sol"
+    assert status.json()["max_repairs"] == settings.ai_max_repairs
     assert client.get("/api/v1/healthz").json()["ai_enabled"] is False
     response = client.post("/api/v1/ai/jobs", json={"kind": "generate", "prompt": "write a flow"})
     assert response.status_code == 503
@@ -67,10 +68,20 @@ def test_ai_job_create_get_list_and_totals_with_and_without_lifespan(ai_setup, d
                         model="fake", input_tokens=999, output_tokens=999, created_at="2001-01-01T00:00:00.000000Z"))
         assert client.get("/api/v1/ai/status").json() == {
             "enabled": True, "model": "gpt-6.1-sol", "month": now()[:7],
+            "max_repairs": app.state.settings.ai_max_repairs,
             "month_input_tokens": 10, "month_output_tokens": 5, "month_jobs": 1,
         }
         assert client.get("/api/v1/healthz").json()["ai_enabled"] is True
     assert len(fake.requests) == 1
+
+
+@pytest.mark.parametrize("max_repairs", [0, 7])
+def test_ai_status_exposes_configured_repair_limit(ai_setup, max_repairs):
+    app, _, _, _ = ai_setup
+    app.state.settings.ai_max_repairs = max_repairs
+    response = TestClient(app).get("/api/v1/ai/status")
+    assert response.status_code == 200
+    assert response.json()["max_repairs"] == max_repairs
 
 
 @pytest.mark.parametrize("changes", [

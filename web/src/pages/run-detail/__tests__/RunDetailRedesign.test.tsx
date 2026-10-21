@@ -10,7 +10,7 @@ import { renderPage } from "../../../test/render";
 import { RunDetailPage } from "../RunDetailPage";
 
 const sha = "a".repeat(40);
-const aiStatus = { enabled: true, model: "gpt-6.1-sol", month: "2026-10", month_input_tokens: 0, month_output_tokens: 0, month_jobs: 0 };
+const aiStatus = { enabled: true, model: "gpt-6.1-sol", max_repairs: 3, month: "2026-10", month_input_tokens: 0, month_output_tokens: 0, month_jobs: 0 };
 const failedRun = (overrides: Partial<RunDetail> = {}) => runDetail({
   flow_source: "workspace", workspace_id: "ws1", commit_sha: sha, status: "failed",
   tasks: [task({ status: "failed", flows: ["flows/login.yaml"] })],

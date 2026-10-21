@@ -16,7 +16,7 @@ function mount(run: RunDetail = runDetail(), extra: Parameters<typeof mockApi>[0
   const api = mockApi({
     "GET /api/v1/runs/run1": run,
     "GET /api/v1/devices": [device()],
-    "GET /api/v1/ai/status": { enabled: false, model: "gpt-6.1-sol", month: "2026-10", month_input_tokens: 0, month_output_tokens: 0, month_jobs: 0 },
+    "GET /api/v1/ai/status": { enabled: false, model: "gpt-6.1-sol", max_repairs: 3, month: "2026-10", month_input_tokens: 0, month_output_tokens: 0, month_jobs: 0 },
     "GET /api/v1/tasks/task1/steps": { task_id: "task1", attempt: 1, flows: [] },
     "GET /api/v1/tasks/task2/steps": { task_id: "task2", attempt: 1, flows: [] },
     "GET /api/v1/workspaces": [workspace()],
