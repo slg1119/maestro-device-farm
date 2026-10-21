@@ -8,7 +8,7 @@ import { CodeEditor } from "../code/CodeEditor";
 import { editorAdapter } from "../code/adapter";
 import type { editor } from "monaco-editor";
 
-const markerApi = vi.hoisted(() => ({ setModelMarkers: vi.fn(), dispose: vi.fn() }));
+const markerApi = vi.hoisted(() => ({ setModelMarkers: vi.fn(), setTheme: vi.fn(), dispose: vi.fn() }));
 vi.mock("monaco-editor/editor/contrib/codeAction/browser/codeActionContributions", () => ({}));
 vi.mock("../monacoSetup", () => ({ ensureMonaco: async () => ({
   languages: { getLanguages: () => [{ id: "yaml" }], registerCompletionItemProvider: () => ({ dispose() {} }), registerHoverProvider: () => ({ dispose() {} }), registerCodeActionProvider: () => ({ dispose() {} }) },
@@ -16,8 +16,9 @@ vi.mock("../monacoSetup", () => ({ ensureMonaco: async () => ({
 }) }));
 vi.mock("@monaco-editor/react", async () => {
   const { useEffect } = await import("react");
-  return { default: (props: { value: string; path: string; onChange(value: string): void; onMount: (instance: unknown, lib: unknown) => void }) => {
+  return { default: (props: { value: string; path: string; onChange(value: string): void; beforeMount?: (lib: unknown) => void; onMount: (instance: unknown, lib: unknown) => void }) => {
     useEffect(() => {
+      props.beforeMount?.({ editor: { setTheme: markerApi.setTheme } });
       const model = { uri: { toString: () => props.path }, dispose: markerApi.dispose };
       props.onMount({ getModel: () => model, onDidChangeCursorPosition: () => ({ dispose() {} }), onDidDispose() {}, addCommand() {} }, { KeyMod: { CtrlCmd: 1 }, KeyCode: { KeyS: 2 }, editor: { setModelMarkers: markerApi.setModelMarkers } });
     }, []);
@@ -45,4 +46,17 @@ test("Monaco insertion brackets exactly one edit with undo stops", () => {
   const fake = { getSelection: () => ({ startLineNumber: 2 }), pushUndoStop: vi.fn(), executeEdits: vi.fn(), focus: vi.fn() };
   editorAdapter(fake as unknown as editor.IStandaloneCodeEditor).insert("- back");
   expect(fake.pushUndoStop).toHaveBeenCalledTimes(2); expect(fake.executeEdits).toHaveBeenCalledExactlyOnceWith("farm-insert", [expect.objectContaining({ text: "- back" })]);
+});
+
+test.each(["light", "dark"])("applies farm-%s before the first model is created", async theme => {
+  localStorage.setItem("farm.theme", theme);
+  markerApi.setTheme.mockClear();
+  mockApi({
+    "GET /api/v1/workspaces/ws1/tree": { files: [{ path: "flow.yaml", size: 1 }] },
+    "GET /api/v1/workspaces/ws1/files/flow.yaml": new Response("- launchApp"),
+  });
+  renderPage(<EditorProvider workspace={workspace()}><Probe /></EditorProvider>);
+  act(() => api.openFile("flow.yaml"));
+  await screen.findByLabelText("YAML 코드");
+  expect(markerApi.setTheme).toHaveBeenCalledWith(`farm-${theme}`);
 });

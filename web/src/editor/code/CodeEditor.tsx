@@ -29,8 +29,6 @@ export function CodeEditor() {
   }, [path, api.baseSha, draft?.content, draft?.status, binary]);
   useEffect(() => {
     if (!monaco) return;
-    // YAML is not included in Monaco's basic-language contribution bundle by default.
-    if (!monaco.languages.getLanguages().some(l => l.id === "yaml")) monaco.languages.register({ id: "yaml" });
     const completion = monaco.languages.registerCompletionItemProvider("yaml", {
       triggerCharacters: ["-", " ", ":", '"'],
       provideCompletionItems(model, position) {
@@ -87,6 +85,7 @@ export function CodeEditor() {
   }
   if (!monaco || content?.path !== path || content.sha !== api.baseSha) return <Loading label="편집기를 불러오는 중…" />;
   return <MonacoEditor height="100%" keepCurrentModel path={`inmemory://ws/${encodedPath(path)}`} language={languageFor(path)} theme={`farm-${resolved}`}
+    beforeMount={library => library.editor.setTheme(`farm-${resolved}`)} loading={<Loading label="편집기를 불러오는 중…" />}
     value={draft?.content ?? content.text} onMount={onMount} onChange={value => { if (value !== undefined) latest.current.api.setContent(path, value); }}
     options={{ ariaLabel: "코드 편집기", automaticLayout: true, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 13, tabSize: 2, insertSpaces: true, scrollBeyondLastLine: false, wordWrap: "on", padding: { top: 16 }, fixedOverflowWidgets: true }} />;
 }

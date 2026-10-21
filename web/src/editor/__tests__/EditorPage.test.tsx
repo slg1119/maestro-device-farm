@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { EditorPage } from "../EditorPage";
-import { mockApi } from "../../test/api";
+import { apiErrorResponse, mockApi } from "../../test/api";
 import { workspace } from "../../test/fixtures";
 import { renderPage } from "../../test/render";
 vi.mock("../code/CodeEditor", () => ({ CodeEditor: () => <div>코드 편집기</div> }));
@@ -40,4 +40,30 @@ test("remote banner fetches a new head and exposes per-file conflict choices", a
   await screen.findByRole("button", { name: "내 변경 유지" });
   fireEvent.click(screen.getByRole("button", { name: "원격 내용으로 바꾸기" }));
   await waitFor(() => expect(screen.queryByRole("button", { name: "내 변경 유지" })).not.toBeInTheDocument());
+});
+
+test("an unavailable AI endpoint disables AI after one request even when queries retry", async () => {
+  const mock = mockApi({
+    "GET /api/v1/workspaces": [ws],
+    "GET /api/v1/workspaces/ws1/tree": { files: [{ path: "flow.yaml", size: 1 }] },
+    "GET /api/v1/ai/status": () => apiErrorResponse(404, "not_found"),
+  });
+  const view = renderPage(<EditorPage />, { route: "/editor/example-app", path: "/editor/:workspace" });
+  view.client.setDefaultOptions({ queries: { retry: 3, retryDelay: 1 } });
+  await screen.findByRole("tree", { name: "파일" });
+  await waitFor(() => expect(view.client.getQueryState(["ai-status"])?.fetchStatus).toBe("idle"));
+  expect(mock.calls.filter(call => call.path === "/api/v1/ai/status")).toHaveLength(1);
+  expect(screen.queryByRole("tab", { name: "AI" })).not.toBeInTheDocument();
+});
+
+test("file menus remain reachable with the keyboard", async () => {
+  const user = userEvent.setup(); setup();
+  const row = await screen.findByRole("treeitem", { name: "flow.yaml" });
+  within(row).getByRole("button", { name: "flow.yaml" }).focus();
+  await user.tab();
+  expect(within(row).getByRole("button", { name: "flow.yaml 메뉴" })).toHaveFocus();
+  await user.keyboard("{Enter}");
+  expect(screen.getByRole("menuitem", { name: "이름 변경" })).toHaveFocus();
+  await user.keyboard("{Escape}");
+  expect(within(row).getByRole("button", { name: "flow.yaml 메뉴" })).toHaveFocus();
 });
