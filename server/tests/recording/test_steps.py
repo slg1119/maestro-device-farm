@@ -1,3 +1,5 @@
+import pytest
+
 from farm.recording.steps import StepClassifier, append_step, parse_hierarchy
 from farm.stream.events import ControlEvent
 from farm.timeutil import shift
@@ -72,3 +74,17 @@ def test_compose_selectors_use_accessibility_or_descendant_labels_before_points(
     assert touch(classifier, (10, 30))["point"] == "10%,15%"
     assert touch(classifier, (50, 30))["selector"] == {"id": "app:id/unique"}
     assert touch(classifier, (70, 30))["selector"] == {"text": "텍스트 우선"}
+
+
+@pytest.mark.parametrize("xml", ["Killed", "<hierarchy><node></hierarchy>",
+                                "<hierarchy-other></hierarchy-other></hierarchy>"])
+def test_strict_hierarchy_parse_rejects_unusable_output_without_exposing_it(xml):
+    assert parse_hierarchy(xml) == []
+    with pytest.raises(ValueError, match="^unusable hierarchy$"):
+        parse_hierarchy(xml, strict=True)
+
+
+@pytest.mark.parametrize("xml", ["<hierarchy></hierarchy>", "<hierarchy/>",
+                                "<hierarchy rotation=\"0\" />UI hierarchy dumped to: /dev/tty"])
+def test_strict_hierarchy_parse_accepts_valid_empty_hierarchy(xml):
+    assert parse_hierarchy(xml, strict=True) == []

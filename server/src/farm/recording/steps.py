@@ -7,14 +7,19 @@ from farm.stream.events import ControlEvent
 from farm.timeutil import parse
 
 
-def parse_hierarchy(xml: str) -> list[dict]:
-    """uiautomator may append a success message after its XML document."""
+def parse_hierarchy(xml: str, *, strict: bool = False) -> list[dict]:
+    """Accept uiautomator's trailing message; strict mode distinguishes failure from empty XML."""
     start, end = xml.find("<hierarchy"), xml.rfind("</hierarchy>")
-    if start < 0 or end < 0:
-        return []
+    end = end + len("</hierarchy>") if end >= 0 else xml.find("/>", start) + 2
     try:
-        root = ElementTree.fromstring(xml[start:end + len("</hierarchy>")])
-    except ElementTree.ParseError:
+        if start < 0 or end <= start:
+            raise ValueError
+        root = ElementTree.fromstring(xml[start:end])
+        if root.tag != "hierarchy":
+            raise ValueError
+    except (ElementTree.ParseError, ValueError):
+        if strict:
+            raise ValueError("unusable hierarchy") from None
         return []
     nodes, elements = [], []
     for node in root.iter("node"):

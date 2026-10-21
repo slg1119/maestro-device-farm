@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import select
 
-from farm.db.models import Recording
+from farm.db.models import Recording, Task
 from farm.events import emit
 from farm.recording.steps import StepClassifier, append_step, parse_hierarchy
 from farm.recording.yaml import steps_to_yaml
@@ -34,6 +34,8 @@ class _Active:
     capture: asyncio.Task | None = None
     generation: int = 0
     ready_at: float | None = None
+    driver_release_attempted: bool = False
+    hierarchy_warning_logged: bool = False
 
 
 class Recorder:
@@ -73,25 +75,63 @@ class Recorder:
                 log.warning("recording could not attach to device %s", serial)
                 await self._release(serial, active)
 
-    async def _capture(self, serial, active):
-        generation = active.generation
+    async def _run_adb(self, serial, active, *args):
+        # run_capture handles timeout cleanup but not cancellation. Shield and
+        # drain every adb command so children/pipes never outlive shutdown.
+        capture = asyncio.create_task(run_capture(
+            self.adb._argv(serial, *args), timeout=self.capture_timeout_sec),
+            name=f"recording-adb-{active.id}")
         try:
-            # run_capture handles timeout cleanup but not cancellation. Shield and
-            # drain it before exiting so adb children/pipes never outlive shutdown.
-            capture = asyncio.create_task(run_capture(
-                self.adb._argv(serial, "exec-out", "uiautomator", "dump", "/dev/tty"),
-                timeout=self.capture_timeout_sec), name=f"recording-adb-{active.id}")
+            return await asyncio.shield(capture)
+        except asyncio.CancelledError:
+            await asyncio.gather(capture, return_exceptions=True)
+            raise
+
+    def _running_task_id(self, serial):
+        # Match StreamManager's task lookup, rather than a potentially stale device pointer.
+        with self.db.session() as session:
+            return session.scalar(select(Task.id).where(
+                Task.device_serial == serial, Task.status == "running").limit(1))
+
+    async def _release_maestro(self, serial, active):
+        # Maestro starts its driver at the beginning of each run, so releasing a
+        # leftover UiAutomation connection between runs is safe.
+        for package in ("dev.mobile.maestro", "dev.mobile.maestro.test"):
+            result = await self._run_adb(serial, active, "shell", "am", "force-stop", package)
+            if result.returncode != 0:
+                raise ValueError("Maestro driver release failed")
+        result = await self._run_adb(serial, active, "shell", "pkill", "-f", "dev[.]mobile[.]maestro")
+        if result.returncode not in (0, 1):  # pkill exits 1 when force-stop already removed every match.
+            raise ValueError("Maestro instrumentation release failed")
+        log.info("recording released leftover Maestro driver for device %s", serial)
+
+    async def _capture(self, serial, active):
+        generation, nodes = active.generation, []
+        for attempt in range(2):
             try:
-                result = await asyncio.shield(capture)
-            except asyncio.CancelledError:
-                await asyncio.gather(capture, return_exceptions=True)
-                raise
-            if self._active.get(serial) is active and active.generation == generation:
-                active.classifier.nodes = parse_hierarchy(result.text) if result.returncode == 0 else []
-        except Exception:  # noqa: BLE001 - selectors are best effort; child output may contain private text
-            if self._active.get(serial) is active:
-                active.classifier.nodes = []
-            log.warning("recording hierarchy unavailable for device %s", serial)
+                result = await self._run_adb(serial, active, "exec-out", "uiautomator", "dump", "/dev/tty")
+                if result.returncode != 0:
+                    raise ValueError("hierarchy dump failed")
+                nodes = parse_hierarchy(result.text, strict=True)
+                break
+            except Exception:  # noqa: BLE001 - selectors are best effort; never log private child output
+                if not active.hierarchy_warning_logged:
+                    active.hierarchy_warning_logged = True
+                    log.warning("recording hierarchy unavailable for device %s; using point fallback", serial)
+                if attempt or active.driver_release_attempted or self._active.get(serial) is not active:
+                    break
+                try:
+                    task_id = await asyncio.to_thread(self._running_task_id, serial)
+                    # Another capture can finish the same DB check while this one waits.
+                    if (task_id is not None or active.driver_release_attempted
+                            or self._active.get(serial) is not active):
+                        break
+                    active.driver_release_attempted = True
+                    await self._release_maestro(serial, active)
+                except Exception:  # noqa: BLE001 - DB/device failures must preserve point fallback too
+                    break
+        if self._active.get(serial) is active and active.generation == generation:
+            active.classifier.nodes = nodes
 
     async def _settled_capture(self, serial, active):
         while self._active.get(serial) is active and active.ready_at is not None:
