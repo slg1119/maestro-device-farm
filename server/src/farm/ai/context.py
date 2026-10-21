@@ -36,6 +36,19 @@ def workspace_context(root: Path, target_path: str, budget: int = 60_000) -> str
     paths = sorted(p for p in root.rglob("*") if _inside(root, p) and p.is_file())
     contents = {p: p.read_text(encoding="utf-8", errors="replace") for p in paths
                 if p.suffix.lower() in {".yaml", ".yml"}}
+    # New targets have no runFlow edges yet. Show small reusable flows in full so
+    # the provider can discover their behavior, not only their appId headers.
+    reusable = {p for p in contents if "subflows" in p.relative_to(root).parts}
+    for path, content in contents.items():
+        try:
+            documents = list(yaml.safe_load_all(content))
+        except yaml.YAMLError:
+            continue
+        for ref in _flow_references(documents):
+            child = path.parent / ref
+            if _inside(root, child):
+                reusable.add(child.resolve())
+    reusable = {p for p in reusable if p in contents and len(contents[p].encode("utf-8")) <= 16_384}
     target = root / target_path
     required = {p for p in paths if p.name in {"config.yaml", "config.yml"}}
     pending = [target]
@@ -64,7 +77,8 @@ def workspace_context(root: Path, target_path: str, budget: int = 60_000) -> str
         for p in paths:
             if p not in kept or p not in contents:
                 continue
-            content = contents[p] if p in required else re.split(r"(?m)^---\s*(?:#.*)?$", contents[p], 1)[0]
+            content = contents[p] if p in required or p in reusable else re.split(
+                r"(?m)^---\s*(?:#.*)?$", contents[p], 1)[0]
             blocks.append(f"File: {p.relative_to(root)}\n{content}")
         if target not in contents:
             blocks.append(f"File: {target_path}\n(new file)")

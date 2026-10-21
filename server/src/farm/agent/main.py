@@ -13,7 +13,9 @@ from farm.ops.retention import run_retention
 from farm.runner.base import Inspector, Runner
 from farm.scheduler.reservations import expire_reservations
 from farm.scheduler.sweeper import fail_stale_pinned_tasks
+from farm.stream.effects import record_control
 from farm.stream.manager import ControlHook, StreamManager
+from farm.stream.recorder import Recorder
 from farm.stream.server import StreamServer
 from farm.timeutil import now
 
@@ -40,8 +42,13 @@ class Agent:
         self.worker_idle_sleep = worker_idle_sleep
         self.cancel_poll_sec = cancel_poll_sec
         self.stream_manager = stream_manager
-        if stream_manager is not None and control_hooks is not None:
-            stream_manager.control_hooks = list(control_hooks)
+        self.recorder = Recorder(db, stream_manager, stream_manager.adb, lambda: set(self.workers)) if stream_manager else None
+        if stream_manager is not None:
+            async def record_control_hook(event):
+                await asyncio.to_thread(record_control, db, event)
+
+            hooks = list(control_hooks) if control_hooks is not None else list(stream_manager.control_hooks)
+            stream_manager.control_hooks = [record_control_hook, self.recorder.on_control, *hooks]
         self.stream_server = StreamServer(stream_manager, settings) if stream_manager is not None else None
         self.started_at = now()
         self.workers: dict[str, DeviceWorker] = {}
@@ -69,12 +76,16 @@ class Agent:
             asyncio.create_task(self._every(self.unhealthy_recheck_sec, self.recheck_unhealthy_once)),
             asyncio.create_task(self._retention_loop()),
         ]
+        if self.recorder:
+            loops.append(asyncio.create_task(self._every(1, self.recorder.poll_once), name="recording-poll"))
         try:
             await self._stop.wait()
         finally:
             for loop in loops:
                 loop.cancel()
             await asyncio.gather(*loops, return_exceptions=True)
+            if self.recorder:
+                await self.recorder.stop()
             if self.stream_server:
                 await self.stream_server.stop()
             await self.stop_workers()
