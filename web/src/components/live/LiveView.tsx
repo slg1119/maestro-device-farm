@@ -4,8 +4,9 @@ import { useCanWrite } from "../Layout";
 import { IconButton, Input, StatusDot, cx } from "../ui";
 import { videoPoint } from "./coords";
 import { useLiveStream } from "./useLiveStream";
+import { RecordingControls, type RecordingControlsProps } from "./RecordingControls";
 
-export function LiveView({ serial, control = "auto", compact = false }: { serial: string; control?: "auto" | "never"; compact?: boolean }) {
+export function LiveView({ serial, control = "auto", compact = false, workspace, appPackage, onRecordingComplete }: { serial: string; control?: "auto" | "never"; compact?: boolean; workspace?: RecordingControlsProps["workspace"]; appPackage?: RecordingControlsProps["appPackage"]; onRecordingComplete?: RecordingControlsProps["onComplete"] }) {
   const canWrite = useCanWrite(); const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useLiveStream({ serial, control, canWrite, canvas });
   const [text, setText] = useState("");
@@ -72,5 +73,6 @@ export function LiveView({ serial, control = "auto", compact = false }: { serial
         <Input aria-label="기기에 텍스트 입력" placeholder="텍스트 입력 후 Enter" maxLength={300} disabled={!stream.canControl} value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
       </form>
     </div>
+    <RecordingControls key={serial} serial={serial} canControl={stream.canControl && canWrite && control !== "never"} workspace={workspace} appPackage={appPackage} onComplete={onRecordingComplete} />
   </section>;
 }

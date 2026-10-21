@@ -1,4 +1,4 @@
-import { LiveView } from "../../components/live/LiveView";
+import { RecordingLiveView } from "./screen/RecordingLiveView";
 import { Camera, Copy, List, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API, apiJson } from "../../api/client";
@@ -13,17 +13,17 @@ import { SnapshotImage } from "./screen/SnapshotImage";
 
 interface Snapshot { commandId: string; time: string; nodes: ScreenElement[] }
 
-export function ScreenPanel({ onReserve }: { onReserve?: () => void }) {
+export function ScreenPanel({ onReserve, onDraftImported }: { onReserve?: () => void; onDraftImported?: () => void }) {
   const { reservation, setSnapshotSelectors } = useEditor();
   useEffect(() => { setSnapshotSelectors([]); }, [reservation?.id, setSnapshotSelectors]);
   if (!reservation || reservation.status !== "active") return <div className="p-4"><Empty><Smartphone aria-hidden="true" className="mx-auto mb-3 size-8 text-fg-subtle" /><p>화면을 확인하려면 기기를 예약하세요.</p><Button className="mt-4" onClick={onReserve}>기기 예약</Button></Empty></div>;
-  return <ScreenModes key={reservation.id} reservation={reservation} />;
+  return <ScreenModes key={reservation.id} reservation={reservation} onDraftImported={onDraftImported} />;
 }
 
-function ScreenModes({ reservation }: { reservation: Reservation }) {
+function ScreenModes({ reservation, onDraftImported }: { reservation: Reservation; onDraftImported?: () => void }) {
   const [mode, setMode] = useState<"live" | "snapshot">("live");
   return <div className="min-w-0"><div className="p-3 pb-0"><Segmented label="화면 모드" options={[{ value: "live", label: "라이브" }, { value: "snapshot", label: "스냅샷" }]} value={mode} onChange={setMode} /></div>
-    {mode === "live" ? <LiveView serial={reservation.device_serial} compact /> : <ReservedScreen reservation={reservation} />}
+    {mode === "live" ? <RecordingLiveView serial={reservation.device_serial} onImported={onDraftImported} /> : <ReservedScreen reservation={reservation} />}
   </div>;
 }
 

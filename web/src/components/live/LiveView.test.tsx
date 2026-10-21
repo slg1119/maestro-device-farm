@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { LiveView } from "./LiveView";
+import { renderPage } from "../../test/render";
+import { mockApi } from "../../test/api";
 
 const mock = vi.hoisted(() => ({ stream: vi.fn(), write: vi.fn() }));
 vi.mock("./useLiveStream", () => ({ useLiveStream: mock.stream }));
@@ -13,9 +15,9 @@ function pointer(canvas: HTMLElement, type: string, x: number, y: number, id = 1
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.assign(event, { clientX: x, clientY: y, pointerId: id, button: 0 }); fireEvent(canvas, event);
 }
-beforeEach(() => { send.mockClear(); mock.write.mockReturnValue(true); mock.stream.mockReturnValue(state()); });
+beforeEach(() => { send.mockClear(); mock.write.mockReturnValue(true); mock.stream.mockReturnValue(state()); mockApi({ "GET /api/v1/workspaces": [], "GET /api/v1/ai/status": { enabled: false }, "GET /api/v1/devices/s1/recordings": [] }); });
 function mount() {
-  const view = render(<LiveView serial="s1" />); const canvas = screen.getByLabelText("실시간 기기 화면");
+  const view = renderPage(<LiveView serial="s1" />); const canvas = screen.getByLabelText("실시간 기기 화면");
   vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 400, height: 400 } as DOMRect);
   Object.assign(canvas, { setPointerCapture: vi.fn(), hasPointerCapture: () => true, releasePointerCapture: vi.fn() });
   return { ...view, canvas };

@@ -15,6 +15,7 @@ export interface EditorApi {
   openPaths: string[]; activePath: string | null; issues: Record<string, Issue[]>;
   readFile(path: string): Promise<string>; setContent(path: string, text: string): void;
   createFile(path: string, content?: string): void; deleteFile(path: string): void;
+  importDraft(path: string, text: string): string;
   renameFile(from: string, to: string): void; uploadMedia(path: string, file: File): Promise<void>;
   openFile(path: string): void; closeFile(path: string): void; changes(): Change[];
   discard(path?: string): void; applyChanges(changes: Change[]): void;
@@ -111,6 +112,16 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
   const createFile = (path: string, content = "") => {
     validPath(path); if (files.some(f => f.path === path && draftRef.current[path]?.status !== "deleted")) throw new Error("같은 경로의 파일이 있습니다.");
     setContent(path, content); openFile(path);
+  };
+  const importDraft = (path: string, text: string) => {
+    const requested = validPath(path);
+    const exists = (candidate: string) => originalRef.current.has(candidate) || Boolean(draftRef.current[candidate]);
+    let target = requested;
+    const extension = /\.[^/.]+$/.exec(requested)?.[0] ?? "";
+    const stem = extension ? requested.slice(0, -extension.length) : requested;
+    for (let suffix = 2; exists(target); suffix++) target = `${stem}-${suffix}${extension}`;
+    setContent(target, text); openFile(target);
+    return target;
   };
   const deleteFile = (path: string) => {
     const next = { ...draftRef.current };
@@ -213,7 +224,7 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
     window.addEventListener("pagehide", releaseOnLeave);
     return () => { alive = false; mounted.current = false; clearInterval(timer); window.removeEventListener("pagehide", releaseOnLeave); releaseOnLeave(); };
   }, [sessionKey]);
-  const api: EditorApi = { workspace, baseSha, headSha: workspace.head_sha, files, drafts, openPaths, activePath, issues, readFile, setContent, createFile, deleteFile, renameFile, uploadMedia, openFile, closeFile, changes: () => draftChanges(draftRef.current), discard, applyChanges, rebase, insertAtCursor: text => { if (activePath) adapter.current?.insert(text); }, snapshotSelectors, setSnapshotSelectors, reservation, reserve, release, appChoice, setAppChoice, openCommit: () => setCommitOpen(true) };
+  const api: EditorApi = { workspace, baseSha, headSha: workspace.head_sha, files, drafts, openPaths, activePath, issues, readFile, setContent, createFile, importDraft, deleteFile, renameFile, uploadMedia, openFile, closeFile, changes: () => draftChanges(draftRef.current), discard, applyChanges, rebase, insertAtCursor: text => { if (activePath) adapter.current?.insert(text); }, snapshotSelectors, setSnapshotSelectors, reservation, reserve, release, appChoice, setAppChoice, openCommit: () => setCommitOpen(true) };
   const runtime: Runtime = { attachEditor: value => { adapter.current = value; }, validateAll: () => validateRef.current(draftRef.current), validating, lastCheck, error: error ?? tree.error, treeLoading: tree.isLoading, cursor, setCursor, commitOpen, closeCommit: () => setCommitOpen(false), revealIssue: issue => { openFile(issue.path); setTimeout(() => adapter.current?.reveal?.(issue.line ?? 1, issue.column ?? 1), 0); } };
   return <EditorContext.Provider value={api}><RuntimeContext.Provider value={runtime}>{children}</RuntimeContext.Provider></EditorContext.Provider>;
 }

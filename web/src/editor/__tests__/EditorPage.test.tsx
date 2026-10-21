@@ -1,11 +1,16 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
+import { useSearchParams } from "react-router";
 import { EditorPage } from "../EditorPage";
 import { apiErrorResponse, mockApi } from "../../test/api";
-import { workspace } from "../../test/fixtures";
+import { aiJob, workspace } from "../../test/fixtures";
 import { renderPage } from "../../test/render";
 vi.mock("../code/CodeEditor", () => ({ CodeEditor: () => <div>코드 편집기</div> }));
+vi.mock("../panels/ScreenPanel", () => ({ ScreenPanel: () => {
+  const [, setParams] = useSearchParams();
+  return <button onClick={() => setParams({ aiJob: "ai1" })}>녹화 AI 완료</button>;
+} }));
 const ws = workspace();
 function setup(head = ws.head_sha!, route = "/editor/example-app?file=flow.yaml") {
   mockApi({
@@ -66,4 +71,18 @@ test("file menus remain reachable with the keyboard", async () => {
   expect(screen.getByRole("menuitem", { name: "이름 변경" })).toHaveFocus();
   await user.keyboard("{Escape}");
   expect(within(row).getByRole("button", { name: "flow.yaml 메뉴" })).toHaveFocus();
+});
+
+test("a recording AI job arriving from the screen panel selects the existing AI tab", async () => {
+  mockApi({
+    "GET /api/v1/workspaces": [ws], "GET /api/v1/workspaces/ws1/tree": { files: [] },
+    "GET /api/v1/ai/status": { enabled: true, model: "codex", month_input_tokens: 0, month_output_tokens: 0 },
+    "GET /api/v1/ai/jobs": [], "GET /api/v1/ai/jobs/ai1": aiJob({ kind: "record", prompt: "녹화 다듬기" }), "GET /api/v1/devices": [],
+  });
+  renderPage(<EditorPage />, { route: "/editor/example-app", path: "/editor/:workspace" });
+  fireEvent.click(await screen.findByRole("tab", { name: "화면" }));
+  fireEvent.click(screen.getByRole("button", { name: "녹화 AI 완료" }));
+  await waitFor(() => expect(screen.getByRole("tab", { name: "AI" })).toHaveAttribute("aria-selected", "true"));
+  expect(await screen.findByRole("region", { name: "AI 작업" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "패널" })).toHaveAttribute("aria-pressed", "true");
 });
