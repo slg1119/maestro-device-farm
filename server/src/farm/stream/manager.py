@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 import logging
+import os
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -65,6 +66,23 @@ class _Stream:
 def _clear(viewer: Viewer) -> None:
     while not viewer.queue.empty():
         viewer.queue.get_nowait()
+
+
+def _failure_reason(exc: Exception) -> str:
+    # Allow only transport facts and our fixed protocol messages, never arbitrary
+    # exception output (which may include device text, argv, paths or secrets).
+    if isinstance(exc, TimeoutError):
+        return 'operation timed out'
+    if isinstance(exc, asyncio.IncompleteReadError):
+        return f'stream closed ({len(exc.partial)} of {exc.expected} bytes)'
+    if isinstance(exc, OSError) and exc.errno is not None:
+        return os.strerror(exc.errno)
+    safe_messages = {
+        'scrcpy adb command failed', 'scrcpy did not select H.264', 'scrcpy session metadata missing',
+        'invalid scrcpy dummy byte', 'invalid scrcpy video size', 'invalid scrcpy packet size',
+        'scrcpy control socket closed',
+    }
+    return str(exc) if str(exc) in safe_messages else 'details redacted'
 
 
 class StreamManager:
@@ -167,9 +185,9 @@ class StreamManager:
                 self._publish(state, packet)
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001 -- session failures must end viewers without leaking payloads to logs
-            # Protocol/control contents and child output aren't safe diagnostic material.
-            log.warning('scrcpy session failed for %s', state.serial)
+        except Exception as exc:  # noqa: BLE001 -- session failures must end viewers without leaking payloads to logs
+            log.warning('scrcpy session failed for %s: %s: %s',
+                        state.serial, type(exc).__name__, _failure_reason(exc))
         finally:
             try:
                 await state.session.stop()

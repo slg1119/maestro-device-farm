@@ -51,3 +51,24 @@ def test_consecutive_text_merges_and_keys_preserve_order():
         steps = append_step(steps, classifier.feed(event(message)))
     assert steps == [{"kind": "input", "text": "hello 세계", "ts": TS}, {"kind": "back", "ts": TS},
                      {"kind": "input", "text": "next", "ts": TS}, {"kind": "key", "key": "HOME", "ts": TS}]
+
+
+def test_recorded_points_round_to_integer_percentages_and_clamp():
+    classifier = StepClassifier([])
+    assert touch(classifier, (94.1, 194.54))["point"] == "94%,97%"
+    swipe = touch(classifier, (94.1, 194.54), (-2, 250), .5)
+    assert (swipe["from"], swipe["to"]) == ("94%,97%", "0%,100%")
+
+
+def test_compose_selectors_use_accessibility_or_descendant_labels_before_points():
+    from pathlib import Path
+
+    classifier = StepClassifier(parse_hierarchy((Path(__file__).parent / "selectors.xml").read_text()))
+    assert touch(classifier, (10, 10))["selector"] == {"text": "계속"}
+    assert touch(classifier, (30, 10))["selector"] == {"text": "시작하기"}
+    assert touch(classifier, (50, 10))["selector"] == {"text": "건너뛰기"}
+    assert touch(classifier, (70, 10))["point"] == "70%,5%"
+    # Maestro matches both text and content-desc; a cross-attribute duplicate is ambiguous too.
+    assert touch(classifier, (10, 30))["point"] == "10%,15%"
+    assert touch(classifier, (50, 30))["selector"] == {"id": "app:id/unique"}
+    assert touch(classifier, (70, 30))["selector"] == {"text": "텍스트 우선"}

@@ -274,3 +274,26 @@ async def test_failed_device_write_does_not_fire_hooks(streams):
     assert not await manager.handle_control(viewer, {'type': 'key', 'key': 'HOME'})
     assert events == []
     assert json.loads(drain(viewer)[-1])['reason'] == 'error'
+
+
+@pytest.mark.parametrize("error,reason", [
+    (TimeoutError("private screen text and token"), "operation timed out"),
+    (asyncio.IncompleteReadError(b"private screen text", 12), "stream closed (19 of 12 bytes)"),
+    (ConnectionResetError(54, "private token"), "Connection reset by peer"),
+    (ValueError("invalid scrcpy packet size"), "invalid scrcpy packet size"),
+    (RuntimeError("private screen text and token"), "details redacted"),
+])
+async def test_session_failure_logs_class_and_safe_reason(settings, caplog, error, reason):
+    class BrokenSession(Session):
+        async def start(self):
+            raise error
+
+    manager = StreamManager(None, settings, session_factory=BrokenSession)
+    try:
+        viewer = await manager.subscribe('d1')
+        await settle()
+        assert json.loads(drain(viewer)[-1])['reason'] == 'error'
+        assert type(error).__name__ in caplog.text and reason in caplog.text
+        assert 'private' not in caplog.text and 'token' not in caplog.text
+    finally:
+        await manager.stop()

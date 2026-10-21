@@ -175,3 +175,21 @@ def test_doctor_cli_reports_uncreatable_data_directory(settings, tmp_path, monke
     monkeypatch.setenv("FARM_DATA_DIR", str(blocker / "data"))
     assert main(["doctor"]) == 1
     assert "FAIL DB" in capsys.readouterr().out
+
+
+def test_ok_lines_keep_state_but_only_warn_and_fail_show_remediation(db, settings, tools, monkeypatch):
+    from farm.ops import doctor
+
+    ready(db, settings)
+    checks = run_doctor(db, settings)
+    by_name = {c.name: str(c) for c in checks}
+    assert by_name["device fake-device"] == "OK device fake-device: 상태 idle"
+    assert "heartbeat" in by_name["agent test-agent"] and "확인하세요" not in by_name["agent test-agent"]
+    assert "GiB" in by_name["disk"] and "확인하세요" not in by_name["disk"]
+    with db.session() as s:
+        s.get(Device, "fake-device").state = "offline"
+        s.get(AgentStatus, "test-agent").last_heartbeat_at = shift(now(), -120)
+    usage = doctor.shutil.disk_usage(settings.data_dir)
+    monkeypatch.setattr(doctor.shutil, "disk_usage", lambda path: usage._replace(free=10))
+    by_name = {c.name: str(c) for c in run_doctor(db, settings)}
+    assert all("확인하세요" in by_name[name] for name in ("device fake-device", "agent test-agent", "disk"))

@@ -16,13 +16,18 @@ def parse_hierarchy(xml: str) -> list[dict]:
         root = ElementTree.fromstring(xml[start:end + len("</hierarchy>")])
     except ElementTree.ParseError:
         return []
-    nodes = []
+    nodes, elements = [], []
     for node in root.iter("node"):
         bounds = re.fullmatch(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", node.get("bounds", ""))
         if bounds:
+            elements.append(node)
             nodes.append({**{key: node.get(key, "") for key in ("resource-id", "text", "content-desc")},
                           "clickable": node.get("clickable") == "true",
                           "bounds": tuple(map(int, bounds.groups()))})
+    indices = {element: index for index, element in enumerate(elements)}
+    for element, node in zip(elements, nodes):
+        node["descendants"] = [indices[child] for child in element.iter("node")
+                               if child is not element and child in indices]
     return nodes
 
 
@@ -35,9 +40,15 @@ def append_step(steps: list[dict], step: dict | None) -> list[dict]:
 
 
 def _point(x, y, size):
-    values = [f"{100 * value / extent:.2f}".rstrip("0").rstrip(".") + "%"
+    values = [f"{max(0, min(100, round(100 * value / extent)))}%"
               for value, extent in zip((x, y), size)]
     return ",".join(values)
+
+
+def normalize_point(point: str) -> str:
+    """Older recordings may contain decimals that Maestro cannot execute."""
+    x, y = (float(value.strip().removesuffix("%")) for value in point.split(","))
+    return _point(x, y, (100, 100))
 
 
 class StepClassifier:
@@ -55,10 +66,15 @@ class StepClassifier:
             return None
         node = min(candidates, key=lambda n: (n["bounds"][2] - n["bounds"][0]) *
                                             (n["bounds"][3] - n["bounds"][1]))
-        for attribute, key in (("resource-id", "id"), ("text", "text")):
-            counts = Counter(n[attribute] for n in self.nodes if n[attribute])
-            if node[attribute] and counts[node[attribute]] == 1:
-                return {key: node[attribute]}
+        ids = Counter(n["resource-id"] for n in self.nodes if n["resource-id"])
+        if node["resource-id"] and ids[node["resource-id"]] == 1:
+            return {"id": node["resource-id"]}
+        # Maestro text selectors also match content-desc. Count matching nodes across both fields.
+        labels = Counter(label for n in self.nodes for label in {n["text"], n["content-desc"]} if label)
+        for candidate in [node, *(self.nodes[i] for i in node.get("descendants", []))]:
+            for attribute in ("text", "content-desc"):
+                if candidate[attribute] and labels[candidate[attribute]] == 1:
+                    return {"text": candidate[attribute]}
         return None
 
     def feed(self, event: ControlEvent) -> dict | None:

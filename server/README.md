@@ -59,6 +59,7 @@ FARM_TEST_APK=/path/to/real.apk uv run pytest tests/apps -q   # also checks andr
 ```bash
 uv run farm doctor                # OK / WARN / FAIL 점검, FAIL이 있으면 종료 코드 1
 uv run farm retention run         # 설정된 데이터 경로의 보관 기간이 지난 파일 정리
+uv run farm retention run --dry-run # 파일·DB 변경 없이 범주별 예정 수와 경로(최대 50줄) 확인
 ```
 
 agent는 시작 60초 후, 이후 24시간마다 보관 정리를 실행합니다. 기본값은 완료 run 30일
