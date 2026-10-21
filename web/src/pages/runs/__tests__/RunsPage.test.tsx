@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLocation, useNavigate } from "react-router";
 
@@ -49,7 +49,7 @@ test("renders each run's status, source, app, duration, author and CI links", as
   for (const text of ["실패", "CI", "matrix", "example-app @ abcdef1", "com.example.app 1.0", "2m 0s", "build-bot", "feature/runs"]) {
     expect(row.getByText(text)).toBeInTheDocument();
   }
-  expect(row.getByTitle(formatTime(runs[0]!.created_at))).toBeInTheDocument();
+  expect(row.getByTitle(formatTime(runs[0]!.started_at))).toBeInTheDocument();
   expect(row.getByRole("link", { name: "PR" })).toHaveAttribute("href", runs[0]!.ci_meta.pr_url);
   expect(row.getByRole("link", { name: "PR" })).toHaveAttribute("target", "_blank");
   expect(row.getByRole("link", { name: "PR" })).toHaveAttribute("rel", expect.stringContaining("noopener"));
@@ -68,9 +68,9 @@ test("shows passed, failed and error counts in the results column", async () => 
   });
   renderRuns();
   expect(await screen.findByText("1/3 통과")).toBeInTheDocument();
-  expect(screen.getByText("실패 1")).toHaveClass("text-red-600");
-  expect(screen.getByText("오류 1")).toHaveClass("text-amber-600");
-  expect(screen.queryByText("다음")).not.toBeInTheDocument();
+  expect(screen.getByText("실패 1")).toHaveClass("text-failed-fg");
+  expect(screen.getByText("오류 1")).toHaveClass("text-warning-fg");
+  expect(screen.queryByText("이전 run 더 보기")).not.toBeInTheDocument();
 });
 
 test("omits zero failure and error counts", async () => {
@@ -85,7 +85,7 @@ test("initializes all filters and the cursor from a shared URL with a fixed page
   const { calls } = mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [workspace()] });
   renderRuns("/runs?status=failed&origin=ci&workspace=example-app&before=older-run");
   await screen.findByRole("option", { name: "example-app" });
-  expect(screen.getByRole("combobox", { name: "상태" })).toHaveValue("failed");
+  expect(screen.getByRole("radio", { name: /^실패/ })).toBeChecked();
   expect(screen.getByRole("combobox", { name: "출처" })).toHaveValue("ci");
   expect(screen.getByRole("combobox", { name: "워크스페이스" })).toHaveValue("example-app");
   expect(Object.fromEntries(runCalls(calls)[0]!.search)).toEqual({ status: "failed", origin: "ci", workspace: "example-app", before: "older-run", limit: "50" });
@@ -99,7 +99,8 @@ test.each([
   const { calls } = mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [workspace()] });
   renderRuns("/runs?status=running&origin=ci&workspace=other&before=older-run&view=compact");
   await screen.findByRole("option", { name: "example-app" });
-  await userEvent.selectOptions(screen.getByRole("combobox", { name: label }), value);
+  if (key === "status") await userEvent.click(screen.getByRole("radio", { name: /^실패/ }));
+  else await userEvent.selectOptions(screen.getByRole("combobox", { name: label }), value);
   const expected = { status: "running", origin: "ci", workspace: "other", [key]: value, limit: "50" };
   await waitFor(() => expect(Object.fromEntries(runCalls(calls).at(-1)!.search)).toEqual(expected));
   const search = new URLSearchParams(screen.getByLabelText("현재 주소").textContent!.split("?")[1]);
@@ -109,11 +110,11 @@ test.each([
 test("selecting 전체 removes the filter and browser back restores it", async () => {
   const { calls } = mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [] });
   renderRuns("/runs?status=failed&before=older-run");
-  await userEvent.selectOptions(screen.getByRole("combobox", { name: "상태" }), "");
+  await userEvent.click(screen.getByRole("radio", { name: /^전체/ }));
   await waitFor(() => expect(Object.fromEntries(runCalls(calls).at(-1)!.search)).toEqual({ limit: "50" }));
   expect(screen.getByLabelText("현재 주소")).toHaveTextContent(/^\/runs$/);
   await userEvent.click(screen.getByRole("button", { name: "이전 화면" }));
-  await waitFor(() => expect(screen.getByRole("combobox", { name: "상태" })).toHaveValue("failed"));
+  await waitFor(() => expect(screen.getByRole("radio", { name: /^실패/ })).toBeChecked());
   expect(screen.getByLabelText("현재 주소")).toHaveTextContent("before=older-run");
 });
 
@@ -123,14 +124,14 @@ test("pages using the last row id and returns to the first page without losing f
     "GET /api/v1/runs": (req: MockRequest) => req.search.has("before") ? [] : runs,
     "GET /api/v1/workspaces": [],
   });
-  renderRuns("/runs?origin=ci");
-  await userEvent.click(await screen.findByRole("button", { name: "다음" }));
+  renderRuns("/runs?origin=ci&q=run");
+  await userEvent.click(await screen.findByRole("button", { name: "이전 run 더 보기" }));
   await waitFor(() => expect(Object.fromEntries(runCalls(calls).at(-1)!.search)).toEqual({ origin: "ci", limit: "50", before: "run-00000049" }));
   expect(await screen.findByText("실행 기록이 없습니다.")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "다음" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "이전 run 더 보기" })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "처음으로" }));
   await screen.findByRole("link", { name: "00000000" });
-  expect(screen.getByLabelText("현재 주소")).toHaveTextContent(/^\/runs\?origin=ci$/);
+  expect(screen.getByLabelText("현재 주소")).toHaveTextContent(/^\/runs\?origin=ci&q=run$/);
   expect(screen.queryByRole("button", { name: "처음으로" })).not.toBeInTheDocument();
 });
 
@@ -180,4 +181,95 @@ test("navigates to the selected run's detail", async () => {
   renderRuns();
   await userEvent.click(await screen.findByRole("link", { name: "12345678" }));
   expect(await screen.findByTestId("navigated")).toBeInTheDocument();
+});
+
+test("status chips show loaded-page counts and request the selected status", async () => {
+  const runs = ["running", "running", "failed", "error", "passed", "queued", "cancelled"].map((status, i) =>
+    runSummary({ id: `run-${i}`, status: status as RunSummary["status"] }));
+  const { calls } = mockApi({
+    "GET /api/v1/runs": (req: MockRequest) => runs.filter((run) => !req.search.get("status") || run.status === req.search.get("status")),
+    "GET /api/v1/workspaces": [],
+  });
+  renderRuns();
+  expect(await screen.findByRole("radio", { name: "전체 7" })).toBeChecked();
+  for (const label of ["실행 중 2", "실패 1", "오류 1", "통과 1"]) {
+    expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
+  }
+  await userEvent.click(screen.getByRole("radio", { name: "실행 중 2" }));
+  await waitFor(() => expect(Object.fromEntries(runCalls(calls).at(-1)!.search)).toEqual({ status: "running", limit: "50" }));
+  expect(await screen.findByRole("radio", { name: "전체 2" })).toBeInTheDocument();
+  expect(screen.getAllByRole("row")).toHaveLength(3);
+});
+
+test("renders all result segments with an accessible counts line and CI workflow link", async () => {
+  mockApi({
+    "GET /api/v1/runs": [runSummary({
+      counts: { total: 10, passed: 3, failed: 2, error: 1, running: 1, queued: 2, cancelled: 1 },
+      ci_meta: { workflow_url: "https://github.com/example-org/example-app/actions/runs/12" },
+    })],
+    "GET /api/v1/workspaces": [],
+  });
+  renderRuns();
+  const bar = await screen.findByRole("progressbar", { name: /3\/10 통과.*실패 2.*오류 1.*실행 중 1.*대기 2.*취소 1/ });
+  expect(bar).toHaveAttribute("aria-valuemax", "10");
+  for (const [tone, width] of [["passed", 30], ["failed", 20], ["warning", 10], ["running", 10], ["neutral", 30]] as const) {
+    expect(bar.querySelector(`.bg-${tone}`)).toHaveStyle({ width: `${width}%` });
+  }
+  expect(screen.getByRole("link", { name: "워크플로" })).toHaveAttribute("href", "https://github.com/example-org/example-app/actions/runs/12");
+  expect(screen.getByRole("link", { name: "워크플로" })).toHaveAttribute("rel", expect.stringContaining("noopener"));
+});
+
+test.each(["RUN-NEEDLE", "FEATURE/NEEDLE", "CAFEBAB", "DEADBEE", "NEEDLE-APP", "NEEDLE-AUTHOR"])("searches loaded rows by id, branch, both commit fields, workspace or creator: %s", async (term) => {
+  mockApi({
+    "GET /api/v1/runs": [
+      runSummary({ id: "run-needle-12345678", ci_meta: { branch: "feature/needle", commit: "deadbeef" }, commit_sha: "cafebab123", workspace_id: "ws1", created_by: "needle-author" }),
+      runSummary({ id: "other-run-87654321" }),
+    ],
+    "GET /api/v1/workspaces": [workspace({ name: "needle-app" })],
+  });
+  renderRuns(`/runs?q=${encodeURIComponent(term)}`);
+  expect(await screen.findByRole("link", { name: "12345678" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "87654321" })).not.toBeInTheDocument();
+  expect(screen.getByRole("searchbox", { name: "실행 검색" })).toHaveValue(term);
+  expect(screen.getByRole("radio", { name: "전체 2" })).toBeInTheDocument();
+});
+
+test("debounces search into q, clears the cursor, preserves other params and restores search on back", async () => {
+  const { calls } = mockApi({ "GET /api/v1/runs": [runSummary({ id: "run-needle" })], "GET /api/v1/workspaces": [] });
+  renderRuns("/runs?origin=ci&before=older&view=compact");
+  await screen.findByRole("link", { name: "n-needle" });
+  vi.useFakeTimers();
+  try {
+    fireEvent.change(screen.getByRole("searchbox", { name: "실행 검색" }), { target: { value: "needle" } });
+    expect(screen.getByLabelText("현재 주소")).not.toHaveTextContent("q=");
+    await act(() => vi.advanceTimersByTimeAsync(299));
+    expect(screen.getByLabelText("현재 주소")).not.toHaveTextContent("q=");
+    await act(() => vi.advanceTimersByTimeAsync(1));
+  } finally {
+    vi.useRealTimers();
+  }
+  await waitFor(() => expect(screen.getByLabelText("현재 주소")).toHaveTextContent("q=needle"));
+  const params = new URLSearchParams(screen.getByLabelText("현재 주소").textContent!.split("?")[1]);
+  expect(Object.fromEntries(params)).toEqual({ origin: "ci", view: "compact", q: "needle" });
+  expect(runCalls(calls).every((call) => !call.search.has("q"))).toBe(true);
+  await userEvent.click(screen.getByRole("button", { name: "이전 화면" }));
+  expect(screen.getByRole("searchbox", { name: "실행 검색" })).toHaveValue("");
+  expect(screen.getByLabelText("현재 주소")).toHaveTextContent("before=older");
+});
+
+test("keeps paging available when client search matches no rows and clearing removes q", async () => {
+  const runs = Array.from({ length: 50 }, (_, i) => runSummary({ id: `run-${i}` }));
+  mockApi({ "GET /api/v1/runs": runs, "GET /api/v1/workspaces": [] });
+  renderRuns("/runs?q=missing");
+  expect(await screen.findByText("검색 결과가 없습니다.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "이전 run 더 보기" })).toBeInTheDocument();
+  await userEvent.clear(screen.getByRole("searchbox", { name: "실행 검색" }));
+  await screen.findByRole("table");
+  expect(screen.getByLabelText("현재 주소")).toHaveTextContent(/^\/runs$/);
+});
+
+test.each(["queued", "cancelled"])("preserves shared links for the legacy %s status filter", async (status) => {
+  mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [] });
+  renderRuns(`/runs?status=${status}`);
+  expect(screen.getByRole("radio", { name: status === "queued" ? /^대기/ : /^취소/ })).toBeChecked();
 });
