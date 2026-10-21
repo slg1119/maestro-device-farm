@@ -15,7 +15,7 @@ def settings(tmp_path, monkeypatch) -> Settings:
     for key in [k for k in os.environ if k.startswith("FARM_")]:
         monkeypatch.delenv(key)
     # web_dist points nowhere so API tests never depend on a local web build.
-    return Settings(data_dir=tmp_path / "data", web_dist=tmp_path / "web-dist")
+    return Settings(data_dir=tmp_path / "data", web_dist=tmp_path / "web-dist", codex_bin="/missing-test-codex")
 
 
 @pytest.fixture

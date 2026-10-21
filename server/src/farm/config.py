@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -25,6 +26,10 @@ class Settings(BaseSettings):
     github_token: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-6.1-sol"
+    ai_provider: Literal["auto", "openai", "codex"] = "auto"
+    codex_bin: str = "codex"
+    codex_model: str | None = None
+    ai_timeout_sec: int = 300
     ai_max_repairs: int = 3
     git_bot_name: str = "maestro-device-farm"
     git_bot_email: str = "maestro-device-farm@users.noreply.github.com"
