@@ -16,6 +16,9 @@ function mount(run: RunDetail = runDetail(), extra: Parameters<typeof mockApi>[0
   const api = mockApi({
     "GET /api/v1/runs/run1": run,
     "GET /api/v1/devices": [device()],
+    "GET /api/v1/ai/status": { enabled: false, model: "gpt-6.1-sol", month: "2026-10", month_input_tokens: 0, month_output_tokens: 0, month_jobs: 0 },
+    "GET /api/v1/tasks/task1/steps": { task_id: "task1", attempt: 1, flows: [] },
+    "GET /api/v1/tasks/task2/steps": { task_id: "task2", attempt: 1, flows: [] },
     "GET /api/v1/workspaces": [workspace()],
     "GET /api/v1/tasks/task1/artifacts": { task_id: "task1", attempt: 1, files: [] },
     "GET /api/v1/tasks/task2/artifacts": { task_id: "task2", attempt: 1, files: [] },
@@ -47,10 +50,12 @@ test("sorts split tasks by seq and requests encoded image artifacts only after s
   expect(within(rows[0]!).getByText("2회차")).toBeInTheDocument();
   expect(calls.some((c) => c.path.includes("/artifacts"))).toBe(false);
   await userEvent.click(rows[0]!);
+  await userEvent.click(await screen.findByRole("tab", { name: "스크린샷" }));
   const image = await screen.findByRole("img", { name: "maestro/shot 1.png" });
   expect(image).toHaveAttribute("src", "/api/v1/tasks/task1/artifacts/maestro/shot%201.png");
   expect(image.closest("a")).toHaveAttribute("target", "_blank");
   expect(calls.some((c) => c.path === "/api/v1/tasks/task1/artifacts")).toBe(true);
+  await userEvent.click(screen.getByRole("tab", { name: "파일" }));
   expect(screen.getByRole("link", { name: "maestro/shot 1.png 다운로드" })).toHaveAttribute("download");
 });
 
@@ -138,6 +143,7 @@ test("renders video, encoded downloads and lazy logs with only the final 200 KB"
     "GET /api/v1/tasks/task1/artifacts/maestro/maestro.log": () => new Response(log),
     "GET /api/v1/tasks/task1/artifacts/logcat.txt": () => new Response("짧은 로그"),
   });
+  await userEvent.click(await screen.findByRole("tab", { name: "파일" }));
   const toggle = await screen.findByRole("button", { name: "maestro/maestro.log 로그 보기" });
   expect(calls.some((c) => c.path.endsWith("/maestro.log"))).toBe(false);
   expect(container.querySelector("video")).toHaveAttribute("src", "/api/v1/tasks/task1/artifacts/recording%20%231.webm");
@@ -166,6 +172,8 @@ test("refreshes selected task artifacts after an SSE-driven run update", async (
   expect(await screen.findByText("산출물이 없습니다.")).toBeInTheDocument();
   finished = true;
   await act(() => client.invalidateQueries({ queryKey: keys.run("run1") }));
+  await waitFor(() => expect(calls.filter((c) => c.path === "/api/v1/tasks/task1/artifacts")).toHaveLength(2));
+  await userEvent.click(await screen.findByRole("tab", { name: "스크린샷" }));
   expect(await screen.findByRole("img", { name: "shot.jpg" })).toBeInTheDocument();
   expect(calls.filter((c) => c.path === "/api/v1/tasks/task1/artifacts")).toHaveLength(2);
 });
