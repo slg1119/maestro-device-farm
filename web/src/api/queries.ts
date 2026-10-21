@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiJson, query } from "./client";
-import type { AiJob, AiStatus, AppBuild, ArtifactListing, Device, DeviceCommand, Health, RunDetail, RunSummary, TaskSteps, Workspace } from "./types";
+import type { AiJob, AiStatus, AppBuild, ArtifactListing, Device, DeviceCommand, Health, RunDetail, RunSummary, StreamTicket, TaskSteps, Workspace } from "./types";
+import { getSettings } from "../lib/settings";
+
+export function createStreamTicket(serial: string, signal?: AbortSignal) {
+  const author_name = getSettings().authorName.trim();
+  return apiJson<StreamTicket>(`/devices/${encodeURIComponent(serial)}/stream-ticket`, { method: "POST", json: { ...(author_name ? { author_name } : {}) }, signal });
+}
 
 /** Every query key lives here so the SSE invalidation map (events.ts) stays in sync with the pages. */
 export const keys = {
