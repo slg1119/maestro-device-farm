@@ -1,11 +1,12 @@
 import { CheckCheck, ChevronDown, FileCode2, GitBranch, PanelLeft, PanelRight, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import { useAiStatus, useWorkspaces } from "../api/queries";
-import type { Workspace } from "../api/types";
+import { apiJson } from "../api/client";
+import { keys, useWorkspaces } from "../api/queries";
+import type { AiStatus, Workspace } from "../api/types";
 import { useCanWrite } from "../components/Layout";
 import { Badge, Button, Card, Empty, ErrorBox, IconButton, Loading, Menu, Modal, PageHeader, Tabs, cx } from "../components/ui";
-import { CodeEditor } from "./code/CodeEditor";
 import { languageFor } from "./code/adapter";
 import { AiPanel } from "./panels/AiPanel";
 import { CommitDialog } from "./panels/CommitDialog";
@@ -16,6 +17,9 @@ import { ScreenPanel } from "./panels/ScreenPanel";
 import { ResizeHandle } from "./ResizeHandle";
 import { EditorProvider, useEditor, useEditorRuntime } from "./store";
 import { FileTree } from "./tree/FileTree";
+
+// Keep Monaco's module download/evaluation inside the code area, after the tree can paint.
+const CodeEditor = lazy(() => import("./code/CodeEditor").then(module => ({ default: module.CodeEditor })));
 
 function lastWorkspace(): string | null { try { return localStorage.getItem("farm.editor.workspace"); } catch { return null; } }
 export function EditorPage() {
@@ -30,7 +34,11 @@ export function EditorPage() {
   return <EditorProvider key={`${ws.id}:${params.get("base") ?? "head"}`} workspace={ws} baseSha={params.get("base") ?? undefined}><Workbench workspaces={all} initialFile={params.get("file")} /></EditorProvider>;
 }
 function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initialFile: string | null }) {
-  const api = useEditor(); const runtime = useEditorRuntime(); const canWrite = useCanWrite(); const navigate = useNavigate(); const ai = useAiStatus();
+  const api = useEditor(); const runtime = useEditorRuntime(); const canWrite = useCanWrite(); const navigate = useNavigate();
+  // Older servers have no AI endpoint. Capability discovery must not retry or delay editing.
+  const ai = useQuery({ queryKey: keys.aiStatus, queryFn: async () => {
+    try { return await apiJson<AiStatus>("/ai/status"); } catch { return { enabled: false }; }
+  }, retry: false });
   const [panel, setPanel] = useState("run"); const [mobile, setMobile] = useState("code");
   const [treeWidth, setTreeWidth] = useState(248); const [panelWidth, setPanelWidth] = useState(360);
   const [conflicts, setConflicts] = useState<string[]>([]); const [fetching, setFetching] = useState(false); const [error, setError] = useState<unknown>(null);
@@ -63,7 +71,7 @@ function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initi
       <section aria-label="코드" className={cx("min-h-0 min-w-0 flex-1 flex-col md:flex", mobile !== "code" ? "hidden" : "flex")}>
         <div role="tablist" aria-label="열린 파일" className="flex min-h-10 shrink-0 overflow-x-auto border-b border-border bg-surface-2">{api.openPaths.map(path => <div key={path} className={cx("flex shrink-0 items-center border-r border-border", path === api.activePath && "bg-surface")}><button role="tab" aria-selected={path === api.activePath} onClick={() => api.openFile(path)} className="max-w-56 truncate px-3 py-2 text-xs focus-visible:outline-accent max-md:min-h-11">{path.split("/").at(-1)}{api.drafts[path] && <span className="ml-2 text-warning-fg" aria-label="변경됨">●</span>}</button><IconButton aria-label={`${path} 닫기`} onClick={() => api.closeFile(path)}><X /></IconButton></div>)}</div>
         <div className="shrink-0 truncate border-b border-border px-4 py-2 font-mono text-[11px] text-fg-subtle">{api.workspace.name} / {api.activePath ?? "파일 선택"}</div>
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"><CodeEditor /></div>
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"><Suspense fallback={<Loading label="편집기를 불러오는 중…" />}><CodeEditor /></Suspense></div>
       </section>
       <ResizeHandle label="패널 너비" value={panelWidth} min={300} max={640} reverse onChange={setPanelWidth} />
       <aside aria-label="에디터 패널" className={cx("min-h-0 min-w-0 shrink-0 flex-col max-md:!w-full md:flex", mobile !== "panel" ? "hidden" : "flex")} style={{ width: panelWidth }}><Tabs label="에디터 패널" options={options} value={panel} onChange={setPanel} /><div className="min-h-0 flex-1 overflow-auto">{panel === "run" ? <RunPanel /> : panel === "screen" ? <ScreenPanel /> : panel === "ai" && ai.data?.enabled ? <AiPanel /> : panel === "history" ? <HistoryPanel /> : <ProblemsPanel />}</div></aside>
