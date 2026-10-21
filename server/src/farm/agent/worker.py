@@ -6,6 +6,7 @@ from farm.config import Settings
 from farm.db.engine import Database
 from farm.db.models import AppBuild, Run
 from farm.results import TaskOutcome
+from farm.runner.artifacts import EnvRedactor
 from farm.runner.base import CancelToken, Inspector, PrecheckFailed, Runner, TaskSpec
 from farm.scheduler.claim import claim_next
 from farm.scheduler.commands import claim_command, finish_command
@@ -100,6 +101,7 @@ class DeviceWorker:
         finally:
             watcher.cancel()
             self._token = None
+            await asyncio.to_thread(EnvRedactor(spec.env.values()).redact_tree, spec.artifacts_dir)
         self._ran_once = True
         if token.reason == "shutdown":
             return  # recover_after_restart() requeues the task when the agent starts again
