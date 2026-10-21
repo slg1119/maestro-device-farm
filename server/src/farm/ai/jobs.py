@@ -1,0 +1,211 @@
+"""AI authoring jobs. Task 10 extends run_job with reserved-screen context and auto-repair runs."""
+import json
+import shutil
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
+
+from farm.ai.client import RESULT_SCHEMA, AiRequest, TextPart
+from farm.ai.context import failure_context, failure_target, materialize, redact, workspace_context
+from farm.api.errors import ApiError
+from farm.db.models import AiJob, Run, Task, TestResult, Workspace
+from farm.events import emit
+from farm.timeutil import now
+from farm.workspaces.changes import Change, Issue, validate_changes
+from farm.workspaces.errors import WorkspaceError
+from farm.workspaces.paths import normalize_rel
+from farm.workspaces.registry import find_workspace
+from farm.workspaces.snapshot import apply_changes
+
+
+class JobRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["generate", "fix"]
+    workspace: str | None = None
+    base_sha: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{40}$")
+    source_task_id: str | None = None
+    prompt: str = ""
+    target_path: str | None = None
+    draft_changes: list[Change] = Field(default_factory=list)
+    include_screen: bool = False
+    auto_repair: bool = False
+    reservation_id: str | None = None
+    app_build_id: str | None = None
+    app: str | None = None
+    author_name: str = ""
+
+
+def updated(session, job) -> None:
+    emit(session, "ai_job.updated", {"id": job.id, "status": job.status, "attempts": len(job.attempts)})
+
+
+def create_job(db, settings, writer, body) -> AiJob:
+    body = body if isinstance(body, JobRequest) else JobRequest.model_validate(body)
+    if body.kind == "generate" and (not body.workspace or not body.base_sha or
+                                    not body.target_path or not body.prompt.strip() or body.source_task_id):
+        raise ApiError(400, "invalid_request", "generate needs workspace, base_sha, target_path and prompt")
+    if (body.include_screen or body.auto_repair) and not body.reservation_id:
+        raise ApiError(400, "invalid_request", "screen and auto_repair need reservation_id")
+    if body.auto_repair and not (body.app_build_id or body.app):
+        raise ApiError(400, "invalid_request", "auto_repair needs app_build_id or app")
+    with db.session() as s:
+        secrets = []
+        if body.kind == "fix":
+            task = s.get(Task, body.source_task_id) if body.source_task_id else None
+            if not task:
+                raise ApiError(400, "invalid_request", "fix needs a source task")
+            run = s.get(Run, task.run_id)
+            if not run.workspace_id or not run.commit_sha or run.flow_source not in {"workspace", "draft"}:
+                raise ApiError(400, "fix_needs_workspace", "fix needs a workspace or draft run")
+            ws = s.get(Workspace, run.workspace_id)
+            if ws is None:
+                raise ApiError(400, "fix_needs_workspace", "the source workspace no longer exists")
+            results = list(s.scalars(select(TestResult).where(TestResult.task_id == task.id).order_by(TestResult.id)))
+            try:
+                target_path = failure_target(task, run, results)
+            except ValueError as exc:
+                raise ApiError(400, "invalid_request", str(exc)) from exc
+            base_sha = run.commit_sha
+            secrets = list(run.env.values())
+        else:
+            try:
+                ws = find_workspace(s, body.workspace)
+            except WorkspaceError as exc:
+                raise ApiError(exc.status, exc.code, str(exc)) from exc
+            target_path, base_sha = body.target_path, body.base_sha
+        try:
+            target_path = normalize_rel(target_path)
+            if ".git" in target_path.split("/"):
+                raise ValueError(".git paths are forbidden")
+        except ValueError as exc:
+            raise ApiError(400, "invalid_request", str(exc)) from exc
+        options = body.model_dump(include={"target_path", "include_screen", "auto_repair", "reservation_id",
+                                           "app_build_id", "app", "draft_changes"})
+        options["target_path"] = target_path
+        job = AiJob(kind=body.kind, workspace_id=ws.id, base_sha=base_sha, prompt=redact(settings, body.prompt, secrets),
+                    options=redact(settings, options, secrets), model=settings.openai_model,
+                    created_by=redact(settings, writer.name, secrets),
+                    author_name=redact(settings, body.author_name or writer.name, secrets), reservation_id=body.reservation_id,
+                    source_task_id=body.source_task_id)
+        s.add(job)
+        s.flush()
+        updated(s, job)
+    return job
+
+
+class AiJobRunner:
+    def __init__(self, db, settings, client, checker):
+        self.db, self.settings, self.client, self.checker = db, settings, client, checker
+        self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="farm-ai")
+
+    def start(self):
+        """Recover jobs abandoned by the previous API process before accepting new work."""
+        with self.db.session() as s:
+            for job in s.scalars(select(AiJob).where(AiJob.status.in_(["queued", "running"]))):
+                job.status, job.error_message, job.finished_at = "failed", "api restarted", now()
+                updated(s, job)
+
+    def submit(self, job_id):
+        return self.pool.submit(self.run_job, job_id)
+
+    def stop(self):
+        self.pool.shutdown(wait=True, cancel_futures=True)
+        if hasattr(self.client, "close"):
+            self.client.close()
+
+    def _attempt(self, job_id, attempt, model=None):
+        with self.db.session() as s:
+            job = s.get(AiJob, job_id)
+            job.attempts = [*job.attempts, attempt]
+            job.input_tokens += attempt.get("input_tokens", 0)
+            job.output_tokens += attempt.get("output_tokens", 0)
+            if model:
+                job.model = model
+            updated(s, job)
+
+    def _finish(self, job_id, status, *, result=None, error=None):
+        with self.db.session() as s:
+            job = s.get(AiJob, job_id)
+            if job.cancel_requested:
+                status, result, error = "cancelled", None, None
+            job.status, job.result, job.error_message = status, result, error
+            job.finished_at = now()
+            updated(s, job)
+
+    def _cancelled(self, job_id):
+        with self.db.session() as s:
+            return s.get(AiJob, job_id).cancel_requested
+
+    def run_job(self, job_id):
+        """Generate and validate changes; Task 10 adds screen context and auto-repair execution here."""
+        with self.db.session() as s:
+            job = s.get(AiJob, job_id)
+            if job is None or job.status != "queued":
+                return
+            job.status = "running"
+            updated(s, job)
+            ws = s.get(Workspace, job.workspace_id)
+            task = s.get(Task, job.source_task_id) if job.source_task_id else None
+            run = s.get(Run, task.run_id) if task else None
+            secrets = list(run.env.values()) if run else []
+        try:
+            with TemporaryDirectory(prefix="farm-ai-") as temp:
+                root = materialize(self.settings, ws, job.base_sha, job.options["draft_changes"],
+                                   Path(temp) / "workspace")
+                text = (f"## Workspace\ndefault_app_package: {ws.default_app_package}\n"
+                        f"{workspace_context(root, job.options['target_path'])}")
+                failure, images = failure_context(self.settings, task, db=self.db) if task else ("", [])
+                text = redact(self.settings, text + "\n\n" + failure + "\n\n## User description\n" + job.prompt, secrets)
+                folder = self.settings.path("ai", job.id)
+                folder.mkdir(parents=True, exist_ok=True)
+                prompts = Path(__file__).with_name("prompts")
+                system = redact(self.settings, "\n\n".join((prompts / name).read_text(encoding="utf-8")
+                                                           for name in ("system.md", "maestro-reference.md")), secrets)
+                feedback = ""
+                limit = 1 + self.settings.ai_max_repairs
+                for n in range(1, limit + 1):
+                    if self._cancelled(job.id):
+                        self._finish(job.id, "cancelled")
+                        return
+                    request = AiRequest(system=system, parts=[TextPart(text + feedback), *images])
+                    (folder / f"request-{n}.json").write_text(json.dumps({"system": request.system,
+                                                                          "text": text + feedback}))
+                    response = self.client.complete(request, RESULT_SCHEMA)
+                    (folder / f"response-{n}.json").write_text(redact(self.settings, response.raw, secrets))
+                    self._attempt(job.id, {"n": n, "kind": "generate", "status": "ok", "detail": "",
+                                          "run_id": None, "issues": [], "input_tokens": response.input_tokens,
+                                          "output_tokens": response.output_tokens}, redact(self.settings, response.model, secrets))
+                    data = redact(self.settings, response.data, secrets)
+                    changes = [Change(op="put", **f) for f in data["files"]]
+                    normalized, issues = validate_changes(
+                        changes, max_bytes=self.settings.max_flows_mb * 1024 * 1024, checker=self.checker)
+                    for change in normalized:
+                        if ".git" in change.path.split("/"):
+                            issues.append(Issue(path=change.path, message=".git paths are forbidden"))
+                    if not issues:
+                        candidate = Path(temp) / "candidate"
+                        shutil.rmtree(candidate, ignore_errors=True)
+                        shutil.copytree(root, candidate, symlinks=True)
+                        try:
+                            apply_changes(candidate, normalized, self.settings.max_flows_mb * 1024 * 1024)
+                        except (WorkspaceError, OSError) as exc:
+                            issues.append(Issue(path="", message=redact(self.settings, str(exc), secrets)))
+                    self._attempt(job.id, {"n": n, "kind": "validation",
+                                          "status": "failed" if issues else "ok", "detail": "",
+                                          "run_id": None, "issues": [i.model_dump() for i in issues],
+                                          "input_tokens": 0, "output_tokens": 0})
+                    if not issues:
+                        data = {**data, "files": [{"path": c.path, "content": c.content}
+                                                          for c in normalized], "passed_run_id": None}
+                        self._finish(job.id, "succeeded", result=data)
+                        return
+                    feedback = redact(self.settings, "\n\n## Validation: the previous answer failed validation\n"
+                                      + json.dumps({"previous_answer": data,
+                                                    "issues": [i.model_dump() for i in issues]}), secrets)
+                self._finish(job.id, "failed", error=f"validation kept failing after {limit} attempts")
+        except Exception as exc:  # noqa: BLE001 - background jobs must persist provider and validation failures
+            self._finish(job.id, "failed", error=redact(self.settings, str(exc), secrets))
