@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Offline Codex fake; login defaults to logged out, exec never contacts a provider."""
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+
+def main():
+    argv = sys.argv[1:]
+    entry = {"tool": "codex", "argv": argv, "cwd": os.getcwd(), "pid": os.getpid(),
+             "farm_env": {k: v for k, v in os.environ.items() if k.startswith("FARM_")}}
+    if argv[:1] == ["exec"]:
+        entry["stdin"] = sys.stdin.read()
+        entry["schema"] = json.loads(Path(argv[argv.index("--output-schema") + 1]).read_text())
+        entry["images"] = {argv[i + 1]: Path(argv[i + 1]).read_bytes().hex()
+                           for i, value in enumerate(argv) if value == "-i"}
+    if os.environ.get("FAKE_LOG"):
+        with open(os.environ["FAKE_LOG"], "a") as log:
+            log.write(json.dumps(entry) + "\n")
+    if argv == ["login", "status"]:
+        return int(os.environ.get("FAKE_CODEX_LOGIN", "1"))
+    if argv[:1] != ["exec"]:
+        return 2
+    print(os.environ.get("FAKE_CODEX_STDERR", "fake diagnostic"), file=sys.stderr, flush=True)
+    mode = os.environ.get("FAKE_CODEX_MODE", "pass")
+    if mode == "hang":
+        time.sleep(3600)
+    if mode == "fail":
+        return 1
+    output = Path(argv[argv.index("-o") + 1])
+    output.write_text("not json" if mode == "garbage" else os.environ.get("FAKE_CODEX_RESULT", "{}"))
+    print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 1, "output_tokens": 2}}))
+    print("not a JSONL event")
+    print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 123, "output_tokens": 45}}))
+    print(json.dumps({"type": "thread.completed"}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

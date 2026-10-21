@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from threading import Lock
@@ -5,7 +6,7 @@ from threading import Lock
 from fastapi import FastAPI
 
 from farm import __version__
-from farm.ai.client import AiClient
+from farm.ai.client import AiClient, build_ai_client
 from farm.api.errors import register_error_handlers
 from farm.api.routes import ai, apps, devices, events, health, runs, tasks, workspaces
 from farm.api.web import mount_dashboard
@@ -15,6 +16,8 @@ from farm.db.engine import Database
 from farm.flows.syntax import MaestroSyntaxChecker, SyntaxChecker
 from farm.workspaces.poller import WorkspacePoller
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(settings: Settings | None = None, *, db: Database | None = None,
                apk_parser: ApkParser | None = None, syntax_checker: SyntaxChecker | None = None,
@@ -23,6 +26,9 @@ def create_app(settings: Settings | None = None, *, db: Database | None = None,
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        client = app.state.ai_client
+        logger.info("AI provider: %s (model: %s)", getattr(client, "provider", None) or ("injected" if client else "disabled"),
+                    getattr(client, "model", None) or settings.openai_model)
         poller = WorkspacePoller(app.state.db, settings) if settings.git_poll_sec > 0 else None
         if poller:
             poller.start()
@@ -42,7 +48,7 @@ def create_app(settings: Settings | None = None, *, db: Database | None = None,
     app.state.db = db or Database(settings.database_path)
     app.state.apk_parser = apk_parser or AndroguardApkParser()
     app.state.syntax_checker = syntax_checker or MaestroSyntaxChecker()
-    app.state.ai_client = ai_client
+    app.state.ai_client = ai_client if ai_client is not None else build_ai_client(settings)
     app.state.ai_runner = None
     app.state.ai_runner_lock = Lock()
     register_error_handlers(app)

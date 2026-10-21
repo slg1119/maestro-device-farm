@@ -1,9 +1,14 @@
 import base64
 import json
+import os
+import shutil
+import subprocess
 from dataclasses import dataclass
 from typing import Protocol
 
 import openai
+
+from farm.config import Settings
 
 
 @dataclass(frozen=True)
@@ -53,7 +58,37 @@ class AiClient(Protocol):
     def complete(self, request: AiRequest, schema: dict) -> AiResponse: ...
 
 
+class AiProviderError(Exception):
+    """A provider failed; the message is safe to persist and show to operators."""
+
+
+def codex_env() -> dict[str, str]:
+    """Keep host CLI authentication available without exposing farm configuration."""
+    return {key: value for key, value in os.environ.items() if not key.startswith("FARM_")}
+
+
+def build_ai_client(settings: Settings) -> AiClient | None:
+    key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
+    if settings.ai_provider in {"auto", "openai"} and key:
+        return OpenAiClient(key, settings.openai_model)
+    if settings.ai_provider in {"auto", "codex"} and shutil.which(settings.codex_bin):
+        try:
+            login = subprocess.run([settings.codex_bin, "login", "status"], env=codex_env(),
+                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   timeout=min(settings.ai_timeout_sec, 10), check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if login.returncode == 0:
+            from farm.ai.codex_client import CodexCliClient
+
+            secrets = [secret.get_secret_value() for secret in (settings.openai_api_key, settings.github_token) if secret]
+            return CodexCliClient(settings.codex_bin, settings.codex_model, settings.ai_timeout_sec, secrets=secrets)
+    return None
+
+
 class OpenAiClient:
+    provider = "openai"
+
     def __init__(self, api_key: str, model: str):
         self.model = model
         self.sdk = openai.OpenAI(api_key=api_key, timeout=120, max_retries=0)

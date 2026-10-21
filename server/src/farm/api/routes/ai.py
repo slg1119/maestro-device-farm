@@ -3,7 +3,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 
-from farm.ai.client import OpenAiClient
 from farm.ai.jobs import AiJobRunner, JobRequest, create_job, updated
 from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
@@ -16,7 +15,7 @@ router = APIRouter()
 
 
 def enabled(app) -> bool:
-    return app.state.ai_client is not None or bool(app.state.settings.openai_api_key)
+    return app.state.ai_client is not None
 
 
 def ensure_runner(app):
@@ -25,7 +24,7 @@ def ensure_runner(app):
     with app.state.ai_runner_lock:
         if app.state.ai_runner is None:
             settings = app.state.settings
-            client = app.state.ai_client or OpenAiClient(settings.openai_api_key.get_secret_value(), settings.openai_model)
+            client = app.state.ai_client
             runner = AiJobRunner(app.state.db, settings, client, app.state.syntax_checker)
             runner.start()
             app.state.ai_runner = runner
@@ -57,7 +56,10 @@ def status(request: Request):
             func.coalesce(func.sum(AiJob.input_tokens), 0), func.coalesce(func.sum(AiJob.output_tokens), 0),
             func.count(AiJob.id)).where(AiJob.created_at.like(month + "-%"))).one()
     settings = get_settings(request)
-    return {"enabled": enabled(request.app), "model": settings.openai_model, "max_repairs": settings.ai_max_repairs, "month": month,
+    client = request.app.state.ai_client
+    return {"enabled": enabled(request.app), "provider": getattr(client, "provider", None),
+            "model": getattr(client, "model", None) or settings.openai_model,
+            "max_repairs": settings.ai_max_repairs, "month": month,
             "month_input_tokens": input_tokens, "month_output_tokens": output_tokens, "month_jobs": count}
 
 
@@ -65,6 +67,11 @@ def status(request: Request):
 def submit(request: Request, body: JobRequest, writer: Annotated[Writer, Depends(get_writer)]):
     runner = ensure_runner(request.app)
     job = create_job(get_db(request), get_settings(request), writer, body)
+    model = getattr(runner.client, "model", None)
+    if model:
+        with get_db(request).session() as session:
+            session.get(AiJob, job.id).model = model
+        job.model = model
     runner.submit(job.id)
     return payload(job)
 
