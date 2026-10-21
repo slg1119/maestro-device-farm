@@ -21,28 +21,28 @@ export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
   });
 
   return (
-    <details className="min-w-0 border-t border-slate-200 pt-3" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="cursor-pointer rounded text-sm font-medium text-slate-700 focus-visible:outline-2 focus-visible:outline-slate-500">
+    <details className="min-w-0 border-t border-border pt-3" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="min-h-9 cursor-pointer rounded-lg py-2 text-sm max-md:min-h-11 font-medium text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">
         파일과 최근 커밋
       </summary>
       {open && <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-2">
         <section className="min-w-0">
-          <h3 className="mb-2 text-xs font-semibold text-slate-500">파일</h3>
+          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">파일</h3>
           {tree.isPending ? <Loading /> : tree.isError ? <ErrorBox error={tree.error} /> : tree.data.files.length === 0 ? (
             <Empty>파일이 없습니다.</Empty>
           ) : (
             <ul className="max-h-72 space-y-2 overflow-y-auto text-xs font-mono">
               {tree.data.files.map((file) => (
                 <li key={file.path} className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 break-all text-slate-700">{file.path}</span>
-                  <span className="shrink-0 text-slate-400">{formatBytes(file.size)}</span>
+                  <span className="min-w-0 break-all text-fg-muted">{file.path}</span>
+                  <span className="shrink-0 text-fg-subtle">{formatBytes(file.size)}</span>
                 </li>
               ))}
             </ul>
           )}
         </section>
         <section className="min-w-0">
-          <h3 className="mb-2 text-xs font-semibold text-slate-500">최근 커밋</h3>
+          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">최근 커밋</h3>
           {history.isPending ? <Loading /> : history.isError ? <ErrorBox error={history.error} /> : history.data.commits.length === 0 ? (
             <Empty>최근 커밋이 없습니다.</Empty>
           ) : (
@@ -50,12 +50,12 @@ export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
               {history.data.commits.map((commit) => (
                 <li key={commit.sha} className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <a className="font-mono text-xs text-blue-700 hover:underline" href={githubCommitUrl(workspace.repo, commit.sha)} target="_blank" rel="noreferrer">
+                    <a className="inline-flex min-h-11 items-center rounded font-mono text-xs text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent md:min-h-0" href={githubCommitUrl(workspace.repo, commit.sha)} target="_blank" rel="noreferrer">
                       {shortSha(commit.sha)}
                     </a>
                     <span className="min-w-0 break-words">{commit.message.split(/\r?\n/, 1)[0]}</span>
                   </div>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-500">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-fg-subtle">
                     <span className="break-all">{commit.author_name === "maestro-device-farm" ? commit.co_authors[0]?.name ?? commit.author_name : commit.author_name}</span>
                     <time dateTime={commit.authored_at}>{new Date(commit.authored_at).toLocaleString("ko-KR", { hour12: false })}</time>
                   </div>

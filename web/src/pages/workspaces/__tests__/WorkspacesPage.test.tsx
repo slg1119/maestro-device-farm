@@ -33,6 +33,27 @@ async function fillRegistration(user: ReturnType<typeof userEvent.setup>) {
 
 afterEach(() => vi.restoreAllMocks());
 
+test("opens the editor by workspace name even when writes need a token and labels the AI default package", async () => {
+  mockApi({
+    "GET /api/v1/workspaces": [workspace({ id: "database-id", name: "example-app" })],
+    "GET /api/v1/healthz": healthBody({ auth_required: true }),
+  });
+  renderPage(<WorkspacesPage />);
+  const link = await screen.findByRole("link", { name: "에디터에서 열기" });
+  expect(link).toHaveAttribute("href", "/editor/example-app");
+  expect(link).not.toHaveAttribute("aria-disabled", "true");
+  expect(screen.getByText("AI 기본 패키지")).toBeInTheDocument();
+  expect(screen.getByText("com.example.app")).toBeInTheDocument();
+});
+
+test("shows when the workspace AI default package is not configured", async () => {
+  mockApi({ "GET /api/v1/workspaces": [workspace({ default_app_package: null })] });
+  renderPage(<WorkspacesPage />);
+  await screen.findByRole("heading", { name: "example-app" });
+  expect(screen.getByText("AI 기본 패키지")).toBeInTheDocument();
+  expect(screen.getByText("미설정")).toBeInTheDocument();
+});
+
 test("renders sorted workspace cards with repository, head link, package and sync error", async () => {
   mockApi({ "GET /api/v1/workspaces": [
     workspace({ id: "ws2", name: "z-workspace", path: "", head_sha: null }),
