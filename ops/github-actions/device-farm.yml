@@ -1,0 +1,59 @@
+# .github/workflows/ 에 복사하세요. vars.FARM_WORKSPACE는 팜에 등록된 워크스페이스 이름입니다.
+# Android 프로젝트의 app 모듈/빌드 변형에 맞게 Gradle 작업과 APK 경로를 조정하세요.
+name: Device farm
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: APK 빌드
+        run: ./gradlew :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: device-farm-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  farm:
+    needs: build
+    runs-on: [self-hosted, macOS, device-farm]
+    permissions:
+      contents: read
+      checks: write
+    env:
+      FARM_WORKSPACE: ${{ vars.FARM_WORKSPACE }}
+      FARM_USER: github-actions
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: device-farm-apk
+      - name: 팜 테스트
+        run: |
+          mv app-debug.apk app.apk
+          farmctl --server http://localhost:8700 run --workspace "$FARM_WORKSPACE" --ref "$GITHUB_SHA" --apk app.apk --mode split --wait --junit farm-junit.xml
+      - name: JUnit 게시
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: farm-junit.xml
+          fail_on_failure: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: farm-junit
+          path: farm-junit.xml
+          if-no-files-found: warn
