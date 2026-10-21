@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiJson, query } from "./client";
-import type { AppBuild, ArtifactListing, Device, Health, RunDetail, RunSummary, Workspace } from "./types";
+import type { AiJob, AiStatus, AppBuild, ArtifactListing, Device, DeviceCommand, Health, RunDetail, RunSummary, TaskSteps, Workspace } from "./types";
 
 /** Every query key lives here so the SSE invalidation map (events.ts) stays in sync with the pages. */
 export const keys = {
@@ -14,6 +14,15 @@ export const keys = {
   appsAll: ["apps"] as const,
   workspaces: ["workspaces"] as const,
   health: ["health"] as const,
+  steps: (taskId: string) => ["steps", taskId] as const,
+  aiStatus: ["ai-status"] as const,
+  aiJob: (id: string) => ["ai-job", id] as const,
+  aiJobs: (workspace?: string) => ["ai-jobs", workspace ?? ""] as const,
+  workspaceTree: (id: string, sha: string) => ["workspace-tree", id, sha] as const,
+  workspaceFile: (id: string, sha: string, path: string) => ["workspace-file", id, sha, path] as const,
+  workspaceHistory: (id: string, sha: string, path?: string) => ["workspace-history", id, sha, path ?? ""] as const,
+  deviceCommand: (id: string) => ["device-command", id] as const,
+  reservations: ["reservations"] as const,
 };
 
 export interface RunFilters {
@@ -54,4 +63,24 @@ export function useWorkspaces() {
 
 export function useHealth() {
   return useQuery({ queryKey: keys.health, queryFn: () => apiJson<Health>("/healthz"), refetchInterval: 15_000 });
+}
+
+
+export function useTaskSteps(taskId: string | null) {
+  return useQuery({ queryKey: keys.steps(taskId ?? ""), queryFn: () => apiJson<TaskSteps>(`/tasks/${encodeURIComponent(taskId!)}/steps`), enabled: taskId !== null });
+}
+
+export function useAiStatus() {
+  return useQuery({ queryKey: keys.aiStatus, queryFn: () => apiJson<AiStatus>("/ai/status") });
+}
+
+export function useAiJob(id: string | null) {
+  return useQuery({ queryKey: keys.aiJob(id ?? ""), queryFn: () => apiJson<AiJob>(`/ai/jobs/${encodeURIComponent(id!)}`), enabled: id !== null });
+}
+
+export function useDeviceCommand(id: string | null) {
+  return useQuery({
+    queryKey: keys.deviceCommand(id ?? ""), queryFn: () => apiJson<DeviceCommand>(`/device-commands/${encodeURIComponent(id!)}`), enabled: id !== null,
+    refetchInterval: (query) => query.state.data?.status === "queued" || query.state.data?.status === "running" ? 1000 : false,
+  });
 }

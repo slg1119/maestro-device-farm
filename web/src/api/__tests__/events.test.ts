@@ -21,3 +21,15 @@ test("batches a burst of events into one invalidation per key", () => {
   expect(spy.mock.calls.map(([arg]) => arg?.queryKey)).toEqual([["runs"], ["devices"], ["run", "r1"]]);
   vi.useRealTimers();
 });
+
+test("invalidates the AI job, job lists and usage after every AI update", () => {
+  expect(keysFor({ type: "ai_job.updated", run_id: null, payload: { id: "ai1", status: "running", attempts: 1 } })).toEqual([
+    ["ai-job", "ai1"], ["ai-jobs"], ["ai-status"],
+  ]);
+  expect(keysFor({ type: "ai_job.updated", run_id: null, payload: {} })).toEqual([["ai-jobs"], ["ai-status"]]);
+});
+
+test("invalidates device command details and reservations on their events", () => {
+  expect(keysFor({ type: "device_command.updated", run_id: null, payload: { id: "cmd1" } })).toEqual([["devices"], ["device-command", "cmd1"]]);
+  expect(keysFor({ type: "reservation.updated", run_id: null, payload: {} })).toEqual([["devices"], ["reservations"]]);
+});
