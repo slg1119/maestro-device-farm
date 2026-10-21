@@ -21,7 +21,7 @@ from farm.ai.context import (
 )
 from farm.api.errors import ApiError
 from farm.apps.library import resolve_app
-from farm.db.models import AiJob, DeviceCommand, Reservation, Run, Task, TestResult, Workspace
+from farm.db.models import AiJob, DeviceCommand, Recording, Reservation, Run, Task, TestResult, Workspace
 from farm.events import emit
 from farm.flows.enumerate import CONFIG_NAMES, FLOW_SUFFIXES
 from farm.ids import new_id
@@ -39,7 +39,8 @@ from farm.workspaces.snapshot import apply_changes
 
 class JobRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["generate", "fix"]
+    kind: Literal["generate", "fix", "record"]
+    recording_id: str | None = None
     workspace: str | None = None
     base_sha: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{40}$")
     source_task_id: str | None = None
@@ -62,8 +63,42 @@ def updated(session, job) -> None:
     emit(session, "ai_job.updated", {"id": job.id, "status": job.status, "attempts": len(job.attempts)})
 
 
+def create_record_job(session, settings, writer, recording, model=None) -> AiJob:
+    """Create the polish job in the same transaction that finishes the recording."""
+    ws = session.get(Workspace, recording.workspace_id) if recording.workspace_id else None
+    if ws is None:
+        raise ApiError(400, "recording_needs_workspace", "AI로 다듬으려면 워크스페이스가 필요합니다")
+    if not ws.head_sha:
+        raise ApiError(409, "workspace_not_synced", "워크스페이스를 먼저 동기화해 주세요")
+    target = f"flows/recorded-{recording.id}.yaml"
+    options = {"target_path": target, "include_screen": False, "auto_repair": False, "reservation_id": None,
+               "app_build_id": None, "app": None, "draft_changes": [], "recording_id": recording.id,
+               "steps": recording.steps, "yaml": recording.yaml}
+    job = AiJob(kind="record", workspace_id=ws.id, base_sha=ws.head_sha,
+                prompt="녹화한 조작을 재사용할 수 있는 Maestro 흐름으로 다듬어 주세요.",
+                options=redact(settings, options), model=model or settings.openai_model,
+                created_by=redact(settings, writer.name), author_name=redact(settings, writer.name))
+    session.add(job)
+    session.flush()
+    updated(session, job)
+    return job
+
+
 def create_job(db, settings, writer, body) -> AiJob:
     body = body if isinstance(body, JobRequest) else JobRequest.model_validate(body)
+    if body.kind == "record":
+        with db.session() as session:
+            recording = session.get(Recording, body.recording_id) if body.recording_id else None
+            if recording is None or recording.status != "done":
+                raise ApiError(400, "invalid_request", "record needs a completed recording")
+            if recording.ai_job_id:
+                return session.get(AiJob, recording.ai_job_id)
+            job = create_record_job(session, settings, writer, recording)
+            recording.ai_job_id = job.id
+            from farm.stream.recorder import recording_updated
+
+            recording_updated(session, recording)
+            return job
     if body.kind == "generate" and (not body.workspace or not body.base_sha or
                                     not body.target_path or not body.prompt.strip() or body.source_task_id):
         raise ApiError(400, "invalid_request", "generate needs workspace, base_sha, target_path and prompt")
@@ -272,6 +307,9 @@ class AiJobRunner:
                                    Path(temp) / "workspace")
                 text = (f"## Workspace\ndefault_app_package: {ws.default_app_package}\n"
                         f"{workspace_context(root, job.options['target_path'])}")
+                if job.kind == "record":
+                    text += (f"\n\n## Recorded flow\nOutput exactly one file: {job.options['target_path']}\n"
+                             + json.dumps({"steps": job.options["steps"], "yaml": job.options["yaml"]}, ensure_ascii=False))
                 failure, images = failure_context(self.settings, task, db=self.db) if task else ("", [])
                 if job.options["include_screen"]:
                     screen, screen_images = self._screen(job.id)
@@ -281,8 +319,9 @@ class AiJobRunner:
                 folder = self.settings.path("ai", job.id)
                 folder.mkdir(parents=True, exist_ok=True)
                 prompts = Path(__file__).with_name("prompts")
+                prompt_names = ["system.md", "maestro-reference.md"] + (["record.md"] if job.kind == "record" else [])
                 system = redact(self.settings, "\n\n".join((prompts / name).read_text(encoding="utf-8")
-                                                           for name in ("system.md", "maestro-reference.md")), secrets)
+                                                           for name in prompt_names), secrets)
                 feedback = ""
                 last_answer = None
                 limit = 1 + self.settings.ai_max_repairs
@@ -304,6 +343,10 @@ class AiJobRunner:
                     for change in normalized:
                         if ".git" in change.path.split("/"):
                             issues.append(Issue(path=change.path, message=".git paths are forbidden"))
+                    if job.kind == "record" and (len(normalized) != 1 or
+                                                  normalized[0].path != job.options["target_path"]):
+                        issues.append(Issue(path=job.options["target_path"],
+                                            message="record must return exactly the requested flow file"))
                     if not issues:
                         candidate = Path(temp) / "candidate"
                         shutil.rmtree(candidate, ignore_errors=True)

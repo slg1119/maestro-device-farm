@@ -376,3 +376,14 @@ test("releases a temporary snapshot reservation on unmount", async () => {
   unmount();
   await waitFor(() => expect(calls.filter((c) => c.method === "DELETE")).toHaveLength(1));
 });
+
+
+test("opens the live device drawer for viewers and closes it", async () => {
+  mockApi({ "GET /api/v1/devices": [device()] });
+  renderPage(<DevicesPage />);
+  await userEvent.click(await screen.findByRole("button", { name: "라이브" }));
+  const drawer = screen.getByRole("dialog", { name: "Pixel 7 라이브" });
+  expect(within(drawer).getByText(/이 브라우저는 실시간 화면을 지원하지 않습니다/)).toBeInTheDocument();
+  await userEvent.click(within(drawer).getByRole("button", { name: "닫기" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});

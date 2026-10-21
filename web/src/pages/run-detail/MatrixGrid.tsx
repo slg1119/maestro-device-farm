@@ -3,6 +3,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Badge, Empty, StatusDot, cx } from "../../components/ui";
 import { formatDuration } from "../../lib/format";
 import { buildMatrix, type MatrixCell } from "./grid";
+import { TaskLive } from "./TaskLive";
 
 const CELL: Record<MatrixCell["status"], { label: string; color: string }> = {
   queued: { label: "대기", color: "bg-neutral-bg" },
@@ -37,7 +38,7 @@ export function MatrixGrid({ run, devices, selectedId, selectedFlow, onSelect }:
           <tr>
             <th scope="col" className="px-4 py-3">flow</th>
             {matrix.columns.map((column) => (
-              <th scope="col" key={column.taskId} className="min-w-44 px-4 py-3">{deviceLabel(column.serial, devices)}</th>
+              <th scope="col" key={column.taskId} aria-label={deviceLabel(column.serial, devices)} className="min-w-44 px-4 py-3">{deviceLabel(column.serial, devices)}<TaskLive task={run.tasks.find(task => task.id === column.taskId)!} /></th>
             ))}
           </tr>
         </thead>

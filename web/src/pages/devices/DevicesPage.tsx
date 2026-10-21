@@ -1,3 +1,4 @@
+import { LiveView } from "../../components/live/LiveView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Camera, MoreHorizontal, Smartphone, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -8,7 +9,7 @@ import { keys, useDeviceCommand, useDevices } from "../../api/queries";
 import type { Device, DeviceState, HierarchyNode, Reservation } from "../../api/types";
 import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { DeviceStateBadge } from "../../components/StatusBadge";
-import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, Menu, Modal, PageHeader, ProgressBar, Segmented, Select, cx } from "../../components/ui";
+import { Badge, Button, Card, Drawer, Empty, ErrorBox, Field, Input, Loading, Menu, Modal, PageHeader, ProgressBar, Segmented, Select, cx } from "../../components/ui";
 import { formatTime, parseTs, timeAgo } from "../../lib/format";
 import { useSettings } from "../../lib/settings";
 
@@ -48,6 +49,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
   const reservedByOther = reservation !== null && reservation.holder_name !== holderName;
   const unavailable = device.state === "offline" || device.state === "disabled" || device.disabled;
   const [editing, setEditing] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
   const [tags, setTags] = useState("");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -202,11 +204,13 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
         {!unavailable && <Button size="sm" disabled={writesDisabled} onClick={() => { patch.reset(); setSnapshotError(null); reserve.mutate(); }}>{reservation ? "예약 해제" : "예약"}</Button>}
+        <Button size="sm" disabled={device.state === "offline"} onClick={() => setLiveOpen(true)}>라이브</Button>
         <Button size="sm" icon={<Camera />} disabled={writesDisabled || unavailable || reservedByOther} title={reservedByOther ? "다른 사용자가 예약한 기기입니다." : undefined} onClick={() => void takeSnapshot()}>스냅샷</Button>
         {!editing && <Button size="sm" variant="ghost" icon={<Tag />} disabled={writesDisabled} onClick={() => { setTags(device.tags.join(", ")); patch.reset(); reserve.reset(); setSnapshotError(null); setEditing(true); }}>태그</Button>}
         <div className="ml-auto"><Menu label="기기 메뉴" icon={<MoreHorizontal />} items={[{ label: device.disabled ? "정비 모드 끄기" : "정비 모드 켜기", disabled: writesDisabled, onClick: toggleMaintenance }]} /></div>
       </div>
     </Card>
+    {liveOpen && <Drawer title={`${device.model} 라이브`} onClose={() => setLiveOpen(false)}><LiveView serial={device.serial} /></Drawer>}
     {modalOpen && snapshot && <Modal title={`${device.model} 스냅샷`} onClose={() => setModalOpen(false)}>
       <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? "계층 정보 없음" : `계층 요소 ${snapshot.count}개`}</p>
       <img src={snapshot.src} alt={`${device.model} 화면`} className="mx-auto max-h-[65dvh] max-w-full rounded-lg border border-border object-contain" />

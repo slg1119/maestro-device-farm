@@ -204,3 +204,31 @@ def test_raw_response_redacts_json_escaped_credentials(workspace, db):
         runner.stop()
     logged = json.loads(settings.path("ai", job.id, "response-1.json").read_text())
     assert logged["summary"] == "[REDACTED]"
+
+
+def test_prompts_distinguish_safe_relative_references_from_returned_file_paths(workspace, db):
+    settings, ws, _ = workspace
+    job = generate(db, settings, ws, target_path="flows/ai-search.yaml", draft_changes=[
+        {"op": "put", "path": "subflows/onboarding.yaml", "content": FLOW},
+        {"op": "put", "path": "scripts/setup.js", "content": "output.ready = true"},
+        {"op": "put", "path": "media/test.png", "content": "test-media"},
+    ])
+    content = ('appId: com.example.app\n---\n'
+               '- runFlow: {file: ../subflows/onboarding.yaml}\n'
+               '- runScript: {file: ../scripts/setup.js}\n'
+               '- addMedia: [../media/test.png]\n')
+    fake = FakeAiClient([answer(content, "flows/ai-search.yaml")])
+    runner = AiJobRunner(db, settings, fake, FakeSyntaxChecker())
+    try:
+        runner.run_job(job.id)
+    finally:
+        runner.stop()
+    with db.session() as s:
+        saved = s.get(AiJob, job.id)
+        assert saved.status == "succeeded"
+        assert saved.result["files"] == [{"path": "flows/ai-search.yaml", "content": content}]
+    system = fake.requests[0].system
+    assert "Returned file paths" in system and "no parent traversal" in system
+    assert "runFlow.file, runScript.file, addMedia" in system
+    assert "may use ../" in system and "resolve inside the workspace" in system
+    assert "Prefer reusing an existing subflow over copying it" in system

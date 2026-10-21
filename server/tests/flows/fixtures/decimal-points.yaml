@@ -1,0 +1,8 @@
+appId: org.example
+---
+- tapOn: {point: "94.1%,97.27%"}
+- swipe:
+    start: "50%,80.2%"
+    end: "50.1%,20%"
+- inputText: 'point: "94.1%,97.27%"'
+- tapOn: {point: "94%,97%"}

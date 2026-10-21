@@ -1,5 +1,7 @@
 import { beforeAll, expect, test, vi } from "vitest";
 import type { editor, languages } from "monaco-editor";
+import EditorWorker from "monaco-editor/editor/editor.worker?worker";
+import TypeScriptWorker from "monaco-editor/languages/features/typescript/ts.worker?worker";
 // Monaco ships declarations for its public API only. Test the actual engines directly,
 // avoiding editor DOM/worker initialization in jsdom.
 // @ts-expect-error internal Monaco engine has no published declarations
@@ -26,7 +28,18 @@ vi.mock("monaco-editor", () => ({
 vi.mock("monaco-editor/editor/editor.api", () => ({ languages: { IndentAction: { Indent: 1 } } }));
 vi.mock("@monaco-editor/react", () => ({ loader: { config: vi.fn() } }));
 vi.mock("monaco-editor/editor/editor.worker?worker", () => ({ default: class {} }));
+vi.mock("monaco-editor/languages/features/typescript/ts.worker?worker", () => ({ default: class {} }));
 beforeAll(async () => { await (await import("../monacoSetup")).ensureMonaco(); });
+
+test.each(["typescript", "javascript"])("routes the %s label to the local TypeScript worker", async label => {
+  const worker = await self.MonacoEnvironment!.getWorker!("", label);
+  expect(worker).toBeInstanceOf(TypeScriptWorker);
+  expect(worker).not.toBeInstanceOf(EditorWorker);
+});
+
+test.each(["editorWorkerService", "yaml", "unknown"])("keeps the base editor worker for %s", async label => {
+  expect(await self.MonacoEnvironment!.getWorker!("", label)).toBeInstanceOf(EditorWorker);
+});
 
 function tokenize(source: string): { offset: number; type: string }[][] {
   const tokenizer = new MonarchTokenizer({}, {}, "yaml", compile("yaml", registered.tokenizer), {

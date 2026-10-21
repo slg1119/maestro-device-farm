@@ -1,0 +1,17 @@
+<hierarchy><node bounds="[0,0][1000,2000]">
+  <node clickable="true" bounds="[0,0][200,200]" content-desc="계속"/>
+  <node clickable="true" bounds="[200,0][400,200]">
+    <node bounds="[210,10][390,190]" text="시작하기"/>
+  </node>
+  <node clickable="true" bounds="[400,0][600,200]">
+    <node bounds="[410,10][590,190]" content-desc="건너뛰기"/>
+  </node>
+  <node clickable="true" bounds="[600,0][800,200]" content-desc="중복">
+    <node bounds="[610,10][790,190]" text="반복"/>
+  </node>
+  <node bounds="[800,0][1000,200]" text="반복" content-desc="중복"/>
+  <node clickable="true" bounds="[0,200][200,400]" text="접근성 중복"/>
+  <node bounds="[200,200][400,400]" content-desc="접근성 중복"/>
+  <node clickable="true" bounds="[400,200][600,400]" resource-id="app:id/unique" text="우선순위" content-desc="설명"/>
+  <node clickable="true" bounds="[600,200][800,400]" text="텍스트 우선" content-desc="설명 우선 아님"/>
+</node></hierarchy>

@@ -1,10 +1,11 @@
+import { RecordingLiveView } from "./screen/RecordingLiveView";
 import { Camera, Copy, List, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API, apiJson } from "../../api/client";
 import { useDeviceCommand, useDevices } from "../../api/queries";
 import type { Reservation } from "../../api/types";
 import { useCanWrite } from "../../components/Layout";
-import { Badge, Button, Card, Empty, ErrorBox, Input, StatusDot, cx } from "../../components/ui";
+import { Badge, Button, Card, Empty, ErrorBox, Input, Segmented, StatusDot, cx } from "../../components/ui";
 import { formatTime } from "../../lib/format";
 import { useEditor, useEditorRuntime, type SelectorCandidate } from "../store";
 import { candidatesFor, flattenHierarchy, selectorInsertion, selectorText, snapshotCandidates, type ScreenElement, type SelectorCommand } from "./screen/hierarchy";
@@ -12,11 +13,18 @@ import { SnapshotImage } from "./screen/SnapshotImage";
 
 interface Snapshot { commandId: string; time: string; nodes: ScreenElement[] }
 
-export function ScreenPanel({ onReserve }: { onReserve?: () => void }) {
+export function ScreenPanel({ onReserve, onDraftImported }: { onReserve?: () => void; onDraftImported?: () => void }) {
   const { reservation, setSnapshotSelectors } = useEditor();
   useEffect(() => { setSnapshotSelectors([]); }, [reservation?.id, setSnapshotSelectors]);
   if (!reservation || reservation.status !== "active") return <div className="p-4"><Empty><Smartphone aria-hidden="true" className="mx-auto mb-3 size-8 text-fg-subtle" /><p>화면을 확인하려면 기기를 예약하세요.</p><Button className="mt-4" onClick={onReserve}>기기 예약</Button></Empty></div>;
-  return <ReservedScreen key={reservation.id} reservation={reservation} />;
+  return <ScreenModes key={reservation.id} reservation={reservation} onDraftImported={onDraftImported} />;
+}
+
+function ScreenModes({ reservation, onDraftImported }: { reservation: Reservation; onDraftImported?: () => void }) {
+  const [mode, setMode] = useState<"live" | "snapshot">("live");
+  return <div className="min-w-0"><div className="p-3 pb-0"><Segmented label="화면 모드" options={[{ value: "live", label: "라이브" }, { value: "snapshot", label: "스냅샷" }]} value={mode} onChange={setMode} /></div>
+    {mode === "live" ? <RecordingLiveView serial={reservation.device_serial} onImported={onDraftImported} /> : <ReservedScreen reservation={reservation} />}
+  </div>;
 }
 
 function ReservedScreen({ reservation }: { reservation: Reservation }) {

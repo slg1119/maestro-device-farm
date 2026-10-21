@@ -36,6 +36,19 @@ def workspace_context(root: Path, target_path: str, budget: int = 60_000) -> str
     paths = sorted(p for p in root.rglob("*") if _inside(root, p) and p.is_file())
     contents = {p: p.read_text(encoding="utf-8", errors="replace") for p in paths
                 if p.suffix.lower() in {".yaml", ".yml"}}
+    # New targets have no runFlow edges yet. Show small reusable flows in full so
+    # the provider can discover their behavior, not only their appId headers.
+    reusable = {p for p in contents if "subflows" in p.relative_to(root).parts}
+    for path, content in contents.items():
+        try:
+            documents = list(yaml.safe_load_all(content))
+        except yaml.YAMLError:
+            continue
+        for ref in _flow_references(documents):
+            child = path.parent / ref
+            if _inside(root, child):
+                reusable.add(child.resolve())
+    reusable = {p for p in reusable if p in contents and len(contents[p].encode("utf-8")) <= 16_384}
     target = root / target_path
     required = {p for p in paths if p.name in {"config.yaml", "config.yml"}}
     pending = [target]
@@ -64,7 +77,8 @@ def workspace_context(root: Path, target_path: str, budget: int = 60_000) -> str
         for p in paths:
             if p not in kept or p not in contents:
                 continue
-            content = contents[p] if p in required else re.split(r"(?m)^---\s*(?:#.*)?$", contents[p], 1)[0]
+            content = contents[p] if p in required or p in reusable else re.split(
+                r"(?m)^---\s*(?:#.*)?$", contents[p], 1)[0]
             blocks.append(f"File: {p.relative_to(root)}\n{content}")
         if target not in contents:
             blocks.append(f"File: {target_path}\n(new file)")
@@ -161,6 +175,7 @@ def failure_context(settings, task, *, db=None, target_path=None):
                              if r.status in {"failed", "error"} and r.failure_message)
         log_tail = ""
         images = []
+        hierarchy = ""
         if task.artifacts_dir:
             artifacts = Path(task.artifacts_dir).resolve()
             logs = sorted(p for p in artifacts.rglob("maestro.log") if _inside(artifacts, p))
@@ -170,9 +185,10 @@ def failure_context(settings, task, *, db=None, target_path=None):
             screenshot = _failure_screenshot(artifacts)
             if screenshot:
                 images.append(ImagePart(screenshot.read_bytes(), "image/png"))
+            hierarchy = _failure_hierarchy(artifacts)
         text = (f"## Failure\nFlow: {target}\n{flow_text}\n"
                 f"Task error: {task.error_code or ''} {task.error_message or ''}\n\nJUnit failure messages\n{messages}"
-                f"\n\nmaestro.log (last 200 lines)\n{log_tail}")
+                f"\n\nmaestro.log (last 200 lines)\n{log_tail}" + ("\n\n" + hierarchy if hierarchy else ""))
         return redact(settings, text, run.env.values()), images
     finally:
         if own_db:
@@ -197,10 +213,37 @@ def screen_context(result_dir: Path):
     if not all(_inside(root, path) and path.is_file() for path in (screen, hierarchy)):
         raise ValueError("snapshot files are missing or unsafe")
     tree = json.loads(hierarchy.read_text(encoding="utf-8"))
+    return "## Screen hierarchy (max 400 nodes)\n" + selector_outline(tree), [ImagePart(screen.read_bytes(), "image/png")]
+
+
+def _failure_hierarchy(artifacts: Path) -> str:
+    for flow in parse_steps(artifacts):
+        for step in flow["steps"]:
+            if step["status"] not in {"failed", "warned"}:
+                continue
+            relative = step.get("hierarchy")
+            if not relative and step.get("screenshot"):
+                screenshot = artifacts / step["screenshot"]
+                relative = str(screenshot.parent.parent / "screen-hierarchy" / (screenshot.stem + ".json"))
+            if not relative:
+                continue
+            path = artifacts / relative
+            if not _inside(artifacts, path) or not path.is_file():
+                continue
+            try:
+                outline = selector_outline(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError, TypeError):
+                continue  # Missing or corrupt optional evidence must not prevent repair.
+            return "## Screen hierarchy at failure (max 400 nodes)\n" + outline
+    return ""
+
+
+def selector_outline(tree: dict, budget: int = 60_000) -> str:
+    """Selector-only outline, bounded by both node count and the context byte budget."""
     if not isinstance(tree, dict):
         raise TypeError("hierarchy must be an object")
     keys = ("resource-id", "text", "accessibilityText", "hintText")
-    pending, lines = [(tree, 0)], []
+    pending, lines, size = [(tree, 0)], [], 0
     while pending and len(lines) < 400:
         node, depth = pending.pop()
         if not isinstance(node, dict):
@@ -212,8 +255,12 @@ def screen_context(result_dir: Path):
         if selected:
             selected["bounds"] = attrs.get("bounds", "")
             values = " ".join(f"{key}={json.dumps(value, ensure_ascii=False)}" for key, value in selected.items())
-            lines.append("  " * depth + "- " + values)
+            line = "  " * depth + "- " + values
+            size += len(line.encode("utf-8")) + 1
+            if size > budget:
+                break
+            lines.append(line)
         children = node.get("children") or []
         if isinstance(children, list):
             pending.extend((child, depth + bool(selected)) for child in reversed(children))
-    return "## Screen hierarchy (max 400 nodes)\n" + "\n".join(lines), [ImagePart(screen.read_bytes(), "image/png")]
+    return "\n".join(lines)

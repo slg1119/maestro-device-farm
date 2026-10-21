@@ -60,3 +60,63 @@ def test_required_context_over_budget_fails_explicitly(tmp_path):
     (tmp_path / "main.yaml").write_text("appId: example\n---\n- inputText: " + "a" * 2000)
     with pytest.raises(ValueError, match="exceed.*budget"):
         workspace_context(tmp_path, "main.yaml", budget=1000)
+
+
+@pytest.mark.parametrize("unsafe", ["missing", "symlink", "inside_symlink", "outside", "invalid"])
+def test_failure_hierarchy_skips_missing_or_unsafe_artifacts(workspace, db, failed_task, tmp_path, unsafe):
+    import json
+    from pathlib import Path
+
+    from farm.ai.context import failure_context
+
+    settings, _, _ = workspace
+    root = Path(failed_task.artifacts_dir)
+    flow = root / "maestro/session/login"
+    folder = flow / "screen-hierarchy"
+    folder.mkdir(parents=True)
+    outside = tmp_path / "outside.json"
+    outside.write_text(json.dumps({"attributes": {"text": "PRIVATE_OUTSIDE"}}))
+    target = folder / "failed.json"
+    ref = "screen-hierarchy/failed.json"
+    if unsafe == "symlink":
+        target.symlink_to(outside)
+    elif unsafe == "inside_symlink":
+        actual = folder / "actual.json"
+        actual.write_text(outside.read_text())
+        target.symlink_to(actual)
+    elif unsafe == "outside":
+        ref = str(outside)
+    elif unsafe == "invalid":
+        target.write_text("not JSON")
+    (flow / "commands.json").write_text(json.dumps([{
+        "command": {"tapOnElement": {"selector": {"textRegex": "continue"}}},
+        "metadata": {"status": "FAILED", "artifacts": [{"type": "SCREEN_HIERARCHY", "path": ref}]},
+    }]))
+    context, _ = failure_context(settings, failed_task, db=db)
+    assert "Screen hierarchy at failure" not in context and "PRIVATE_OUTSIDE" not in context
+
+
+def test_failure_hierarchy_redacts_run_and_provider_secrets(workspace, db, failed_task):
+    import json
+    from pathlib import Path
+
+    from pydantic import SecretStr
+
+    from farm.ai.context import failure_context
+
+    settings, _, _ = workspace
+    settings.openai_api_key = SecretStr("private-provider-key")
+    root = Path(failed_task.artifacts_dir)
+    flow = root / "maestro/session/login"
+    folder = flow / "screen-hierarchy"
+    folder.mkdir(parents=True)
+    (folder / "failed.json").write_text(json.dumps({"attributes": {
+        "text": "private-run-password private-provider-key", "resource-id": "continue"}}))
+    (flow / "commands.json").write_text(json.dumps([{
+        "command": {"tapOnElement": {}}, "metadata": {"status": "FAILED", "artifacts": [
+            {"type": "SCREEN_HIERARCHY", "path": "screen-hierarchy/failed.json"}]},
+    }]))
+    context, _ = failure_context(settings, failed_task, db=db)
+    assert "## Screen hierarchy at failure (max 400 nodes)" in context and 'resource-id="continue"' in context
+    assert "private-run-password" not in context and "private-provider-key" not in context
+    assert "[REDACTED]" in context

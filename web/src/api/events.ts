@@ -13,6 +13,7 @@ export const EVENT_TYPES = [
   "task.updated",
   "workspace.updated",
   "ai_job.updated",
+  "recording.updated",
 ] as const;
 
 export interface StreamEvent {
@@ -33,6 +34,8 @@ export function keysFor(event: StreamEvent): QueryKey[] {
       return [keys.devices, ...(typeof event.payload.id === "string" ? [keys.deviceCommand(event.payload.id)] : [])];
     case "ai_job.updated":
       return [...(typeof event.payload.id === "string" ? [keys.aiJob(event.payload.id)] : []), ["ai-jobs"], keys.aiStatus];
+    case "recording.updated":
+      return [...(typeof event.payload.id === "string" ? [keys.recording(event.payload.id)] : []), keys.deviceRecordingsAll];
     case "run.updated":
     case "task.updated": {
       const id = runId ?? (event.type === "run.updated" ? (event.payload.id as string | undefined) ?? null : null);

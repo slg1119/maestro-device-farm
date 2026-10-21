@@ -78,6 +78,8 @@ export interface RunSummary {
 }
 
 export interface Task {
+  /** Older farm snapshots may omit this field. */
+  interfered?: boolean;
   id: string;
   seq: number;
   device_serial: string | null;
@@ -91,6 +93,34 @@ export interface Task {
   started_at: string | null;
   finished_at: string | null;
 }
+
+export interface StreamTicket { ticket: string; expires_at: string; path: string }
+
+export interface RecordingStep {
+  kind: "launch" | "tap" | "swipe" | "input" | "back" | "key";
+  selector?: { id?: string; text?: string };
+  point?: string;
+  from?: string;
+  to?: string;
+  text?: string;
+  key?: string;
+  ts: string;
+}
+export interface Recording {
+  id: string;
+  device_serial: string;
+  status: "active" | "stopping" | "done" | "cancelled";
+  include_launch_app: boolean;
+  app_package: string | null;
+  workspace_id: string | null;
+  steps: RecordingStep[];
+  yaml: string | null;
+  ai_job_id: string | null;
+  created_by: string;
+  created_at: string;
+  finished_at: string | null;
+}
+export interface RecordingCreate { include_launch_app: boolean; workspace?: string; app_package?: string }
 
 export interface CaseResult {
   task_id: string;
@@ -269,7 +299,7 @@ export interface AiAttempt {
 }
 export interface AiJob {
   id: string;
-  kind: "generate" | "fix";
+  kind: "generate" | "fix" | "record";
   status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   workspace_id: string;
   base_sha: string;

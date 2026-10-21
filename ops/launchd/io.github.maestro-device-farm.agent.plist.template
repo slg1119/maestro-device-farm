@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>io.github.maestro-device-farm.agent</string>
+  <key>ProgramArguments</key>
+  <array><string>__UV__</string><string>run</string><string>farm</string><string>agent</string></array>
+  <key>WorkingDirectory</key><string>__REPO__/server</string>
+  <key>KeepAlive</key><true/>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/maestro-device-farm/agent.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/maestro-device-farm/agent-error.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>__HOME__</string>
+    <key>PATH</key><string>__HOME__/.maestro/bin:__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- 필요할 때 주석을 풀고 실제 값은 설치된 plist에서만 설정하세요.
+    <key>FARM_GIT_REMOTE_TEMPLATE</key><string>git@github.com:{repo}.git</string>
+    <key>FARM_GITHUB_TOKEN</key><string>BOT_PAT_HERE</string>
+    <key>FARM_OPENAI_API_KEY</key><string>OPENAI_KEY_HERE</string>
+    -->
+  </dict>
+</dict>
+</plist>

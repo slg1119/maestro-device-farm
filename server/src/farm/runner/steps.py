@@ -57,7 +57,11 @@ def _artifact_paths(metadata: dict, flow_dir: Path, root: Path) -> dict:
         value = artifact.get("path")
         if key is None or not isinstance(value, str):
             continue
-        target = (flow_dir / value).resolve()
+        target = flow_dir / value
+        # Preserve the symlink check before resolve() erases the original path.
+        if any(p.is_symlink() for p in (target, *target.parents) if p != root):
+            continue
+        target = target.resolve()
         if target.is_relative_to(root):
             paths[key] = target.relative_to(root).as_posix()
     return paths

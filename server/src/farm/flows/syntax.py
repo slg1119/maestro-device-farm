@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import yaml
+
 log = logging.getLogger(__name__)
 ISSUE_RE = re.compile(r"^(?P<message>.+?) at /syntax-checker:(?P<line>\d+):(?P<column>\d+)\s*$")
 
@@ -37,6 +39,9 @@ class MaestroSyntaxChecker:
         self.timeout = timeout
 
     def check(self, content: str) -> list[SyntaxIssue]:
+        issues = percentage_point_issues(content)
+        if issues:
+            return issues
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "flow.yaml"
             path.write_text(content, encoding="utf-8")
@@ -52,3 +57,35 @@ class MaestroSyntaxChecker:
             return []
         output = f"{proc.stderr}\n{proc.stdout}".strip()
         return parse_issues(output) or [SyntaxIssue(output[-500:] or f"maestro check-syntax exited {proc.returncode}")]
+
+
+def percentage_point_issues(content: str) -> list[SyntaxIssue]:
+    """check-syntax accepts fractional percentages, but Maestro's runtime does not."""
+    issues = []
+    seen = set()
+
+    def visit(node):
+        if id(node) in seen:  # YAML aliases may be recursive.
+            return
+        seen.add(id(node))
+        if isinstance(node, yaml.MappingNode):
+            for key, value in node.value:
+                if (isinstance(key, yaml.ScalarNode) and key.value in {"point", "start", "end"}
+                        and isinstance(value, yaml.ScalarNode)
+                        and re.fullmatch(r"\s*-?\d+(?:\.\d+)?%\s*,\s*-?\d+(?:\.\d+)?%\s*", value.value)
+                        and "." in value.value):
+                    issues.append(SyntaxIssue('Maestro는 정수 퍼센트 좌표만 지원합니다 (예: "94%,97%")',
+                                              value.start_mark.line + 1, value.start_mark.column + 1))
+                visit(value)
+        elif isinstance(node, yaml.SequenceNode):
+            for value in node.value:
+                visit(value)
+
+    try:
+        for node in yaml.compose_all(content, Loader=yaml.SafeLoader):
+            if node is not None:
+                seen.clear()
+                visit(node)
+    except yaml.YAMLError:
+        return []  # The caller or Maestro reports malformed YAML.
+    return issues

@@ -114,6 +114,7 @@ class TaskOut(BaseModel):
     seq: int
     device_serial: str | None
     pinned: bool
+    interfered: bool
     flows: list[str]
     status: str
     attempt: int

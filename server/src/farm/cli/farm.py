@@ -1,24 +1,25 @@
 import argparse
-import logging
-import sys
-
-from farm.config import Settings
-from farm.db import migrate
-from farm.auth import TokenExistsError, create_token, list_tokens, revoke_token
-from farm.db.engine import Database
-
 import asyncio
+import logging
 import signal
+import sys
+from time import monotonic, sleep
 
-from sqlalchemy import inspect
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 
 from farm.agent.main import Agent
+from farm.auth import TokenExistsError, create_token, list_tokens, revoke_token
+from farm.config import Settings
+from farm.db import migrate
+from farm.db.engine import Database
 from farm.devices.adb import Adb, AndroidAdbProvider
 from farm.devices.fake import FakeProvider
 from farm.devices.provider import DeviceInfo
 from farm.runner.fake import FakeInspector, FakeRunner
 from farm.runner.inspect import AdbInspector
 from farm.runner.maestro import MaestroRunner
+from farm.stream.manager import StreamManager
 from farm.workspaces.errors import WorkspaceError
 from farm.workspaces.registry import create_workspace, delete_workspace, list_workspaces
 
@@ -49,6 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
     ws_sub.add_parser("list", help="list workspaces")
     ws_sub.add_parser("remove", help="unregister a workspace (the repo is untouched)").add_argument("name")
     sub.add_parser("api", help="run farm-api (applies migrations first)")
+    sub.add_parser("doctor", help="호스트와 팜 상태 점검")
+    retention = sub.add_parser("retention", help="보관 기간이 지난 데이터 정리")
+    retention_run = retention.add_subparsers(dest="retention_cmd", required=True).add_parser("run", help="지금 정리")
+    retention_run.add_argument("--dry-run", action="store_true", help="파일과 DB를 변경하지 않고 정리 예정 내역 표시")
     agent = sub.add_parser("agent", help="run farm-agent")
     agent.add_argument("--fake", type=int, default=0, metavar="N",
                        help="simulate N devices with the fake runner instead of adb/maestro")
@@ -108,19 +113,39 @@ def _cmd_workspace(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
-def schema_ready(db: Database) -> bool:
-    return inspect(db.engine).has_table("devices")
+def wait_for_schema(db: Database, timeout: float = 120) -> bool:
+    heads = set(ScriptDirectory.from_config(migrate.alembic_config(db.path)).get_heads())
+    deadline = monotonic() + timeout
+    waiting_logged = False
+    while True:
+        # Close each transaction before sleeping so farm-api can migrate independently.
+        with db.engine.connect() as connection:
+            current = set(MigrationContext.configure(connection).get_current_heads())
+        if current == heads:
+            return True
+        if not waiting_logged:
+            logging.getLogger(__name__).info("waiting for database migrations (current %s, head %s)",
+                                             ",".join(sorted(current)) or "none", ",".join(sorted(heads)))
+            waiting_logged = True
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            print(f"database migrations not ready after {timeout:g}s: "
+                  "start farm api or run `farm db upgrade`", file=sys.stderr)
+            return False
+        sleep(min(2, remaining))
 
 
 def build_agent(settings: Settings, *, db: Database | None = None, fake_devices: int = 0) -> Agent:
     db = db or Database(settings.database_path)
+    adb = Adb()
+    stream_manager = StreamManager(adb, settings, db=db, control_hooks=[])
     if fake_devices:
         infos = [DeviceInfo(f"fake-{i}", "device", model="Fake Pixel", manufacturer="Fake", os_version="14",
                             sdk_int=34, battery=100) for i in range(1, fake_devices + 1)]
-        return Agent(settings, db, FakeProvider(infos), FakeRunner(delay=2.0), FakeInspector())
-    adb = Adb()
+        return Agent(settings, db, FakeProvider(infos), FakeRunner(delay=2.0), FakeInspector(),
+                     stream_manager=stream_manager)
     return Agent(settings, db, AndroidAdbProvider(adb), MaestroRunner(adb, min_battery=settings.min_battery),
-                 AdbInspector(adb))
+                 AdbInspector(adb), stream_manager=stream_manager)
 
 
 async def _run_agent(agent: Agent) -> None:
@@ -132,11 +157,13 @@ async def _run_agent(agent: Agent) -> None:
 
 def _cmd_agent(args: argparse.Namespace, settings: Settings) -> int:
     db = Database(settings.database_path)
-    if not schema_ready(db):
-        print("database schema missing: run `farm db upgrade` (or start `farm api`) first", file=sys.stderr)
-        return 2
-    asyncio.run(_run_agent(build_agent(settings, db=db, fake_devices=args.fake)))
-    return 0
+    try:
+        if not wait_for_schema(db):
+            return 2
+        asyncio.run(_run_agent(build_agent(settings, db=db, fake_devices=args.fake)))
+        return 0
+    finally:
+        db.dispose()
 
 
 def _cmd_api(_args: argparse.Namespace, settings: Settings) -> int:
@@ -149,7 +176,43 @@ def _cmd_api(_args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
-HANDLERS = {"db": _cmd_db, "token": _cmd_token, "workspace": _cmd_workspace, "api": _cmd_api, "agent": _cmd_agent}
+def _cmd_doctor(_args: argparse.Namespace, settings: Settings) -> int:
+    from farm.ops.doctor import run_doctor
+
+    try:
+        db = Database(settings.database_path)
+    except OSError:
+        print("FAIL DB: 데이터 경로 생성 실패 · FARM_DATA_DIR와 디렉터리 권한을 확인하세요")
+        return 1
+    try:
+        checks = run_doctor(db, settings)
+        for check in checks:
+            print(check)
+        return int(any(check.status == "FAIL" for check in checks))
+    finally:
+        db.dispose()
+
+
+def _cmd_retention(args: argparse.Namespace, settings: Settings) -> int:
+    from dataclasses import asdict
+
+    from farm.ops.retention import run_retention
+
+    db = Database(settings.database_path)
+    try:
+        paths = []
+        report = run_retention(db, settings, dry_run=args.dry_run, removal_paths=paths if args.dry_run else None)
+        print(("보관 정리 미리보기: " if args.dry_run else "보관 정리 완료: ") +
+              " ".join(f"{key}={value}" for key, value in asdict(report).items()))
+        for path in paths:
+            print("삭제 예정: " + " ".join(str(path).splitlines()))
+        return 0
+    finally:
+        db.dispose()
+
+
+HANDLERS = {"db": _cmd_db, "token": _cmd_token, "workspace": _cmd_workspace, "api": _cmd_api,
+            "agent": _cmd_agent, "doctor": _cmd_doctor, "retention": _cmd_retention}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -3,7 +3,7 @@ from typing import Literal
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     db_path: Path | None = None
     api_host: str = "0.0.0.0"
     api_port: int = 8700
+    agent_stream_port: int = 8701
+    stream_max_size: int = 1280
+    stream_max_fps: int = 30
+    scrcpy_server_path: Path = REPO_ROOT / "ops" / "scrcpy" / "scrcpy-server-v4.1"
+    scrcpy_version: str = "4.1"
     public_url: str = "http://localhost:8700"
     task_timeout_sec: int = 1800
     retry_backoff_sec: int = 15
@@ -23,6 +28,8 @@ class Settings(BaseSettings):
     max_apk_mb: int = 500
     max_flows_mb: int = 50
     max_media_mb: int = 10
+    retention_days: int = Field(default=30, ge=0)
+    app_keep_per_package: int = Field(default=20, ge=0)
     github_token: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-6.1-sol"
@@ -39,7 +46,7 @@ class Settings(BaseSettings):
     # Internal network only by default: anyone may write. Turn on to demand a token from `farm token create`.
     require_token: bool = False
 
-    @field_validator("data_dir", "db_path", "web_dist", mode="after")
+    @field_validator("data_dir", "db_path", "web_dist", "scrcpy_server_path", mode="after")
     @classmethod
     def _expand_user(cls, value: Path | None) -> Path | None:
         return value.expanduser() if value is not None else None

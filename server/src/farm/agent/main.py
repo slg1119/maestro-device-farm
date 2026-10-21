@@ -9,9 +9,14 @@ from farm.config import Settings
 from farm.db.engine import Database
 from farm.devices.provider import DeviceInfo, DeviceProvider
 from farm.devices.registry import heartbeat, mark_healthy, sync_devices, unhealthy_serials
+from farm.ops.retention import run_retention
 from farm.runner.base import Inspector, Runner
 from farm.scheduler.reservations import expire_reservations
 from farm.scheduler.sweeper import fail_stale_pinned_tasks
+from farm.stream.effects import record_control
+from farm.stream.manager import ControlHook, StreamManager
+from farm.stream.recorder import Recorder
+from farm.stream.server import StreamServer
 from farm.timeutil import now
 
 log = logging.getLogger(__name__)
@@ -21,7 +26,9 @@ class Agent:
     def __init__(self, settings: Settings, db: Database, provider: DeviceProvider, runner: Runner,
                  inspector: Inspector | None = None, *, agent_id: str | None = None, poll_sec: float = 3.0,
                  sweep_sec: float = 30.0, heartbeat_sec: float = 5.0, unhealthy_recheck_sec: float = 60.0,
-                 worker_idle_sleep: float = 1.0, cancel_poll_sec: float = 2.0) -> None:
+                 worker_idle_sleep: float = 1.0, cancel_poll_sec: float = 2.0,
+                 stream_manager: StreamManager | None = None,
+                 control_hooks: list[ControlHook] | None = None) -> None:
         self.settings = settings
         self.db = db
         self.provider = provider
@@ -34,6 +41,15 @@ class Agent:
         self.unhealthy_recheck_sec = unhealthy_recheck_sec
         self.worker_idle_sleep = worker_idle_sleep
         self.cancel_poll_sec = cancel_poll_sec
+        self.stream_manager = stream_manager
+        self.recorder = Recorder(db, stream_manager, stream_manager.adb, lambda: set(self.workers)) if stream_manager else None
+        if stream_manager is not None:
+            async def record_control_hook(event):
+                await asyncio.to_thread(record_control, db, event)
+
+            hooks = list(control_hooks) if control_hooks is not None else list(stream_manager.control_hooks)
+            stream_manager.control_hooks = [record_control_hook, self.recorder.on_control, *hooks]
+        self.stream_server = StreamServer(stream_manager, settings) if stream_manager is not None else None
         self.started_at = now()
         self.workers: dict[str, DeviceWorker] = {}
         self._retiring: set[asyncio.Task] = set()
@@ -47,18 +63,31 @@ class Agent:
 
     async def run(self) -> None:
         await self.start()
+        if self.stream_server:
+            try:
+                await self.stream_server.start()
+            except OSError:
+                log.error("agent stream server could not bind 127.0.0.1:%d; continuing without streaming",
+                          self.settings.agent_stream_port)
         loops = [
             asyncio.create_task(self._every(self.poll_sec, self.poll_devices_once)),
             asyncio.create_task(self._every(self.sweep_sec, self.sweep_once)),
             asyncio.create_task(self._every(self.heartbeat_sec, self.heartbeat_once)),
             asyncio.create_task(self._every(self.unhealthy_recheck_sec, self.recheck_unhealthy_once)),
+            asyncio.create_task(self._retention_loop()),
         ]
+        if self.recorder:
+            loops.append(asyncio.create_task(self._every(1, self.recorder.poll_once), name="recording-poll"))
         try:
             await self._stop.wait()
         finally:
             for loop in loops:
                 loop.cancel()
             await asyncio.gather(*loops, return_exceptions=True)
+            if self.recorder:
+                await self.recorder.stop()
+            if self.stream_server:
+                await self.stream_server.stop()
             await self.stop_workers()
 
     def request_stop(self) -> None:
@@ -77,6 +106,8 @@ class Agent:
             worker.start()
             self.workers[serial] = worker
         for serial in sorted(self.workers.keys() - connected):
+            if self.stream_manager:
+                await self.stream_manager.device_disconnected(serial)
             worker = self.workers.pop(serial)
             worker.notify_disconnected()
             retiring = asyncio.create_task(worker.wait())
@@ -106,6 +137,14 @@ class Agent:
             except Exception:  # one failed iteration must not stop the loop
                 log.exception("agent loop %s failed", fn.__name__)
             await asyncio.sleep(interval)
+
+    async def _retention_loop(self) -> None:
+        await asyncio.sleep(60)
+        await self._every(86400, self.retention_once)
+
+    async def retention_once(self) -> None:
+        report = await asyncio.to_thread(run_retention, self.db, self.settings)
+        log.info("retention complete: %s", report)
 
     def _recover(self) -> list[str]:
         with self.db.session() as s:
