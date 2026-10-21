@@ -140,15 +140,16 @@ def run_doctor(db: Database, settings: Settings, *,
     if not devices:
         checks.append(Check("WARN", "devices", "등록된 기기 없음 · USB 디버깅과 farm agent를 확인하세요"))
     for device in devices:
-        checks.append(Check("WARN" if device.state in {"offline", "unhealthy", "unauthorized"} else "OK",
-                            f"device {device.serial}", f"상태 {device.state} · USB 연결과 기기 사용 가능 상태를 확인하세요"))
+        warning = device.state in {"offline", "unhealthy", "unauthorized"}
+        checks.append(Check("WARN" if warning else "OK", f"device {device.serial}", f"상태 {device.state}" +
+                            (" · USB 연결과 기기 사용 가능 상태를 확인하세요" if warning else "")))
     if not agents:
         checks.append(Check("WARN", "agent heartbeat", "기록 없음 · uv run farm agent를 실행하세요"))
     for agent in agents:
         try:
             age = max(0.0, age_seconds(agent.last_heartbeat_at))
             checks.append(Check("OK" if age <= 30 else "WARN", f"agent {agent.id}",
-                                f"heartbeat {age:.0f}초 전 · 30초 초과 시 agent 로그를 확인하세요"))
+                                f"heartbeat {age:.0f}초 전" + (" · agent 로그를 확인하세요" if age > 30 else "")))
         except (ValueError, TypeError):
             checks.append(Check("WARN", f"agent {agent.id}", "heartbeat 시간 형식 오류 · agent를 확인하세요"))
     try:
@@ -157,7 +158,8 @@ def run_doctor(db: Database, settings: Settings, *,
             path = path.parent
         usage = shutil.disk_usage(path)
         checks.append(Check("WARN" if usage.free < 1024 ** 3 else "OK", "disk",
-                            f"{settings.data_dir} · 여유 {usage.free / 1024 ** 3:.1f} GiB · 보관 설정을 확인하세요"))
+                            f"{settings.data_dir} · 여유 {usage.free / 1024 ** 3:.1f} GiB" +
+                            (" · 보관 설정을 확인하세요" if usage.free < 1024 ** 3 else "")))
     except OSError:
         checks.append(Check("FAIL", "disk", "여유 공간 조회 실패 · 데이터 경로 권한을 확인하세요"))
 

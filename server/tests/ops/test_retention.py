@@ -196,3 +196,59 @@ def test_settings_defaults_and_nonnegative_limits(settings):
         Settings(retention_days=-1)
     with pytest.raises(ValidationError):
         Settings(app_keep_per_package=-1)
+
+
+def test_dry_run_reports_every_category_without_changing_files_or_rows(db, settings, monkeypatch):
+    import sqlite3
+    from contextlib import closing
+
+    settings.app_keep_per_package = 0
+    apk = build(db, settings, "expired", 100)
+    run(db, settings, "old", "expired", 100)
+    with db.session() as s:
+        s.add(Event(type="old", ts=shift(NOW, -8 * DAY)))
+        s.add(AiJob(id="old-ai", kind="generate", status="succeeded", workspace_id="ws", base_sha="sha",
+                    prompt="keep prompt", model="fake", created_at=shift(NOW, -31 * DAY)))
+    with db.engine.begin() as conn:
+        conn.execute(text("INSERT INTO stream_tickets "
+                          "(ticket_hash, device_serial, actor, author_name, expires_at, created_at) "
+                          "VALUES ('old', 'fake', 'test', 'test', :ts, :ts)"), {"ts": shift(NOW, -2 * DAY)})
+    for folder in (settings.path("ai", "old-ai"), settings.path("inspect", "old")):
+        folder.mkdir(parents=True)
+        (folder / "keep.txt").write_text("keep")
+        ts = parse(shift(NOW, -2 * DAY)).timestamp()
+        os.utime(folder, (ts, ts))
+
+    def rows():
+        with closing(sqlite3.connect(db.path)) as conn:
+            return list(conn.iterdump())
+
+    def files():
+        return {str(p): (p.read_bytes(), p.stat().st_mtime_ns) for category in
+                ("apks", "runs", "uploads", "ai", "inspect") for p in settings.path(category).rglob("*") if p.is_file()}
+
+    before_rows, before_files = rows(), files()
+    paths = []
+    report = run_retention(db, settings, now=NOW, dry_run=True, removal_paths=paths)
+    assert asdict(report) == {"runs": 1, "app_builds": 1, "inspect": 1, "events": 1, "stream_tickets": 1, "ai_jobs": 1}
+    assert set(paths) == {settings.path("runs", "old"), settings.path("uploads", "old"), apk,
+                          settings.path("inspect", "old"), settings.path("ai", "old-ai")}
+    assert rows() == before_rows and files() == before_files
+    assert asdict(run_retention(db, settings, now=NOW)) == asdict(report)
+
+
+def test_retention_cli_dry_run_caps_paths_at_50_and_keeps_data(db, settings, monkeypatch, capsys):
+    from farm.cli.farm import main
+
+    apk = build(db, settings, "apk", 100)
+    for index in range(30):
+        run(db, settings, f"old-{index}", "apk", 100)
+    monkeypatch.setenv("FARM_DATA_DIR", str(settings.data_dir))
+    assert main(["retention", "run", "--dry-run"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert "runs=30" in lines[0] and "미리보기" in lines[0]
+    assert len(lines[1:]) == 50
+    assert all(line.startswith("삭제 예정: ") for line in lines[1:])
+    assert apk.exists() and all(settings.path("runs", f"old-{i}", "test.txt").exists() for i in range(30))
+    with db.session() as s:
+        assert all(not s.get(Run, f"old-{i}").artifacts_purged for i in range(30))

@@ -63,6 +63,10 @@ def test_build_agent_with_fake_devices(settings):
 
 
 def test_agent_refuses_to_start_without_schema(tmp_path, monkeypatch, capsys):
+    from farm.cli import farm
+    elapsed = [0]
+    monkeypatch.setattr(farm, "monotonic", lambda: elapsed[0])
+    monkeypatch.setattr(farm, "sleep", lambda delay: elapsed.__setitem__(0, elapsed[0] + delay))
     monkeypatch.setenv("FARM_DATA_DIR", str(tmp_path / "empty"))
     assert main(["agent"]) == 2
     assert "farm db upgrade" in capsys.readouterr().err
@@ -81,3 +85,66 @@ def test_workspace_commands(cli_env, tmp_path, monkeypatch, capsys):
     assert f"app\tacme/app@main:.maestro\t{origin.head()[:7]}\tsynced" in capsys.readouterr().out
     assert main(["workspace", "remove", "app"]) == 0
     assert main(["workspace", "remove", "app"]) == 1
+
+
+def test_agent_waits_for_api_migrations_before_recovery(settings, monkeypatch, caplog):
+    from alembic import command
+    from sqlalchemy import inspect
+
+    from farm.cli import farm
+    from farm.db import migrate
+
+    settings.data_dir.mkdir(parents=True)
+    command.upgrade(migrate.alembic_config(settings.database_path), "0004")
+    monkeypatch.setenv("FARM_DATA_DIR", str(settings.data_dir))
+    waits, starts = [], []
+
+    def api_upgrade(delay):
+        waits.append(delay)
+        assert starts == []
+        migrate.upgrade(settings.database_path)
+
+    async def run_agent(agent):
+        assert "interfered" in {c["name"] for c in inspect(agent.db.engine).get_columns("tasks")}
+        await agent.start()
+        starts.append(True)
+
+    monkeypatch.setattr(farm, "sleep", api_upgrade, raising=False)
+    monkeypatch.setattr(farm, "_run_agent", run_agent)
+    with caplog.at_level("INFO"):
+        assert main(["agent", "--fake", "1"]) == 0
+    assert waits == [2] and starts == [True]
+    assert caplog.text.count("waiting for database migrations (current 0004, head 0005)") == 1
+
+
+def test_agent_times_out_at_120_seconds_without_migrating(settings, monkeypatch, caplog, capsys):
+    from alembic import command
+    from sqlalchemy import inspect, text
+
+    from farm.cli import farm
+    from farm.db import migrate
+
+    settings.data_dir.mkdir(parents=True)
+    command.upgrade(migrate.alembic_config(settings.database_path), "0004")
+    monkeypatch.setenv("FARM_DATA_DIR", str(settings.data_dir))
+    elapsed, waits = [0], []
+
+    def advance(delay):
+        elapsed[0] += delay
+        waits.append(delay)
+
+    monkeypatch.setattr(farm, "monotonic", lambda: elapsed[0], raising=False)
+    monkeypatch.setattr(farm, "sleep", advance, raising=False)
+    monkeypatch.setattr(farm, "build_agent", lambda *a, **k: pytest.fail("agent started before migrations"))
+    with caplog.at_level("INFO"):
+        assert main(["agent"]) == 2
+    assert waits == [2] * 60 and elapsed == [120]
+    assert caplog.text.count("waiting for database migrations (current 0004, head 0005)") == 1
+    assert "120" in capsys.readouterr().err
+    database = Database(settings.database_path)
+    try:
+        with database.engine.connect() as conn:
+            assert conn.scalar(text("SELECT version_num FROM alembic_version")) == "0004"
+        assert "interfered" not in {c["name"] for c in inspect(database.engine).get_columns("tasks")}
+    finally:
+        database.dispose()

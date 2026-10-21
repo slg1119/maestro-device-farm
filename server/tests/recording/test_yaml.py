@@ -41,3 +41,12 @@ def test_yaml_golden_and_fake_maestro_check_syntax(fakebin):
 
 def test_unknown_package_uses_explicit_maestro_variable():
     assert steps_to_yaml([], None) == 'appId: ${APP_ID}\n---\n[]\n'
+
+
+def test_old_recordings_normalize_decimal_percentages_without_changing_steps():
+    steps = [{"kind": "tap", "point": "94.1%,97.27%"},
+             {"kind": "swipe", "from": "-2.1%,101.9%", "to": "50.9%,20.1%"}]
+    commands = list(yaml.safe_load_all(steps_to_yaml(steps, "app")))[1]
+    assert commands == [{"tapOn": {"point": "94%,97%"}},
+                        {"swipe": {"start": "0%,100%", "end": "51%,20%"}}]
+    assert steps[0]["point"] == "94.1%,97.27%"

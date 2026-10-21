@@ -77,11 +77,18 @@ def agent(db, settings, *, outcomes=(), inspect=None, on_task=None):
                         flow_dir = artifacts / "maestro/session/login"
                         (flow_dir / "screenshots").mkdir(parents=True)
                         (flow_dir / "screenshots/failed.png").write_bytes(b"failed-step-image")
+                        (flow_dir / "screen-hierarchy").mkdir()
+                        (flow_dir / "screen-hierarchy/failed.json").write_text(json.dumps({
+                            "attributes": {"resource-id": "failure:continue", "text": "실패 화면 계속",
+                                           "noise": "DO_NOT_INCLUDE"},
+                            "children": [{"attributes": {"text": f"failure-node-{i}"}} for i in range(405)],
+                        }))
                         (flow_dir / "screenshots/newer.png").write_bytes(b"wrong-latest-image")
                         (flow_dir / "commands.json").write_text(json.dumps([{
                             "command": {"tapOnElement": {"selector": {"textRegex": "login"}}},
                             "metadata": {"status": "FAILED", "artifacts": [
-                                {"type": "SCREENSHOT", "path": "screenshots/failed.png"}]},
+                                {"type": "SCREENSHOT", "path": "screenshots/failed.png"},
+                                {"type": "SCREEN_HIERARCHY", "path": "screen-hierarchy/failed.json"}]},
                         }]))
                         (artifacts / "maestro.log").write_text("device failure log\n")
                         with db.session() as s:
@@ -161,6 +168,9 @@ def test_auto_repair_passes_second_run_with_snapshot_and_failed_step(workspace, 
     text = fake.requests[1].parts[0].text
     assert "the flow failed on the device" in text
     assert "Expected repaired selector" in text and "device failure log" in text
+    assert "## Screen hierarchy at failure (max 400 nodes)" in text
+    assert 'resource-id="failure:continue"' in text and 'text="실패 화면 계속"' in text
+    assert "DO_NOT_INCLUDE" not in text and "failure-node-398" in text and "failure-node-399" not in text
     assert any(isinstance(p, ImagePart) and p.data == b"failed-step-image" for p in fake.requests[1].parts)
     assert not any(isinstance(p, ImagePart) and p.data == b"wrong-latest-image" for p in fake.requests[1].parts)
     with db.session() as s:
