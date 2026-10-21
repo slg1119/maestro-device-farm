@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     git_poll_sec: int = 60
     git_remote_template: str = "https://github.com/{repo}.git"
     web_dist: Path = REPO_ROOT / "web" / "dist"
+    # Internal network only by default: anyone may write. Turn on to demand a token from `farm token create`.
+    require_token: bool = False
 
     @field_validator("data_dir", "db_path", "web_dist", mode="after")
     @classmethod

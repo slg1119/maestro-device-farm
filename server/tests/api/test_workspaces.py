@@ -25,13 +25,14 @@ def _error(res):
     return res.status_code, res.json()["error"]["code"]
 
 
-def test_register_list_get(client, auth, ws, origin):
+def test_register_list_get(client, secured_client, auth, ws, origin):
     assert ws["head_sha"] == origin.head() and ws["branch"] == "main"
     assert [w["name"] for w in client.get("/api/v1/workspaces").json()] == ["app"]
     assert client.get("/api/v1/workspaces/app").json()["id"] == ws["id"]
     assert client.get(f"/api/v1/workspaces/{ws['id']}").json()["name"] == "app"
     assert _error(client.get("/api/v1/workspaces/nope")) == (404, "workspace_not_found")
-    assert _error(client.post("/api/v1/workspaces", json={"name": "x", "repo": "acme/app"})) == (401, "unauthorized")
+    assert _error(secured_client.post("/api/v1/workspaces", json={"name": "x", "repo": "acme/app"})) == (
+        401, "unauthorized")
     assert _error(client.post("/api/v1/workspaces", json={"name": "app", "repo": "acme/app"}, headers=auth)) == (
         409, "workspace_exists")
 
@@ -112,14 +113,15 @@ def test_commit_history_diff_restore(client, auth, ws, origin):
     assert "search.yaml" in names
 
 
-def test_writes_need_token(client, ws):
+def test_writes_need_token_when_enabled(secured_client, ws):
     for method, path, body in [("post", "/api/v1/workspaces/app/sync", None),
                                ("post", "/api/v1/workspaces/app/validate", {"changes": []}),
                                ("post", "/api/v1/workspaces/app/commits", {}),
                                ("post", "/api/v1/workspaces/app/restore", {}),
                                ("patch", "/api/v1/workspaces/app", {}),
                                ("delete", "/api/v1/workspaces/app", None)]:
-        res = getattr(client, method)(path, json=body) if body is not None else getattr(client, method)(path)
+        call = getattr(secured_client, method)
+        res = call(path, json=body) if body is not None else call(path)
         assert res.status_code == 401, (method, path)
 
 

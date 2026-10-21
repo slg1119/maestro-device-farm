@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { saveSettings } from "../../../lib/settings";
-import { apiErrorResponse, jsonResponse, mockApi } from "../../../test/api";
+import { apiErrorResponse, healthBody, jsonResponse, mockApi } from "../../../test/api";
 import { app } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { AppsPage } from "../AppsPage";
@@ -110,9 +110,9 @@ test("filters package names by case-insensitive substring without requesting aga
 });
 
 test("disables writes without a token and keeps downloads available", async () => {
-  mockApi({ "GET /api/v1/apps": [app()] });
+  mockApi({ "GET /api/v1/apps": [app()], "GET /api/v1/healthz": healthBody({ auth_required: true }) });
   renderPage(<AppsPage />);
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "APK 업로드" })).toBeDisabled();
   expect(screen.getByLabelText("APK 파일")).toBeDisabled();
   expect(await screen.findByRole("button", { name: "고정" })).toBeDisabled();

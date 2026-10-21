@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { keys } from "../../../api/queries";
 import { saveSettings } from "../../../lib/settings";
-import { apiErrorResponse, jsonResponse, mockApi } from "../../../test/api";
+import { apiErrorResponse, healthBody, jsonResponse, mockApi } from "../../../test/api";
 import { workspace } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { WorkspacesPage } from "../WorkspacesPage";
@@ -227,10 +227,11 @@ test("disables every write action without a token but keeps previews available",
     "GET /api/v1/workspaces": [workspace()],
     "GET /api/v1/workspaces/ws1/tree": { sha: SHA, files: [] },
     "GET /api/v1/workspaces/ws1/history": { sha: SHA, commits: [] },
+    "GET /api/v1/healthz": healthBody({ auth_required: true }),
   });
   renderPage(<WorkspacesPage />);
   await screen.findByRole("heading", { name: "example-app" });
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   for (const name of ["등록", "동기화", "수정", "등록 해제"]) {
     expect(screen.getByRole("button", { name })).toBeDisabled();
   }

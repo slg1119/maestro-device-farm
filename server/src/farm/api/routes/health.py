@@ -22,5 +22,6 @@ def healthz(request: Request) -> dict:
         failing = s.scalars(select(Workspace).where(Workspace.sync_error.is_not(None)).order_by(Workspace.name))
         sync_errors = [{"name": ws.name, "error": ws.sync_error} for ws in failing]
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    return {"status": "ok", "agent": agent, "workspace_sync_errors": sync_errors,
+    return {"status": "ok", "agent": agent, "auth_required": settings.require_token,
+            "workspace_sync_errors": sync_errors,
             "disk_free_bytes": shutil.disk_usage(settings.data_dir).free}

@@ -20,13 +20,25 @@ def test_devices_look_offline_without_agent_heartbeat(client, db):
     assert (device["serial"], device["state"], device["model"], device["reservation"]) == ("d1", "available", "Pixel 7", None)
 
 
-def test_writes_require_a_valid_token(client, db):
+def test_writes_require_a_valid_token_when_enabled(secured_client, db, auth):
     with db.session() as s:
         add_device(s, "d1")
-    res = client.patch("/api/v1/devices/d1", json={"tags": ["x"]})
+    res = secured_client.patch("/api/v1/devices/d1", json={"tags": ["x"]})
     assert res.status_code == 401 and res.json()["error"]["code"] == "unauthorized"
-    res = client.patch("/api/v1/devices/d1", json={"tags": ["x"]}, headers={"Authorization": "Bearer nope"})
+    res = secured_client.patch("/api/v1/devices/d1", json={"tags": ["x"]}, headers={"Authorization": "Bearer nope"})
     assert res.status_code == 401
+    assert secured_client.patch("/api/v1/devices/d1", json={"tags": ["x"]}, headers=auth).status_code == 200
+    assert secured_client.get("/api/v1/healthz").json()["auth_required"] is True
+
+
+def test_writes_are_open_by_default(client, db):
+    with db.session() as s:
+        add_device(s, "d1")
+    assert client.get("/api/v1/healthz").json()["auth_required"] is False
+    assert client.patch("/api/v1/devices/d1", json={"tags": ["x"]}).json()["tags"] == ["x"]
+    # A stale or unknown token is ignored rather than rejected while tokens are optional.
+    res = client.patch("/api/v1/devices/d1", json={"tags": ["y"]}, headers={"Authorization": "Bearer nope"})
+    assert res.json()["tags"] == ["y"]
 
 
 def test_patch_tags_and_disable(client, db, auth):

@@ -4,10 +4,9 @@ import { useState } from "react";
 import { apiJson } from "../../api/client";
 import { keys, useWorkspaces } from "../../api/queries";
 import type { Workspace } from "../../api/types";
-import { TokenNotice } from "../../components/Layout";
+import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { Button, Card, Empty, ErrorBox, Loading, PageHeader } from "../../components/ui";
 import { formatTime, githubCommitUrl, shortSha, timeAgo } from "../../lib/format";
-import { useSettings } from "../../lib/settings";
 import { WorkspaceForm } from "./WorkspaceForm";
 import { WorkspacePreview } from "./WorkspacePreview";
 
@@ -69,19 +68,19 @@ function WorkspaceCard({ workspace, canWrite, onEdit }: { workspace: Workspace; 
 
 export function WorkspacesPage() {
   const workspaces = useWorkspaces();
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const [form, setForm] = useState<"create" | Workspace | null>(null);
 
   return (
     <>
-      <PageHeader title="워크스페이스" actions={<Button variant="primary" disabled={!token} onClick={() => setForm("create")}>등록</Button>} />
+      <PageHeader title="워크스페이스" actions={<Button variant="primary" disabled={!canWrite} onClick={() => setForm("create")}>등록</Button>} />
       <TokenNotice />
       {workspaces.isPending ? <Loading /> : workspaces.isError ? <ErrorBox error={workspaces.error} /> : workspaces.data.length === 0 ? (
         <Empty>등록된 워크스페이스가 없습니다.</Empty>
       ) : (
         <div className="space-y-4">
           {[...workspaces.data].sort((a, b) => a.name.localeCompare(b.name)).map((workspace) => (
-            <WorkspaceCard key={workspace.id} workspace={workspace} canWrite={Boolean(token)} onEdit={() => setForm(workspace)} />
+            <WorkspaceCard key={workspace.id} workspace={workspace} canWrite={canWrite} onEdit={() => setForm(workspace)} />
           ))}
         </div>
       )}

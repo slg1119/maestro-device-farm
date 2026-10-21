@@ -26,6 +26,7 @@ def test_defaults_match_spec(monkeypatch):
     assert (s.git_bot_name, s.git_bot_email) == ("maestro-device-farm", "maestro-device-farm@users.noreply.github.com")
     assert s.git_poll_sec == 60
     assert s.git_remote_template == "https://github.com/{repo}.git"
+    assert s.require_token is False
     assert s.web_dist == Path(__file__).resolve().parents[2] / "web" / "dist"
 
 

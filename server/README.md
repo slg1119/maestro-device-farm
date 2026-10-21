@@ -7,8 +7,13 @@
 ```bash
 uv sync
 uv run farm db upgrade
-uv run farm token create ci        # prints the token once
 ```
+
+The farm is meant for the internal network, so writes need no token by default. To require one, start
+`farm api` with `FARM_REQUIRE_TOKEN=true` and create tokens with `uv run farm token create <name>`.
+
+Workspaces on GitHub can use this host's SSH key instead of a PAT:
+`FARM_GIT_REMOTE_TEMPLATE='git@github.com:{repo}.git'` (or a `~/.ssh/config` host alias).
 
 ## Run
 
@@ -21,7 +26,7 @@ uv run farm agent --fake 3         # three simulated devices, no adb needed
 ## Submit a run
 
 ```bash
-export FARM_URL=http://localhost:8700 FARM_TOKEN=<token>
+export FARM_URL=http://localhost:8700 FARM_USER=ci   # FARM_TOKEN=<token> only with FARM_REQUIRE_TOKEN=true
 uv run farmctl run --flows ../path/to/.maestro --apk app.apk --mode split --wait --junit farm-junit.xml
 ```
 

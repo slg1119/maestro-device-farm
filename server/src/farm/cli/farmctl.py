@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import urllib.parse
 import zipfile
 from pathlib import Path
 
@@ -33,7 +34,10 @@ def _env_pair(value: str) -> tuple[str, str]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="farmctl", description="Submit Maestro runs to maestro-device-farm")
     parser.add_argument("--server", default=os.environ.get("FARM_URL", "http://localhost:8700"))
-    parser.add_argument("--token", default=os.environ.get("FARM_TOKEN"))
+    parser.add_argument("--token", default=os.environ.get("FARM_TOKEN"),
+                        help="API token; only needed when the farm runs with FARM_REQUIRE_TOKEN=true")
+    parser.add_argument("--user", default=os.environ.get("FARM_USER"),
+                        help="name recorded as the run's creator when no token is used")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     run = sub.add_parser("run", help="submit a run")
@@ -137,7 +141,10 @@ class SseParser:
 
 
 def _headers(args: argparse.Namespace) -> dict[str, str]:
-    return {"Authorization": f"Bearer {args.token}"} if args.token else {}
+    headers = {"Authorization": f"Bearer {args.token}"} if args.token else {}
+    if args.user:
+        headers["X-Farm-User"] = urllib.parse.quote(args.user)
+    return headers
 
 
 def _describe(res: httpx.Response) -> str:
@@ -192,9 +199,6 @@ def wait_for_run(client: httpx.Client, run_id: str, timeout: float, out=None) ->
 
 
 def cmd_run(args: argparse.Namespace, client: httpx.Client) -> int:
-    if not args.token:
-        print("farmctl: --token or FARM_TOKEN is required", file=sys.stderr)
-        return EXIT_ERROR
     if args.ref and not args.workspace:
         print("farmctl: --ref needs --workspace", file=sys.stderr)
         return EXIT_ERROR

@@ -7,12 +7,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
-from farm.api.deps import get_db, get_settings, require_token
+from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
 from farm.api.uploads import MB, UploadTooLarge, save_upload
 from farm.apps.apk import ApkParseError
 from farm.apps.library import ingest_apk
-from farm.db.models import ApiToken, AppBuild
+from farm.db.models import AppBuild
 from farm.ids import new_id
 
 router = APIRouter()
@@ -67,7 +67,7 @@ def upload_app(
     apk: UploadFile = File(...),
     ci_meta: str | None = Form(None),
     source: Literal["ci", "dashboard"] = Form("ci"),
-    token: ApiToken = Depends(require_token),
+    writer: Writer = Depends(get_writer),
 ) -> AppOut:
     settings = get_settings(request)
     try:
@@ -81,7 +81,7 @@ def upload_app(
         save_upload(apk, tmp, settings.max_apk_mb * MB)
         with get_db(request).session() as s:
             build, created = ingest_apk(s, settings.path("apks"), tmp, request.app.state.apk_parser, source=source,
-                                        uploaded_by=token.name, ci_meta=meta)
+                                        uploaded_by=writer.name, ci_meta=meta)
             out = AppOut.model_validate(build)
     except UploadTooLarge as exc:
         raise ApiError(413, "upload_too_large", str(exc)) from exc
@@ -94,7 +94,7 @@ def upload_app(
 
 
 @router.patch("/apps/{app_id}")
-def patch_app(app_id: str, body: AppPatch, request: Request, _token: ApiToken = Depends(require_token)) -> AppOut:
+def patch_app(app_id: str, body: AppPatch, request: Request, _writer: Writer = Depends(get_writer)) -> AppOut:
     with get_db(request).session() as s:
         build = _get_app(s, app_id)
         build.pinned = body.pinned

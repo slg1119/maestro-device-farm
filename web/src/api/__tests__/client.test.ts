@@ -21,3 +21,10 @@ test("query skips empty values", () => {
   expect(query({ a: "1", b: undefined, c: "", d: 0 })).toBe("?a=1&d=0");
   expect(query({})).toBe("");
 });
+
+test("sends the author name percent-encoded so non-ASCII names fit in a header", async () => {
+  saveSettings({ token: "", authorName: "홍길동", authorEmail: "" });
+  const { calls } = mockApi({ "GET /api/v1/x": {} });
+  await apiJson("/x");
+  expect(calls[0]!.headers).toEqual({ "X-Farm-User": "%ED%99%8D%EA%B8%B8%EB%8F%99" });
+});

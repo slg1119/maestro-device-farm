@@ -5,11 +5,10 @@ import { useParams } from "react-router";
 import { API, ApiError, apiJson } from "../../api/client";
 import { keys, useDevices, useRun, useWorkspaces } from "../../api/queries";
 import type { RunDetail, RunSummary, Workspace } from "../../api/types";
-import { TokenNotice } from "../../components/Layout";
+import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader } from "../../components/ui";
 import { elapsed, formatTime, githubCommitUrl, shortSha } from "../../lib/format";
-import { useSettings } from "../../lib/settings";
 import { useTicker } from "../../lib/useTicker";
 import { MatrixGrid } from "./MatrixGrid";
 import { TaskList } from "./TaskList";
@@ -76,7 +75,7 @@ function RunOptions({ run }: { run: RunDetail }) {
 
 function RunContent({ run }: { run: RunDetail }) {
   useTicker(run.status === "running");
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const devices = useDevices();
   const workspaces = useWorkspaces();
   const client = useQueryClient();
@@ -98,8 +97,8 @@ function RunContent({ run }: { run: RunDetail }) {
         <a href={`${API}/runs/${encodeURIComponent(run.id)}/junit`} download className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50">JUnit 다운로드</a>
         {(run.status === "queued" || run.status === "running") && <Button
           variant="danger"
-          disabled={!token || cancel.isPending}
-          onClick={() => { if (token && window.confirm("이 run을 취소할까요?")) cancel.mutate(); }}
+          disabled={!canWrite || cancel.isPending}
+          onClick={() => { if (canWrite && window.confirm("이 run을 취소할까요?")) cancel.mutate(); }}
         >취소</Button>}
       </>}>
         <span className="flex flex-wrap items-center gap-2"><StatusBadge status={run.status} /><span>{ORIGIN[run.origin]} · {MODE[run.mode]}</span>{run.cancel_requested && run.status === "running" && <Badge>취소 요청됨</Badge>}</span>

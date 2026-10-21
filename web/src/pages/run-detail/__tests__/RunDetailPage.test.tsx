@@ -5,7 +5,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { keys } from "../../../api/queries";
 import type { RunDetail } from "../../../api/types";
 import { saveSettings } from "../../../lib/settings";
-import { apiErrorResponse, mockApi } from "../../../test/api";
+import { apiErrorResponse, healthBody, mockApi } from "../../../test/api";
 import { device, runDetail, runSummary, task, workspace } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { RunDetailPage } from "../RunDetailPage";
@@ -88,10 +88,10 @@ test("does not cancel when confirmation is declined", async () => {
   expect(calls.some((c) => c.method === "POST")).toBe(false);
 });
 
-test("disables cancellation without a token and shows the token notice", async () => {
-  mount(runDetail({ status: "running", cancel_requested: true }));
+test("disables cancellation without a token when the farm requires one", async () => {
+  mount(runDetail({ status: "running", cancel_requested: true }), { "GET /api/v1/healthz": healthBody({ auth_required: true }) });
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "취소" })).toBeDisabled();
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(screen.getByText("취소 요청됨")).toBeInTheDocument();
 });
 

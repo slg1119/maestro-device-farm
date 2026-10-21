@@ -186,6 +186,7 @@ export interface WorkspaceHistory {
 export interface Health {
   status: "ok";
   agent: { id: string; version: string; started_at: string; last_heartbeat_at: string; age_sec: number } | null;
+  auth_required: boolean;
   workspace_sync_errors: { name: string; error: string }[];
   disk_free_bytes: number;
 }

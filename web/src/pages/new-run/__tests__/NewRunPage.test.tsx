@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { keys } from "../../../api/queries";
 import { saveSettings } from "../../../lib/settings";
-import { apiErrorResponse, jsonResponse, mockApi } from "../../../test/api";
+import { apiErrorResponse, healthBody, jsonResponse, mockApi } from "../../../test/api";
 import { app, device, workspace } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { NewRunPage } from "../NewRunPage";
@@ -54,12 +54,23 @@ test("shows no_matching_devices without losing form values or navigating", async
   expect(calls.filter(c => c.method === "POST")).toHaveLength(1);
 });
 
-test("disables submit and shows the shared token notice without a token", async () => {
-  const { calls } = setup({}, "");
+test("disables submit and shows the shared token notice when the farm requires a token", async () => {
+  const { calls } = setup({ "GET /api/v1/healthz": healthBody({ auth_required: true }) }, "");
   await screen.findByRole("combobox", { name: "워크스페이스" });
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "실행 시작" })).toBeDisabled();
   expect(calls.every(c => c.method === "GET")).toBe(true);
+});
+
+test("submits without a token when the farm does not require one", async () => {
+  const { calls, user } = setup({}, "");
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  expect(screen.queryByText("쓰기 작업에는 API 토큰이 필요합니다.")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  expect(await screen.findByTestId("navigated")).toBeInTheDocument();
+  const post = calls.find((c) => c.method === "POST")!;
+  expect(post.headers).not.toHaveProperty("Authorization");
+  expect(post.headers).toMatchObject({ "X-Farm-User": "Kim" });
 });
 
 test("defaults to the workspace package, hides purged builds and previews the selected build SDK", async () => {

@@ -5,11 +5,10 @@ import { Link } from "react-router";
 import { apiJson } from "../../api/client";
 import { keys, useDevices } from "../../api/queries";
 import type { Device, DeviceState } from "../../api/types";
-import { TokenNotice } from "../../components/Layout";
+import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { DeviceStateBadge } from "../../components/StatusBadge";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Input, Loading, PageHeader, cx } from "../../components/ui";
 import { formatTime, parseTs, timeAgo } from "../../lib/format";
-import { useSettings } from "../../lib/settings";
 
 const STATES: { state: DeviceState; label: string }[] = [
   { state: "available", label: "사용 가능" },
@@ -21,7 +20,7 @@ const STATES: { state: DeviceState; label: string }[] = [
 ];
 
 function DeviceCard({ device }: { device: Device }) {
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const client = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [tags, setTags] = useState("");
@@ -33,7 +32,7 @@ function DeviceCard({ device }: { device: Device }) {
       if (patch.tags !== undefined) setEditing(false);
     },
   });
-  const writesDisabled = !token || mutation.isPending;
+  const writesDisabled = !canWrite || mutation.isPending;
 
   const toggleMaintenance = () => {
     if (writesDisabled) return;

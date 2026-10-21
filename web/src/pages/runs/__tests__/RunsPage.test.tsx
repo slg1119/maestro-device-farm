@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router";
 
 import type { RunSummary } from "../../../api/types";
 import { formatTime } from "../../../lib/format";
-import { apiErrorResponse, jsonResponse, mockApi, type MockRequest } from "../../../test/api";
+import { apiErrorResponse, healthBody, jsonResponse, mockApi, type MockRequest } from "../../../test/api";
 import { runSummary, workspace } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { RunsPage } from "../RunsPage";
@@ -167,10 +167,10 @@ test("keeps runs readable using workspace ids when the workspace request fails",
 });
 
 test("navigates to a new run and shows the token notice without a token", async () => {
-  mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [] });
+  mockApi({ "GET /api/v1/runs": [], "GET /api/v1/workspaces": [], "GET /api/v1/healthz": healthBody({ auth_required: true }) });
   renderRuns();
   expect(screen.getByRole("heading", { name: "실행" })).toBeInTheDocument();
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "새 실행" }));
   expect(await screen.findByTestId("navigated")).toBeInTheDocument();
 });
