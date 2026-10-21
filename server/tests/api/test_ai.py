@@ -67,7 +67,7 @@ def test_ai_job_create_get_list_and_totals_with_and_without_lifespan(ai_setup, d
             s.add(AiJob(kind="generate", workspace_id=ws.id, base_sha=ws.head_sha, prompt="old", options={},
                         model="fake", input_tokens=999, output_tokens=999, created_at="2001-01-01T00:00:00.000000Z"))
         assert client.get("/api/v1/ai/status").json() == {
-            "enabled": True, "model": "gpt-6.1-sol", "month": now()[:7],
+            "enabled": True, "provider": None, "model": "gpt-6.1-sol", "month": now()[:7],
             "max_repairs": app.state.settings.ai_max_repairs,
             "month_input_tokens": 10, "month_output_tokens": 5, "month_jobs": 1,
         }
