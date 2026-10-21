@@ -194,6 +194,9 @@ export interface Health {
 /** Options JSON for POST /api/v1/runs (multipart field `options`). */
 export interface RunOptions {
   mode: RunMode;
+  base_sha?: string;
+  changes?: Change[];
+  reservation_id?: string;
   flow_source?: FlowSource;
   workspace?: string;
   ref?: string;
@@ -216,3 +219,104 @@ export interface FarmEvent {
   run_id: string | null;
   payload: Record<string, unknown>;
 }
+
+/** Workspace paths are relative to the configured workspace root. */
+export interface Change {
+  op: "put" | "delete" | "move";
+  path: string;
+  content?: string;
+  encoding?: "utf-8" | "base64";
+  to?: string;
+}
+
+export interface Issue { path: string; message: string; line: number | null; column: number | null }
+export interface ValidateResult { valid: boolean; issues: Issue[] }
+export interface CommitResult { sha: string; parent: string }
+export interface DiffResult { from: string; to: string; files: { path: string; status: "added" | "modified" | "deleted" }[] }
+export interface RerunRequest { failed_only: boolean }
+
+export interface RunStep {
+  seq: number;
+  command: string;
+  label: string;
+  status: "passed" | "warned" | "failed" | "skipped" | "running" | "pending";
+  duration_ms: number;
+  depth: number;
+  screenshot: string | null;
+  hierarchy: string | null;
+}
+export interface FlowSteps { flow: string; steps: RunStep[] }
+export interface TaskSteps { task_id: string; attempt: number; flows: FlowSteps[] }
+
+export interface AiStatus {
+  enabled: boolean;
+  model: string;
+  month: string;
+  month_input_tokens: number;
+  month_output_tokens: number;
+  month_jobs: number;
+}
+export interface AiAttempt {
+  n: number;
+  kind: "generate" | "validation" | "run";
+  status: "ok" | "failed";
+  detail: string;
+  run_id: string | null;
+  issues: Issue[];
+  input_tokens: number;
+  output_tokens: number;
+}
+export interface AiJob {
+  id: string;
+  kind: "generate" | "fix";
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  workspace_id: string;
+  base_sha: string;
+  source_task_id: string | null;
+  prompt: string;
+  options: {
+    target_path: string | null;
+    include_screen: boolean;
+    auto_repair: boolean;
+    reservation_id: string | null;
+    app_build_id: string | null;
+    app: string | null;
+  };
+  attempts: AiAttempt[];
+  result: { files: { path: string; content: string }[]; summary: string; assumptions: string[]; passed_run_id: string | null } | null;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  error_message: string | null;
+  created_by: string;
+  author_name: string;
+  created_at: string;
+  finished_at: string | null;
+}
+export interface AiJobCreate {
+  kind: "generate" | "fix";
+  workspace?: string;
+  base_sha?: string;
+  source_task_id?: string;
+  prompt?: string;
+  target_path?: string;
+  draft_changes?: Change[];
+  include_screen?: boolean;
+  auto_repair?: boolean;
+  reservation_id?: string | null;
+  app_build_id?: string | null;
+  app?: string | null;
+  author_name?: string;
+}
+export interface DeviceCommand {
+  id: string;
+  device_serial: string;
+  reservation_id: string;
+  kind: string;
+  status: "queued" | "running" | "done" | "error";
+  error_message: string | null;
+  created_at: string;
+  finished_at: string | null;
+  files: Record<string, string>;
+}
+export interface HierarchyNode { attributes: Record<string, string>; children?: HierarchyNode[] }

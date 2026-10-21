@@ -1,22 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { Outlet } from "react-router";
 
 import { useLiveEvents } from "../api/events";
 import { apiJson } from "../api/client";
-import { keys, useHealth } from "../api/queries";
+import { keys } from "../api/queries";
 import type { Health } from "../api/types";
 import { useSettings } from "../lib/settings";
 import { SettingsDialog } from "./SettingsDialog";
-import { Button, cx } from "./ui";
-
-const NAV = [
-  { to: "/devices", label: "기기" },
-  { to: "/runs", label: "실행", end: true },
-  { to: "/runs/new", label: "새 실행" },
-  { to: "/apps", label: "앱" },
-  { to: "/workspaces", label: "워크스페이스" },
-];
+import { AppShell } from "./AppShell";
+import { Button } from "./ui";
 
 const OpenSettings = createContext<() => void>(() => {});
 
@@ -33,17 +26,6 @@ export function useCanWrite(): boolean {
   return Boolean(token) || data?.auth_required !== true;
 }
 
-function AgentStatus() {
-  const { data } = useHealth();
-  if (!data) return null;
-  const stale = !data.agent || data.agent.age_sec > 15;
-  return (
-    <span className={cx("text-xs", stale ? "text-amber-600" : "text-slate-500")} title="farm-agent heartbeat">
-      {data.agent ? `agent ${Math.round(data.agent.age_sec)}s` : "agent 없음"}
-    </span>
-  );
-}
-
 export function Layout() {
   const stream = useLiveEvents();
   const canWrite = useCanWrite();
@@ -52,40 +34,9 @@ export function Layout() {
 
   return (
     <OpenSettings.Provider value={openSettings}>
-      <div className="min-h-screen bg-slate-50 text-slate-900">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2">
-            <span className="font-semibold">sample device farm</span>
-            <nav className="flex flex-wrap gap-1">
-              {NAV.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    cx("rounded-md px-2.5 py-1 text-sm", isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100")
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-            <div className="ml-auto flex items-center gap-3">
-              <AgentStatus />
-              <span
-                className={cx("h-2 w-2 rounded-full", stream === "open" ? "bg-emerald-500" : "bg-amber-400")}
-                title={stream === "open" ? "실시간 갱신 연결됨" : "실시간 갱신 재연결 중"}
-              />
-              <Button size="sm" variant={canWrite ? "ghost" : "secondary"} onClick={openSettings}>
-                {canWrite ? "설정" : "토큰 설정 필요"}
-              </Button>
-            </div>
-          </div>
-        </header>
-        <main className="mx-auto max-w-7xl px-4 py-6">
-          <Outlet />
-        </main>
-      </div>
+      <AppShell stream={stream} canWrite={canWrite} onOpenSettings={openSettings}>
+        <Outlet />
+      </AppShell>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </OpenSettings.Provider>
   );
@@ -97,7 +48,7 @@ export function TokenNotice() {
   const openSettings = useOpenSettings();
   if (canWrite) return null;
   return (
-    <div className="mb-4 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-warning/25 bg-warning-bg px-3 py-2 text-sm text-warning-fg">
       <span>쓰기 작업에는 API 토큰이 필요합니다.</span>
       <Button size="sm" onClick={openSettings}>
         토큰 입력
