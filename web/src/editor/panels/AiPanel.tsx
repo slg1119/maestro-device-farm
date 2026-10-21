@@ -36,6 +36,8 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
   const recent = useQuery({ queryKey: keys.aiJobs(api.workspace.id), queryFn: () => apiJson<AiJob[]>(`/ai/jobs${query({ workspace: api.workspace.id, limit: 20 })}`) });
   const [mode, setMode] = useState("new"); const [prompt, setPrompt] = useState(""); const [target, setTarget] = useState<string | null>(null);
   const [screen, setScreen] = useState(false); const [repair, setRepair] = useState(false); const [notice, setNotice] = useState("");
+  // Acknowledging cancellation can still return a running job; wait for its terminal update.
+  const [cancellingJobs, setCancellingJobs] = useState<string[]>([]);
   const hasReservation = api.reservation?.status === "active";
   const hasApp = Boolean(api.appChoice.app_build_id || api.appChoice.app);
   const currentDevice = devices.data?.find(d => d.serial === api.reservation?.device_serial);
@@ -51,12 +53,16 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
     client.setQueryData(keys.aiJob(job.id), job); setJob(job.id);
     void client.invalidateQueries({ queryKey: keys.aiJobs(api.workspace.id) }); void client.invalidateQueries({ queryKey: keys.aiStatus });
   } });
-  const cancel = useMutation({ mutationFn: (jobId: string) => apiJson<AiJob>(`/ai/jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST" }), onSuccess: job => {
-    client.setQueryData(keys.aiJob(job.id), job); void client.invalidateQueries({ queryKey: keys.aiJobs(api.workspace.id) });
-  } });
+  const cancel = useMutation({ mutationFn: (jobId: string) => apiJson<AiJob>(`/ai/jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST" }),
+    onMutate: jobId => { setCancellingJobs(previous => [...previous, jobId]); },
+    onError: (_error, jobId) => { setCancellingJobs(previous => previous.filter(id => id !== jobId)); },
+    onSuccess: job => {
+      client.setQueryData(keys.aiJob(job.id), job); void client.invalidateQueries({ queryKey: keys.aiJobs(api.workspace.id) });
+    } });
   const foreign = jobQuery.data && jobQuery.data.workspace_id !== api.workspace.id;
   const job = foreign ? undefined : jobQuery.data;
   const running = job?.status === "queued" || job?.status === "running";
+  const cancelling = Boolean(job && running && cancellingJobs.includes(job.id));
   const canFix = Boolean(api.activePath && api.drafts[api.activePath]?.status !== "deleted" && !/\.(png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/i.test(api.activePath));
   const targetPath = mode === "current" ? api.activePath ?? "" : target ?? suggestedPath(prompt);
   let pathError = "";
@@ -93,7 +99,7 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
       {jobQuery.error && <ErrorBox error={jobQuery.error} />}
       {foreign && <ErrorBox error={new Error("다른 워크스페이스의 AI 작업입니다. 해당 워크스페이스에서 열어 주세요.")} />}
       {job && <>
-        <div className="flex items-center justify-between gap-2"><Badge tone={states[job.status].tone}><StatusDot tone={states[job.status].tone} />{states[job.status].label}</Badge><span className="font-mono text-[11px] text-fg-subtle">{job.id.slice(0, 8)}</span>{running && <Button size="sm" disabled={!canWrite || cancel.isPending} onClick={() => cancel.mutate(job.id)}>{cancel.isPending ? "취소 요청 중…" : "취소"}</Button>}</div>
+        <div className="flex items-center justify-between gap-2"><Badge tone={states[job.status].tone} aria-live="polite"><StatusDot tone={states[job.status].tone} />{cancelling ? "취소 중…" : states[job.status].label}</Badge><span className="font-mono text-[11px] text-fg-subtle">{job.id.slice(0, 8)}</span>{running && <Button type="button" aria-label="취소" size="sm" disabled={!canWrite || cancelling || cancel.isPending} onClick={() => cancel.mutate(job.id)}>{cancelling ? "취소 중…" : "취소"}</Button>}</div>
         <AttemptList attempts={job.attempts} maxRepairs={maxRepairs} device={job.options.reservation_id === api.reservation?.id ? deviceName : "예약 기기"} />
         {job.error_message && <ErrorBox error={new Error(job.error_message)} />}
         {cancel.error && <ErrorBox error={cancel.error} />}

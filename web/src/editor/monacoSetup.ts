@@ -1,11 +1,14 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
+import TypeScriptWorker from "monaco-editor/languages/features/typescript/ts.worker?worker";
 import { conf as yamlConfiguration, language as yaml } from "monaco-editor/languages/definitions/yaml/yaml";
 import { maestroCommands } from "./maestroCommands";
 
 // Monaco 0.57 exposes its local worker through package exports (no /esm/vs prefix).
-self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
+self.MonacoEnvironment = {
+  getWorker: (_moduleId, label) => label === "typescript" || label === "javascript" ? new TypeScriptWorker() : new EditorWorker(),
+};
 loader.config({ monaco });
 
 let ready: Promise<typeof monaco> | undefined;

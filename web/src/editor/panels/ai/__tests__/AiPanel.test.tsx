@@ -200,6 +200,55 @@ test("cancels a running job and stops showing cancel after the returned state is
   expect(screen.queryByRole("button", { name: "취소" })).not.toBeInTheDocument();
 });
 
+test.each(["cancelled", "failed", "succeeded"] as const)("keeps cancellation feedback after acknowledgement until the job becomes %s", async terminal => {
+  let job = aiJob({ status: "running" });
+  let acknowledge!: (value: AiJob) => void;
+  const response = new Promise<AiJob>(resolve => { acknowledge = resolve; });
+  const view = setup({ job, route: "/editor/example-app?aiJob=ai1", routes: {
+    "GET /api/v1/ai/jobs/ai1": () => job,
+    "POST /api/v1/ai/jobs/ai1/cancel": () => response,
+  } });
+  const panel = await screen.findByRole("region", { name: "AI 작업" });
+  const cancel = await within(panel).findByRole("button", { name: "취소" });
+  expect(cancel.tagName).toBe("BUTTON");
+  await view.user.click(cancel);
+  expect(cancel).toBeDisabled();
+  expect(cancel).toHaveTextContent("취소 중…");
+  expect(within(panel).queryByText("생성 중")).not.toBeInTheDocument();
+  await act(async () => { acknowledge(job); await response; });
+  await waitFor(() => expect(view.calls.filter(c => c.method === "GET" && c.path === "/api/v1/ai/jobs")).toHaveLength(2));
+  await waitFor(() => expect(view.client.getQueryState(keys.aiJobs(ws.id))?.fetchStatus).toBe("idle"));
+  expect(within(panel).getByRole("button", { name: "취소" })).toBeDisabled();
+  expect(cancel).toHaveTextContent("취소 중…");
+  await view.user.click(cancel);
+  expect(view.calls.filter(c => c.path.endsWith("/cancel"))).toHaveLength(1);
+  await act(async () => { await view.client.invalidateQueries({ queryKey: keys.aiJob(job.id) }); });
+  expect(cancel).toBeDisabled();
+  job = { ...job, status: terminal };
+  await act(async () => { await view.client.invalidateQueries({ queryKey: keys.aiJob(job.id) }); });
+  await within(panel).findByText({ cancelled: "취소됨", failed: "실패", succeeded: "완료" }[terminal]);
+  expect(within(panel).queryByRole("button", { name: "취소" })).not.toBeInTheDocument();
+  expect(within(panel).queryByText("취소 중…")).not.toBeInTheDocument();
+});
+
+test("allows retry when a queued job's cancellation request fails", async () => {
+  const job = aiJob({ status: "queued" });
+  let attempts = 0;
+  const view = setup({ job, route: "/editor/example-app?aiJob=ai1", routes: {
+    "POST /api/v1/ai/jobs/ai1/cancel": () => ++attempts === 1
+      ? apiErrorResponse(500, "cancel_failed", "취소 요청 실패") : { ...job, status: "cancelled" },
+  } });
+  const panel = await screen.findByRole("region", { name: "AI 작업" });
+  await view.user.click(await within(panel).findByRole("button", { name: "취소" }));
+  await within(panel).findByRole("alert");
+  const retry = within(panel).getByRole("button", { name: "취소" });
+  expect(retry).toBeEnabled();
+  expect(retry).toHaveTextContent("취소");
+  expect(within(panel).getByText("대기 중")).toBeInTheDocument();
+  await view.user.click(retry);
+  await within(panel).findByText("취소됨");
+});
+
 test("keeps failed submits inline and preserves entered text for a retry", async () => {
   const view = setup({ routes: { "POST /api/v1/ai/jobs": apiErrorResponse(503, "ai_disabled", "AI가 비활성화되었습니다") } });
   await view.user.type(await screen.findByLabelText("설명"), "로그인 확인");

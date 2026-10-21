@@ -51,7 +51,7 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
 
   if (stream.phase === "unsupported") return <p role="status" className="p-4 text-sm leading-6 text-fg-muted">이 브라우저는 실시간 화면을 지원하지 않습니다 (Chrome/Edge 최신 버전 권장)</p>;
   return <section aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 space-y-3 text-fg", compact ? "p-3" : "p-4")}>
-    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">CI 테스트 실행 중 · 조작하면 결과가 달라질 수 있음</p>}
+    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">테스트 실행 중 · 조작하면 결과가 달라질 수 있음</p>}
     <div className={cx("relative min-w-0 overflow-hidden rounded-xl border border-border bg-surface-2", compact ? "h-[min(50dvh,480px)]" : "h-[min(60dvh,640px)]")}>
       <canvas ref={canvas} aria-label="실시간 기기 화면" className={cx("h-full w-full object-contain", stream.canControl ? "touch-none cursor-crosshair" : "touch-auto")}
         onPointerDown={event => touch(event, "down")} onPointerMove={event => touch(event, "move")} onPointerUp={event => touch(event, "up")}
