@@ -9,6 +9,8 @@ from sqlalchemy import select
 from farm.ai.client import ImagePart
 from farm.db.engine import Database
 from farm.db.models import Run, TestResult
+from farm.flows.enumerate import enumerate_flows
+from farm.runner.steps import parse_steps
 from farm.workspaces.changes import Change, normalize_changes, touched_paths
 from farm.workspaces.errors import WorkspaceError
 from farm.workspaces.snapshot import apply_changes, snapshot_commit
@@ -121,18 +123,21 @@ def redact(settings, value, extra=()):
 
 
 def failure_target(task, run, results) -> str:
+    paths = task.flows
     if run.mode == "matrix":
+        if not paths and run.flows_dir and Path(run.flows_dir).is_dir():
+            paths = enumerate_flows(Path(run.flows_dir), run.include_tags, run.exclude_tags, run.flow_paths)
         for result in results:
             if result.status in {"failed", "error"}:
-                for path in task.flows:
+                for path in paths:
                     if path == result.flow_name or Path(path).stem == result.flow_name:
                         return path
-    if task.flows:
-        return task.flows[0]
+    if paths:
+        return paths[0]
     raise ValueError("failed task has no flow path")
 
 
-def failure_context(settings, task, *, db=None):
+def failure_context(settings, task, *, db=None, target_path=None):
     """Return failure evidence without exposing run.env values; images are provider content parts."""
     own_db = db is None
     db = db or Database(settings.database_path)
@@ -140,7 +145,12 @@ def failure_context(settings, task, *, db=None):
         with db.session() as s:
             run = s.get(Run, task.run_id)
             results = list(s.scalars(select(TestResult).where(TestResult.task_id == task.id).order_by(TestResult.id)))
-        target = failure_target(task, run, results)
+        try:
+            target = failure_target(task, run, results)
+        except ValueError:
+            if not target_path:
+                raise
+            target = target_path
         flow_text = ""
         if run.flows_dir:
             flows = Path(run.flows_dir).resolve()
@@ -160,7 +170,8 @@ def failure_context(settings, task, *, db=None):
             screenshot = _failure_screenshot(artifacts)
             if screenshot:
                 images.append(ImagePart(screenshot.read_bytes(), "image/png"))
-        text = (f"## Failure\nFlow: {target}\n{flow_text}\n\nJUnit failure messages\n{messages}"
+        text = (f"## Failure\nFlow: {target}\n{flow_text}\n"
+                f"Task error: {task.error_code or ''} {task.error_message or ''}\n\nJUnit failure messages\n{messages}"
                 f"\n\nmaestro.log (last 200 lines)\n{log_tail}")
         return redact(settings, text, run.env.values()), images
     finally:
@@ -169,17 +180,40 @@ def failure_context(settings, task, *, db=None):
 
 
 def _failure_screenshot(artifacts):
-    try:
-        from farm.runner.steps import parse_steps
-    except ModuleNotFoundError as exc:
-        if exc.name != "farm.runner.steps":
-            raise
-    else:
-        for flow in parse_steps(artifacts):
-            for step in flow["steps"]:
-                if step["status"] in {"failed", "warned"} and step.get("screenshot"):
-                    path = artifacts / step["screenshot"]
-                    if _inside(artifacts, path) and path.is_file():
-                        return path
+    for flow in parse_steps(artifacts):
+        for step in flow["steps"]:
+            if step["status"] in {"failed", "warned"} and step.get("screenshot"):
+                path = artifacts / step["screenshot"]
+                if _inside(artifacts, path) and path.is_file():
+                    return path
     screenshots = [p for p in artifacts.rglob("*.png") if p.parent.name == "screenshots" and _inside(artifacts, p)]
     return max(screenshots, key=lambda p: p.stat().st_mtime_ns) if screenshots else None
+
+
+def screen_context(result_dir: Path):
+    """Attach a captured screen and a selector-only outline of at most 400 nodes."""
+    root = result_dir.resolve()
+    screen, hierarchy = root / "screen.png", root / "hierarchy.json"
+    if not all(_inside(root, path) and path.is_file() for path in (screen, hierarchy)):
+        raise ValueError("snapshot files are missing or unsafe")
+    tree = json.loads(hierarchy.read_text(encoding="utf-8"))
+    if not isinstance(tree, dict):
+        raise TypeError("hierarchy must be an object")
+    keys = ("resource-id", "text", "accessibilityText", "hintText")
+    pending, lines = [(tree, 0)], []
+    while pending and len(lines) < 400:
+        node, depth = pending.pop()
+        if not isinstance(node, dict):
+            continue
+        attrs = node.get("attributes") or {}
+        if not isinstance(attrs, dict):
+            attrs = {}
+        selected = {key: attrs[key] for key in keys if attrs.get(key)}
+        if selected:
+            selected["bounds"] = attrs.get("bounds", "")
+            values = " ".join(f"{key}={json.dumps(value, ensure_ascii=False)}" for key, value in selected.items())
+            lines.append("  " * depth + "- " + values)
+        children = node.get("children") or []
+        if isinstance(children, list):
+            pending.extend((child, depth + bool(selected)) for child in reversed(children))
+    return "## Screen hierarchy (max 400 nodes)\n" + "\n".join(lines), [ImagePart(screen.read_bytes(), "image/png")]

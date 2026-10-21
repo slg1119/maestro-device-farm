@@ -1,19 +1,34 @@
-"""AI authoring jobs. Task 10 extends run_job with reserved-screen context and auto-repair runs."""
+"""AI authoring jobs with validation, screen context and reserved-device auto-repair."""
 import json
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import monotonic, sleep
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from farm.ai.client import RESULT_SCHEMA, AiRequest, TextPart
-from farm.ai.context import failure_context, failure_target, materialize, redact, workspace_context
+from farm.ai.context import (
+    failure_context,
+    failure_target,
+    materialize,
+    redact,
+    screen_context,
+    workspace_context,
+)
 from farm.api.errors import ApiError
-from farm.db.models import AiJob, Run, Task, TestResult, Workspace
+from farm.apps.library import resolve_app
+from farm.db.models import AiJob, DeviceCommand, Reservation, Run, Task, TestResult, Workspace
 from farm.events import emit
+from farm.flows.enumerate import CONFIG_NAMES, FLOW_SUFFIXES
+from farm.ids import new_id
+from farm.scheduler.commands import create_inspect_command
+from farm.scheduler.finish import TERMINAL_STATUSES, cancel_run
+from farm.scheduler.selector import DeviceSelector
+from farm.scheduler.submit import RunRequest, create_run
 from farm.timeutil import now
 from farm.workspaces.changes import Change, Issue, validate_changes
 from farm.workspaces.errors import WorkspaceError
@@ -37,6 +52,10 @@ class JobRequest(BaseModel):
     app_build_id: str | None = None
     app: str | None = None
     author_name: str = ""
+
+
+class JobCancelled(Exception):
+    pass
 
 
 def updated(session, job) -> None:
@@ -132,16 +151,110 @@ class AiJobRunner:
             job = s.get(AiJob, job_id)
             if job.cancel_requested:
                 status, result, error = "cancelled", None, None
+            elif status == "succeeded":
+                self._check(s, job_id)
             job.status, job.result, job.error_message = status, result, error
             job.finished_at = now()
             updated(s, job)
 
-    def _cancelled(self, job_id):
+    def _check(self, session, job_id):
+        """Check cancellation and wall-clock expiry even before the reservation sweeper runs."""
+        job = session.get(AiJob, job_id)
+        if job.cancel_requested:
+            raise JobCancelled()
+        if not job.reservation_id:
+            return None
+        reservation = session.get(Reservation, job.reservation_id)
+        if reservation is None or reservation.status != "active" or reservation.expires_at <= now():
+            raise ValueError("reservation ended")
+        return reservation
+
+    def _checkpoint(self, job_id):
         with self.db.session() as s:
-            return s.get(AiJob, job_id).cancel_requested
+            self._check(s, job_id)
+
+    def _screen(self, job_id):
+        with self.db.session() as s:
+            reservation = self._check(s, job_id)
+            command = create_inspect_command(s, reservation.id)
+        deadline = monotonic() + 90
+        while True:
+            with self.db.session() as s:
+                self._check(s, job_id)
+                command = s.get(DeviceCommand, command.id)
+            if command.status == "done":
+                try:
+                    if not command.result_dir:
+                        raise ValueError("snapshot result directory is missing")
+                    context = screen_context(Path(command.result_dir))
+                except (OSError, ValueError, TypeError) as exc:
+                    raise ValueError(f"screen snapshot failed: {exc}") from exc
+                self._checkpoint(job_id)
+                return context
+            if command.status == "error":
+                raise ValueError(f"screen snapshot failed: {command.error_message or 'inspect command failed'}")
+            if monotonic() >= deadline:
+                raise ValueError("screen snapshot failed: timed out after 90 seconds")
+            sleep(0.5)
+
+    def _draft_run(self, job, candidate):
+        run_id = new_id()
+        flows = self.settings.path("uploads", run_id, "flows")
+        flows.parent.mkdir(parents=True)
+        try:
+            # Copy the base + user draft + this answer outside SQLite's write transaction.
+            shutil.copytree(candidate, flows)
+            target = Path(job.options["target_path"])
+            flow_paths = [target.as_posix()] if target.suffix in FLOW_SUFFIXES and target.name not in CONFIG_NAMES else None
+            with self.db.session() as s:
+                reservation = self._check(s, job.id)
+                app = resolve_app(s, app_build_id=job.options["app_build_id"],
+                                  app_spec=None if job.options["app_build_id"] else job.options["app"])
+                run = create_run(s, RunRequest(
+                    run_id=run_id, origin="ai", mode="matrix",
+                    selector=DeviceSelector(serials=[reservation.device_serial]), reservation_id=reservation.id,
+                    app_build=app, flows_dir=flows, flow_source="draft", flow_paths=flow_paths, env={},
+                    workspace_id=job.workspace_id, commit_sha=job.base_sha, created_by=job.created_by,
+                ))
+            return run
+        except Exception:
+            shutil.rmtree(flows.parent, ignore_errors=True)
+            raise
+
+    def _run_attempt(self, job_id, n, run_id, status):
+        """Expose the run link while waiting, then update the same attempt on completion."""
+        attempt = {"n": n, "kind": "run", "status": "ok" if status in {"queued", "running", "passed"} else "failed",
+                   "detail": status, "run_id": run_id, "issues": [], "input_tokens": 0, "output_tokens": 0}
+        with self.db.session() as s:
+            job = s.get(AiJob, job_id)
+            attempts = list(job.attempts)
+            index = next((i for i, a in enumerate(attempts) if a.get("run_id") == run_id), None)
+            if index is None:
+                attempts.append(attempt)
+            else:
+                attempts[index] = attempt
+            job.attempts = attempts
+            updated(s, job)
+
+    def _wait_run(self, job_id, n, run):
+        try:
+            self._run_attempt(job_id, n, run.id, run.status)
+            while True:
+                with self.db.session() as s:
+                    self._check(s, job_id)
+                    run = s.get(Run, run.id)
+                if run.status in TERMINAL_STATUSES:
+                    self._run_attempt(job_id, n, run.id, run.status)
+                    return run
+                sleep(2)
+        except Exception:
+            with self.db.session() as s:
+                cancel_run(s, run.id)
+            self._run_attempt(job_id, n, run.id, "cancelled")
+            raise
 
     def run_job(self, job_id):
-        """Generate and validate changes; Task 10 adds screen context and auto-repair execution here."""
+        """Share one repair budget between validation retries and reserved-device runs."""
         with self.db.session() as s:
             job = s.get(AiJob, job_id)
             if job is None or job.status != "queued":
@@ -153,12 +266,17 @@ class AiJobRunner:
             run = s.get(Run, task.run_id) if task else None
             secrets = list(run.env.values()) if run else []
         try:
+            self._checkpoint(job.id)
             with TemporaryDirectory(prefix="farm-ai-") as temp:
                 root = materialize(self.settings, ws, job.base_sha, job.options["draft_changes"],
                                    Path(temp) / "workspace")
                 text = (f"## Workspace\ndefault_app_package: {ws.default_app_package}\n"
                         f"{workspace_context(root, job.options['target_path'])}")
                 failure, images = failure_context(self.settings, task, db=self.db) if task else ("", [])
+                if job.options["include_screen"]:
+                    screen, screen_images = self._screen(job.id)
+                    failure += "\n\n" + screen
+                    images += screen_images
                 text = redact(self.settings, text + "\n\n" + failure + "\n\n## User description\n" + job.prompt, secrets)
                 folder = self.settings.path("ai", job.id)
                 folder.mkdir(parents=True, exist_ok=True)
@@ -166,11 +284,10 @@ class AiJobRunner:
                 system = redact(self.settings, "\n\n".join((prompts / name).read_text(encoding="utf-8")
                                                            for name in ("system.md", "maestro-reference.md")), secrets)
                 feedback = ""
+                last_answer = None
                 limit = 1 + self.settings.ai_max_repairs
                 for n in range(1, limit + 1):
-                    if self._cancelled(job.id):
-                        self._finish(job.id, "cancelled")
-                        return
+                    self._checkpoint(job.id)
                     request = AiRequest(system=system, parts=[TextPart(text + feedback), *images])
                     (folder / f"request-{n}.json").write_text(json.dumps({"system": request.system,
                                                                           "text": text + feedback}))
@@ -179,6 +296,7 @@ class AiJobRunner:
                     self._attempt(job.id, {"n": n, "kind": "generate", "status": "ok", "detail": "",
                                           "run_id": None, "issues": [], "input_tokens": response.input_tokens,
                                           "output_tokens": response.output_tokens}, redact(self.settings, response.model, secrets))
+                    self._checkpoint(job.id)
                     data = redact(self.settings, response.data, secrets)
                     changes = [Change(op="put", **f) for f in data["files"]]
                     normalized, issues = validate_changes(
@@ -201,11 +319,40 @@ class AiJobRunner:
                     if not issues:
                         data = {**data, "files": [{"path": c.path, "content": c.content}
                                                           for c in normalized], "passed_run_id": None}
-                        self._finish(job.id, "succeeded", result=data)
-                        return
+                        last_answer = data
+                        self._checkpoint(job.id)
+                        if not job.options["auto_repair"]:
+                            self._finish(job.id, "succeeded", result=data)
+                            return
+                        draft = self._draft_run(job, candidate)
+                        completed = self._wait_run(job.id, n, draft)
+                        if completed.status == "passed":
+                            self._checkpoint(job.id)
+                            self._finish(job.id, "succeeded", result={**data, "passed_run_id": completed.id})
+                            return
+                        if completed.status == "cancelled":
+                            raise ValueError("draft run cancelled")
+                        if n == limit:
+                            break
+                        with self.db.session() as s:
+                            failed = s.scalar(select(Task).where(Task.run_id == completed.id,
+                                              Task.status.in_(["failed", "error"])).order_by(Task.seq))
+                        failure, images = failure_context(self.settings, failed, db=self.db,
+                                                          target_path=job.options["target_path"])
+                        feedback = redact(self.settings, "\n\n## Device: the flow failed on the device\n"
+                                          + json.dumps({"previous_answer": data}) + "\n" + failure, secrets)
+                        continue
                     feedback = redact(self.settings, "\n\n## Validation: the previous answer failed validation\n"
                                       + json.dumps({"previous_answer": data,
                                                     "issues": [i.model_dump() for i in issues]}), secrets)
-                self._finish(job.id, "failed", error=f"validation kept failing after {limit} attempts")
+                self._checkpoint(job.id)
+                if job.options["auto_repair"] and last_answer:
+                    note = f"자동 보정 {self.settings.ai_max_repairs}회 후에도 실행이 통과하지 않았습니다"
+                    result = {**last_answer, "summary": last_answer["summary"] + "\n\n" + note}
+                    self._finish(job.id, "succeeded", result=result)
+                else:
+                    self._finish(job.id, "failed", error=f"validation kept failing after {limit} attempts")
+        except JobCancelled:
+            self._finish(job.id, "cancelled")
         except Exception as exc:  # noqa: BLE001 - background jobs must persist provider and validation failures
             self._finish(job.id, "failed", error=redact(self.settings, str(exc), secrets))

@@ -125,7 +125,7 @@ def test_ai_missing_jobs_and_writer_auth(ai_setup):
     assert client.post("/api/v1/ai/jobs/missing/cancel").status_code == 401
 
 
-def test_screen_and_auto_repair_options_are_stored_for_task10(ai_setup):
+def test_screen_and_auto_repair_need_an_active_reservation(ai_setup):
     app, _, fake, body = ai_setup
     client = TestClient(app)
     response = client.post("/api/v1/ai/jobs", json={**body, "include_screen": True, "auto_repair": True,
@@ -134,5 +134,7 @@ def test_screen_and_auto_repair_options_are_stored_for_task10(ai_setup):
     options = response.json()["options"]
     assert options["include_screen"] is True and options["auto_repair"] is True
     app.state.ai_runner.stop()
-    assert client.get(f"/api/v1/ai/jobs/{response.json()['id']}").json()["status"] == "succeeded"
-    assert len(fake.requests) == 1
+    detail = client.get(f"/api/v1/ai/jobs/{response.json()['id']}").json()
+    assert detail["status"] == "failed"
+    assert detail["error_message"] == "reservation ended"
+    assert fake.requests == []
