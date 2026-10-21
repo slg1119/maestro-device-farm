@@ -78,6 +78,8 @@ export interface RunSummary {
 }
 
 export interface Task {
+  /** Older farm snapshots may omit this field. */
+  interfered?: boolean;
   id: string;
   seq: number;
   device_serial: string | null;
@@ -91,6 +93,8 @@ export interface Task {
   started_at: string | null;
   finished_at: string | null;
 }
+
+export interface StreamTicket { ticket: string; expires_at: string; path: string }
 
 export interface CaseResult {
   task_id: string;

@@ -3,6 +3,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { Empty, cx } from "../../components/ui";
 import { elapsed } from "../../lib/format";
 import { deviceLabel } from "./MatrixGrid";
+import { TaskLive } from "./TaskLive";
 
 export function TaskList({ tasks, devices, selectedId, onSelect }: {
   tasks: Task[];
@@ -37,7 +38,7 @@ export function TaskList({ tasks, devices, selectedId, onSelect }: {
               >
                 <th scope="row" className="px-4 py-3 font-medium">#{task.seq}</th>
                 <td className="min-w-40 max-w-72 break-words px-4 py-3">{task.flows.join(", ") || "-"}</td>
-                <td className="min-w-40 px-4 py-3">{deviceLabel(task.device_serial, devices)}</td>
+                <td className="min-w-40 px-4 py-3">{deviceLabel(task.device_serial, devices)}<TaskLive task={task} /></td>
                 <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={task.status} /></td>
                 <td className="whitespace-nowrap px-4 py-3">{task.attempt > 1 ? `${task.attempt}회차` : "-"}</td>
                 <td className="max-w-60 truncate px-4 py-3" title={error || undefined}>{error || "-"}</td>

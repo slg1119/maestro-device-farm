@@ -200,3 +200,14 @@ test("surfaces artifact and cancellation errors", async () => {
   await userEvent.click(screen.getByRole("button", { name: "취소" }));
   expect(await screen.findByText(/이미 종료된 실행입니다./)).toBeInTheDocument();
 });
+
+
+test.each(["split", "matrix"] as const)("%s shows interference and live entry only on running devices", async (mode) => {
+  mount(runDetail({ mode, status: "running", tasks: [task({ status: "running", interfered: true })] }));
+  const button = await screen.findByRole("button", { name: "라이브 보기" });
+  expect(screen.getByText("수동 조작 있음")).toBeInTheDocument();
+  await userEvent.click(button);
+  expect(screen.getByRole("dialog", { name: /라이브/ })).toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});

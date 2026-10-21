@@ -32,7 +32,7 @@ function setup(options: { queued?: boolean; denied?: boolean; commandError?: boo
 }
 async function reserve() { await act(async () => api.reserve("emulator-5554")); }
 async function snapshot(user: ReturnType<typeof userEvent.setup>) {
-  await reserve(); await user.click(await screen.findByRole("button", { name: "다시 찍기" }));
+  await reserve(); await user.click(screen.getByRole("radio", { name: "스냅샷" })); await user.click(await screen.findByRole("button", { name: "다시 찍기" }));
   return screen.findByRole("img", { name: "예약 기기 화면 스냅샷" }, { timeout: 3500 });
 }
 
@@ -95,11 +95,13 @@ test("copies quoted selectors and inserts both commands at the active cursor wit
 
 test("command errors are visible and allow another capture; token policy disables inspection", async () => {
   const view = setup({ commandError: true }); await reserve();
+  await view.user.click(screen.getByRole("radio", { name: "스냅샷" }));
   await view.user.click(await screen.findByRole("button", { name: "다시 찍기" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("스냅샷 실패");
   expect(screen.getByRole("button", { name: "다시 찍기" })).toBeEnabled();
   view.unmount();
   const denied = setup({ denied: true }); await reserve();
+  await denied.user.click(screen.getByRole("radio", { name: "스냅샷" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "다시 찍기" })).toBeDisabled());
   expect(denied.calls.some(c => c.path.endsWith("/inspect"))).toBe(false);
 });
@@ -108,10 +110,21 @@ test("releasing a reservation ignores a late hierarchy response and clears selec
   let resolve!: (value: unknown) => void;
   const pending = new Promise(r => { resolve = r; });
   const view = setup({ hierarchy: () => pending }); await reserve();
+  await view.user.click(screen.getByRole("radio", { name: "스냅샷" }));
   await view.user.click(await screen.findByRole("button", { name: "다시 찍기" }));
   await waitFor(() => expect(view.calls.some(c => c.path.endsWith("/files/hierarchy.json"))).toBe(true));
   await act(async () => api.release());
   await act(async () => { resolve(fixture); await pending; });
   expect(screen.queryByRole("img")).not.toBeInTheDocument();
   expect(api.snapshotSelectors).toEqual([]);
+});
+
+
+test("reserved screen defaults to live and switches to snapshot on request", async () => {
+  const view = setup(); await reserve();
+  expect(screen.getByRole("radio", { name: "라이브" })).toHaveAttribute("aria-checked", "true");
+  expect(screen.getByText(/이 브라우저는 실시간 화면을 지원하지 않습니다/)).toBeInTheDocument();
+  expect(view.calls.some(c => c.path.endsWith("/inspect"))).toBe(false);
+  await view.user.click(screen.getByRole("radio", { name: "스냅샷" }));
+  expect(screen.getByRole("button", { name: "다시 찍기" })).toBeInTheDocument();
 });
