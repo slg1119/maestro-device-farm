@@ -27,6 +27,12 @@ def shell(args: list[str]) -> int:
     elif args[:2] == ["dumpsys", "battery"]:
         print("Current Battery Service state:")
         print(f"  level: {os.environ.get('FAKE_ADB_BATTERY', '80')}")
+    elif args[:2] == ["am", "force-stop"]:
+        (state_dir() / f"stopped-{args[2]}").touch()
+    elif args[:2] == ["pkill", "-f"] and all(
+            (state_dir() / f"stopped-{package}").exists()
+            for package in ("dev.mobile.maestro", "dev.mobile.maestro.test")):
+        (state_dir() / "maestro-alive").unlink(missing_ok=True)
     return 0  # input, wm, svc and settings succeed silently
 
 
@@ -76,6 +82,12 @@ def main() -> int:
         time.sleep(3600)
         return 0
     if cmd == "exec-out":
+        if argv[1:] == ["uiautomator", "dump", "/dev/tty"] and os.environ.get("FAKE_ADB_HIERARCHY"):
+            if (state_dir() / "maestro-alive").exists():
+                print("Killed")
+            else:
+                print(Path(os.environ["FAKE_ADB_HIERARCHY"]).read_text())
+            return 0
         sys.stdout.buffer.write(b"\x89PNG\r\n\x1a\nfake-png")
         return 0
     print(f"fake adb: unsupported {argv}", file=sys.stderr)
