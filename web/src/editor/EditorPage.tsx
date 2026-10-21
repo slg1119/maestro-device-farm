@@ -39,7 +39,8 @@ function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initi
   const ai = useQuery({ queryKey: keys.aiStatus, queryFn: async () => {
     try { return await apiJson<AiStatus>("/ai/status"); } catch { return { enabled: false }; }
   }, retry: false });
-  const [panel, setPanel] = useState("run"); const [mobile, setMobile] = useState("code");
+  const [params] = useSearchParams();
+  const [panel, setPanel] = useState(params.has("aiJob") ? "ai" : "run"); const [mobile, setMobile] = useState(params.has("aiJob") ? "panel" : "code");
   const [treeWidth, setTreeWidth] = useState(248); const [panelWidth, setPanelWidth] = useState(360);
   const [conflicts, setConflicts] = useState<string[]>([]); const [fetching, setFetching] = useState(false); const [error, setError] = useState<unknown>(null);
   const [pendingWorkspace, setPendingWorkspace] = useState<string | null>(null);
