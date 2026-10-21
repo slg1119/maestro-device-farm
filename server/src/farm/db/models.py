@@ -112,6 +112,7 @@ class Task(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     artifacts_dir: Mapped[str | None] = mapped_column(String, nullable=True)
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    interfered: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     created_at: Mapped[str] = mapped_column(String, default=now)
     started_at: Mapped[str | None] = mapped_column(String, nullable=True)
     finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -216,5 +217,40 @@ class DeviceCommand(Base):
     status: Mapped[str] = mapped_column(String, default="queued")
     result_dir: Mapped[str | None] = mapped_column(String, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=now)
+    finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class StreamTicket(Base):
+    __tablename__ = "stream_tickets"
+
+    ticket_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    device_serial: Mapped[str] = mapped_column(String)
+    actor: Mapped[str] = mapped_column(String)
+    author_name: Mapped[str] = mapped_column(String, default="")
+    expires_at: Mapped[str] = mapped_column(String)
+    used_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[str] = mapped_column(String, default=now)
+
+
+class Recording(Base):
+    __tablename__ = "recordings"
+    __table_args__ = (
+        Index(
+            "uq_recordings_active_device", "device_serial", unique=True,
+            sqlite_where=text("status IN ('active', 'stopping')"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=new_id)
+    device_serial: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="active")
+    include_launch_app: Mapped[bool] = mapped_column(Boolean, default=True)
+    app_package: Mapped[str | None] = mapped_column(String, nullable=True)
+    workspace_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    yaml: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_job_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_by: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[str] = mapped_column(String, default=now)
     finished_at: Mapped[str | None] = mapped_column(String, nullable=True)
