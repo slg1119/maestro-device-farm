@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     max_flows_mb: int = 50
     max_media_mb: int = 10
     github_token: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    openai_model: str = "gpt-6.1-sol"
+    ai_max_repairs: int = 3
     git_bot_name: str = "maestro-device-farm"
     git_bot_email: str = "maestro-device-farm@users.noreply.github.com"
     git_poll_sec: int = 60

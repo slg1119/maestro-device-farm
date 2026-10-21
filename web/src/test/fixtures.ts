@@ -1,4 +1,4 @@
-import type { AppBuild, Device, RunDetail, RunSummary, Task, Workspace } from "../api/types";
+import type { AiJob, AppBuild, Device, DeviceCommand, RunDetail, RunSummary, Task, TaskSteps, Workspace } from "../api/types";
 
 // Factories for API objects. Override only the fields a test cares about.
 
@@ -51,5 +51,30 @@ export function workspace(overrides: Partial<Workspace> = {}): Workspace {
     id: "ws1", name: "example-app", repo: "example-org/example-app", branch: "main", path: ".maestro",
     default_app_package: "com.example.app", head_sha: "a".repeat(40), synced_at: "2026-10-20T05:00:00.000000Z",
     sync_error: null, created_at: "2026-10-20T04:00:00.000000Z", ...overrides,
+  };
+}
+
+
+export function aiJob(overrides: Partial<AiJob> = {}): AiJob {
+  return {
+    id: "ai1", kind: "generate", status: "queued", workspace_id: "ws1", base_sha: "a".repeat(40), source_task_id: null,
+    prompt: "로그인 플로우 작성", options: { target_path: "flows/login.yaml", include_screen: false, auto_repair: false, reservation_id: null, app_build_id: null, app: null },
+    attempts: [], result: null, model: "gpt-6.1-sol", input_tokens: 0, output_tokens: 0, error_message: null,
+    created_by: "dashboard", author_name: "테스터", created_at: "2026-10-20T05:00:00.000000Z", finished_at: null, ...overrides,
+  };
+}
+
+export function taskSteps(overrides: Partial<TaskSteps> = {}): TaskSteps {
+  return {
+    task_id: "task1", attempt: 1, flows: [{ flow: "login", steps: [
+      { seq: 0, command: "launchApp", label: "launchApp com.example.app", status: "passed", duration_ms: 779, depth: 0, screenshot: null, hierarchy: null },
+    ] }], ...overrides,
+  };
+}
+
+export function deviceCommand(overrides: Partial<DeviceCommand> = {}): DeviceCommand {
+  return {
+    id: "cmd1", device_serial: "emulator-5554", reservation_id: "res1", kind: "inspect", status: "queued", error_message: null,
+    created_at: "2026-10-20T05:00:00.000000Z", finished_at: null, files: {}, ...overrides,
   };
 }

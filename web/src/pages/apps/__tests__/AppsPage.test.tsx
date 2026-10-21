@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { saveSettings } from "../../../lib/settings";
@@ -14,6 +14,58 @@ function withToken() {
 function apkFile() {
   return new File(["apk contents"], "example.apk", { type: "application/vnd.android.package-archive" });
 }
+
+test("uploads a dropped APK through the same multipart contract and refreshes builds", async () => {
+  const file = apkFile();
+  const { calls } = mockApi({
+    "GET /api/v1/apps": [],
+    "POST /api/v1/apps": jsonResponse(201, app()),
+  });
+  renderPage(<AppsPage />);
+  const zone = screen.getByRole("region", { name: "APK 업로드 영역" });
+  fireEvent.dragOver(zone, { dataTransfer: { files: [file], types: ["Files"] } });
+  fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("com.example.app 1.0 (1) 추가됨"));
+  const request = calls.find(call => call.method === "POST")!;
+  expect(request.body).toBeInstanceOf(FormData);
+  expect((request.body as FormData).get("apk")).toBe(file);
+  expect((request.body as FormData).get("source")).toBe("dashboard");
+  expect(request.headers).not.toHaveProperty("Content-Type");
+  expect(calls.filter(call => call.method === "GET")).toHaveLength(2);
+});
+
+test("ignores dropped files when writes require a missing token", async () => {
+  const { calls } = mockApi({
+    "GET /api/v1/apps": [],
+    "GET /api/v1/healthz": healthBody({ auth_required: true }),
+  });
+  renderPage(<AppsPage />);
+  await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.");
+  const zone = screen.getByRole("region", { name: "APK 업로드 영역" });
+  expect(zone).toHaveAttribute("aria-disabled", "true");
+  fireEvent.drop(zone, { dataTransfer: { files: [apkFile()] } });
+  expect(screen.getByRole("button", { name: "파일 선택" })).toBeDisabled();
+  expect(calls.every(call => call.method === "GET")).toBe(true);
+});
+
+test("ignores duplicate drops while an APK is uploading and exposes server errors", async () => {
+  let finish!: (response: Response) => void;
+  const { calls } = mockApi({
+    "GET /api/v1/apps": [],
+    "POST /api/v1/apps": () => new Promise<Response>(resolve => { finish = resolve; }),
+  });
+  renderPage(<AppsPage />);
+  await screen.findByText(/보관함이 비어 있습니다/);
+  const zone = screen.getByRole("region", { name: "APK 업로드 영역" });
+  fireEvent.drop(zone, { dataTransfer: { files: [apkFile()] } });
+  expect(await screen.findByRole("button", { name: "업로드 중…" })).toBeDisabled();
+  fireEvent.drop(zone, { dataTransfer: { files: [apkFile()] } });
+  expect(calls.filter(call => call.method === "POST")).toHaveLength(1);
+  finish(apiErrorResponse(400, "invalid_apk", "올바른 APK 파일이 아닙니다"));
+  expect(await screen.findByRole("alert")).toHaveTextContent("올바른 APK 파일이 아닙니다 (invalid_apk)");
+  expect(screen.getByRole("button", { name: "파일 선택" })).toBeEnabled();
+});
 
 test("groups builds by package with the newest package and latest label first", async () => {
   mockApi({ "GET /api/v1/apps": [

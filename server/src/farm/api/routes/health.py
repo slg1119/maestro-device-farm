@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from farm.api.deps import get_db, get_settings
+from farm.api.routes.ai import enabled
 from farm.db.models import AgentStatus, Workspace
 from farm.timeutil import age_seconds
 
@@ -23,5 +24,6 @@ def healthz(request: Request) -> dict:
         sync_errors = [{"name": ws.name, "error": ws.sync_error} for ws in failing]
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     return {"status": "ok", "agent": agent, "auth_required": settings.require_token,
+            "ai_enabled": enabled(request.app),
             "workspace_sync_errors": sync_errors,
             "disk_free_bytes": shutil.disk_usage(settings.data_dir).free}

@@ -2,15 +2,15 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
-from starlette.datastructures import UploadFile as StarletteUploadFile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
@@ -25,6 +25,7 @@ from farm.ids import new_id
 from farm.results import CaseResult
 from farm.runner.junit import merge_junit
 from farm.scheduler.finish import cancel_run
+from farm.scheduler.rerun import prepare_rerun, rerun_run
 from farm.scheduler.selector import DeviceSelector
 from farm.scheduler.submit import RunRequest, SubmitError, create_run
 from farm.workspaces.changes import MB as CHANGE_MB
@@ -73,6 +74,12 @@ class RunOptions(BaseModel):
         if required - given:
             raise ValueError(f"flow_source {self.flow_source} needs {', '.join(sorted(required - given))}")
         return self
+
+
+class RerunOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    failed_only: bool = False
 
 
 class AppRef(BaseModel):
@@ -345,6 +352,35 @@ def cancel(run_id: str, request: Request, _writer: Writer = Depends(get_writer))
         _get_run(s, run_id)
         run = cancel_run(s, run_id)
         return RunSummary(**_summary(run, s.get(AppBuild, run.app_build_id), _counts(s, [run_id])[run_id]))
+
+
+@router.post("/runs/{run_id}/rerun", status_code=201)
+def rerun(run_id: str, options: RerunOptions, request: Request,
+          writer: Annotated[Writer, Depends(get_writer)]) -> dict:
+    settings, db = get_settings(request), get_db(request)
+    upload_dir = None
+    try:
+        with db.session() as s:
+            plan = prepare_rerun(s, settings, run_id, failed_only=options.failed_only)
+        upload_dir = settings.path("uploads", plan.new_run_id)
+        flows_dir = upload_dir / "flows"
+        # No SQLite transaction is held during the potentially large snapshot copy.
+        try:
+            shutil.copytree(plan.flows_dir, flows_dir)
+        except FileNotFoundError as exc:
+            raise SubmitError("snapshot_purged", "the run snapshot is no longer available") from exc
+        with db.session() as s:
+            run = rerun_run(s, plan, flows_dir=flows_dir, created_by=writer.name)
+    except SubmitError as exc:
+        if upload_dir is not None:
+            shutil.rmtree(upload_dir, ignore_errors=True)
+        status = {"run_not_found": 404, "snapshot_purged": 409}.get(exc.code, 400)
+        raise ApiError(status, exc.code, str(exc)) from exc
+    except Exception:
+        if upload_dir is not None:
+            shutil.rmtree(upload_dir, ignore_errors=True)
+        raise
+    return {"id": run.id, "url": f"{settings.public_url}/runs/{run.id}"}
 
 
 @router.get("/runs/{run_id}/junit")

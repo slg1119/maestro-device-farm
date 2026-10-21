@@ -15,7 +15,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="설정" onClose={onClose}>
+    <Modal title="설정" onClose={onClose} size="md">
       <form onSubmit={submit} className="space-y-4">
         <Field label="API 토큰 (선택)" hint="서버가 FARM_REQUIRE_TOKEN=true로 실행될 때만 필요합니다. `farm token create <이름>`으로 발급합니다.">
           <Input

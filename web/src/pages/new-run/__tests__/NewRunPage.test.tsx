@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { keys } from "../../../api/queries";
@@ -18,6 +18,26 @@ function setup(overrides: Parameters<typeof mockApi>[0] = {}, token = "t") {
   const page = renderPage(<NewRunPage />, { route: "/runs/new", path: "/runs/new" });
   return { ...api, ...page, user: userEvent.setup() };
 }
+
+test("keeps the execution summary in sync with source, app, mode and device eligibility", async () => {
+  const { user } = setup({
+    "GET /api/v1/apps": [app(), app({ id: "newer", version_name: "2.0", version_code: 2, min_sdk: 35 })],
+  });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  const summary = within(screen.getByRole("complementary", { name: "실행 요약" }));
+  expect(summary.getByText("example-app")).toBeInTheDocument();
+  expect(summary.getByText("com.example.app@latest")).toBeInTheDocument();
+  expect(summary.getByText("split")).toBeInTheDocument();
+  expect(summary.getByText("조건에 맞는 기기 1대")).toBeInTheDocument();
+  expect(summary.getByRole("button", { name: "실행 시작" })).toBeInTheDocument();
+  await user.type(screen.getByRole("textbox", { name: "ref" }), "release");
+  expect(summary.getByText("release")).toBeInTheDocument();
+  await user.selectOptions(screen.getByRole("combobox", { name: "빌드" }), "newer");
+  expect(summary.getByText("com.example.app · 2.0 (2)")).toBeInTheDocument();
+  expect(summary.getByText("조건에 맞는 기기 0대")).toBeInTheDocument();
+  await user.click(screen.getByRole("radio", { name: /matrix/ }));
+  expect(summary.getByText("matrix")).toBeInTheDocument();
+});
 
 test("submits the default workspace form as multipart and navigates after invalidating runs", async () => {
   const { calls, client, user } = setup();
@@ -127,6 +147,12 @@ test("uploads zip and APK files and sends no stale workspace or library fields",
   const apk = new File(["apk"], "app.apk", { type: "application/vnd.android.package-archive" });
   await user.upload(screen.getByLabelText("Flow zip"), zip);
   await user.upload(screen.getByLabelText("APK 파일"), apk);
+  const summary = within(screen.getByRole("complementary", { name: "실행 요약" }));
+  expect(summary.getByText("flows.zip")).toBeInTheDocument();
+  expect(summary.getByText("app.apk")).toBeInTheDocument();
+  expect(summary.queryByText("example-app")).not.toBeInTheDocument();
+  expect(summary.queryByText("com.example.app@latest")).not.toBeInTheDocument();
+  expect(summary.queryByText("stale-ref")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "실행 시작" }));
   await screen.findByTestId("navigated");
   const body = calls.find(c => c.method === "POST")!.body as FormData;

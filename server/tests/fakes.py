@@ -33,3 +33,20 @@ class FakeSyntaxChecker:
             if column >= 0:
                 return [SyntaxIssue("Invalid Command: notACommand", number, column + 1)]
         return []
+
+
+class FakeAiClient:
+    """Queued AI answers at the provider boundary; never opens a network connection."""
+
+    def __init__(self, responses=()) -> None:
+        self.responses = list(responses)
+        self.requests = []
+        self.schemas = []
+
+    def complete(self, request, schema):
+        self.requests.append(request)
+        self.schemas.append(schema)
+        answer = self.responses.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer(request) if callable(answer) else answer

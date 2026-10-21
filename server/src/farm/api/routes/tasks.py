@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from farm.api.deps import get_db
 from farm.api.errors import ApiError
 from farm.db.models import Task
+from farm.runner.steps import parse_steps
 
 router = APIRouter()
 
@@ -27,6 +28,13 @@ def list_artifacts(task_id: str, request: Request) -> dict:
         files = [{"path": p.relative_to(base).as_posix(), "size": p.stat().st_size}
                  for p in sorted(base.rglob("*")) if p.is_file()]
     return {"task_id": task_id, "attempt": task.attempt, "files": files}
+
+
+@router.get("/tasks/{task_id}/steps")
+def task_steps(task_id: str, request: Request) -> dict:
+    task = _get_task(request, task_id)
+    flows = parse_steps(Path(task.artifacts_dir)) if task.artifacts_dir else []
+    return {"task_id": task_id, "attempt": task.attempt, "flows": flows}
 
 
 @router.get("/tasks/{task_id}/artifacts/{path:path}")
