@@ -74,7 +74,7 @@ export function WorkspaceForm({ workspace, onClose }: { workspace?: Workspace; o
         <Field label="경로" hint="레포 루트 기준. 앱 레포라면 .maestro, 비우면 레포 루트">
           <Input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} />
         </Field>
-        <Field label="기본 앱 패키지" hint="선택 사항">
+        <Field label="기본 앱 패키지" hint="선택 사항. 새 실행과 AI Flow 생성에 사용할 기본 패키지입니다.">
           <Input placeholder="com.example.app" value={draft.default_app_package} onChange={(event) => setDraft({ ...draft, default_app_package: event.target.value })} />
         </Field>
         <ErrorBox error={mutation.error} />
