@@ -10,6 +10,7 @@ from farm.ai.client import ImagePart
 from farm.db.engine import Database
 from farm.db.models import Run, TestResult
 from farm.flows.enumerate import enumerate_flows
+from farm.runner.artifacts import EnvRedactor
 from farm.runner.steps import parse_steps
 from farm.workspaces.changes import Change, normalize_changes, touched_paths
 from farm.workspaces.errors import WorkspaceError
@@ -178,14 +179,15 @@ def failure_context(settings, task, *, db=None, target_path=None):
         hierarchy = ""
         if task.artifacts_dir:
             artifacts = Path(task.artifacts_dir).resolve()
+            redactor = EnvRedactor(run.env.values())
             logs = sorted(p for p in artifacts.rglob("maestro.log") if _inside(artifacts, p))
             if logs:
-                with logs[-1].open(encoding="utf-8", errors="replace") as log:
-                    log_tail = "".join(deque(log, maxlen=200))
-            screenshot = _failure_screenshot(artifacts)
+                log_text = redactor.read_text(logs[-1]) or ""
+                log_tail = "".join(deque(log_text.splitlines(keepends=True), maxlen=200))
+            screenshot = _failure_screenshot(artifacts, run.env.values())
             if screenshot:
                 images.append(ImagePart(screenshot.read_bytes(), "image/png"))
-            hierarchy = _failure_hierarchy(artifacts)
+            hierarchy = _failure_hierarchy(artifacts, run.env.values())
         text = (f"## Failure\nFlow: {target}\n{flow_text}\n"
                 f"Task error: {task.error_code or ''} {task.error_message or ''}\n\nJUnit failure messages\n{messages}"
                 f"\n\nmaestro.log (last 200 lines)\n{log_tail}" + ("\n\n" + hierarchy if hierarchy else ""))
@@ -195,8 +197,8 @@ def failure_context(settings, task, *, db=None, target_path=None):
             db.dispose()
 
 
-def _failure_screenshot(artifacts):
-    for flow in parse_steps(artifacts):
+def _failure_screenshot(artifacts, env_values=()):
+    for flow in parse_steps(artifacts, env_values=env_values):
         for step in flow["steps"]:
             if step["status"] in {"failed", "warned"} and step.get("screenshot"):
                 path = artifacts / step["screenshot"]
@@ -216,8 +218,9 @@ def screen_context(result_dir: Path):
     return "## Screen hierarchy (max 400 nodes)\n" + selector_outline(tree), [ImagePart(screen.read_bytes(), "image/png")]
 
 
-def _failure_hierarchy(artifacts: Path) -> str:
-    for flow in parse_steps(artifacts):
+def _failure_hierarchy(artifacts: Path, env_values=()) -> str:
+    redactor = EnvRedactor(env_values)
+    for flow in parse_steps(artifacts, env_values=env_values):
         for step in flow["steps"]:
             if step["status"] not in {"failed", "warned"}:
                 continue
@@ -231,7 +234,7 @@ def _failure_hierarchy(artifacts: Path) -> str:
             if not _inside(artifacts, path) or not path.is_file():
                 continue
             try:
-                outline = selector_outline(json.loads(path.read_text(encoding="utf-8")))
+                outline = selector_outline(json.loads(redactor.read_text(path)))
             except (OSError, ValueError, TypeError):
                 continue  # Missing or corrupt optional evidence must not prevent repair.
             return "## Screen hierarchy at failure (max 400 nodes)\n" + outline

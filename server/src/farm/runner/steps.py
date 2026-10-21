@@ -1,6 +1,9 @@
 import json
 import logging
+from collections.abc import Iterable
 from pathlib import Path
+
+from farm.runner.artifacts import EnvRedactor
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +70,15 @@ def _artifact_paths(metadata: dict, flow_dir: Path, root: Path) -> dict:
     return paths
 
 
-def parse_steps(artifacts_dir: Path) -> list[dict]:
+def parse_steps(artifacts_dir: Path, *, env_values: Iterable[str] = ()) -> list[dict]:
     root = artifacts_dir.resolve()
+    redactor = EnvRedactor(env_values)
     flows = []
     for path in sorted(root.glob("maestro/*/*/commands.json")):
         if not path.resolve().is_relative_to(root):
             continue
         try:
-            entries = json.loads(path.read_text(encoding="utf-8"))
+            entries = json.loads(redactor.read_text(path))
             if not isinstance(entries, list):
                 raise TypeError("expected a command list")
         except (OSError, UnicodeError, ValueError, TypeError):

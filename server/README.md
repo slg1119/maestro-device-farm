@@ -30,6 +30,13 @@ export FARM_URL=http://localhost:8700 FARM_USER=ci   # FARM_TOKEN=<token> only w
 uv run farmctl run --flows ../path/to/.maestro --apk app.apk --mode split --wait --junit farm-junit.xml
 ```
 
+실행이 끝나면 attempt 폴더의 모든 UTF-8 텍스트 산출물에서 run `env` 값을 `***`로 가립니다.
+`maestro.log`, 중첩 `commands.json`과 `logs/`, `junit.xml`, `logcat.txt`도 포함하며,
+JUnit 분류와 단계·AI 실패 컨텍스트 파싱 전에 적용합니다. JSON/XML로 이스케이프된 값도 가립니다.
+오탐 방지를 위해 빈 값과 **4자 미만의 값은 산출물 마스킹에서 제외**합니다.
+스크린샷·영상 등 바이너리는 변경하지 않습니다. 기존 산출물은 단계 조회·파일 다운로드·AI
+실패 컨텍스트를 읽을 때 메모리에서만 가리며, 저장된 원본을 다시 쓰지 않습니다.
+
 ## AI
 
 Codex CLI에 로그인돼 있으면 키 없이 켜짐; `FARM_OPENAI_API_KEY`가 있으면 OpenAI 사용.

@@ -1,9 +1,11 @@
+import asyncio
 import logging
 from pathlib import Path
 
 from farm.devices.adb import Adb
 from farm.flows.enumerate import CONFIG_NAMES
 from farm.results import TaskOutcome
+from farm.runner.artifacts import EnvRedactor
 from farm.runner.base import CancelToken, PrecheckFailed, TaskSpec
 from farm.runner.junit import JunitParseError, parse_junit
 from farm.runner.procs import ProcResult, run_process, start_background, terminate_group
@@ -90,6 +92,8 @@ class MaestroRunner:
                                        grace=self.term_grace)
         finally:
             await terminate_group(logcat, grace=2)
+            # JUnit and log tails must be sanitized before _classify reads them.
+            await asyncio.to_thread(EnvRedactor(spec.env.values()).redact_tree, spec.artifacts_dir)
         return await self._classify(spec, cancel, result)
 
     async def _classify(self, spec: TaskSpec, cancel: CancelToken, result: ProcResult) -> TaskOutcome:
