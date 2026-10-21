@@ -9,6 +9,7 @@ from farm.config import Settings
 from farm.db.engine import Database
 from farm.devices.provider import DeviceInfo, DeviceProvider
 from farm.devices.registry import heartbeat, mark_healthy, sync_devices, unhealthy_serials
+from farm.ops.retention import run_retention
 from farm.runner.base import Inspector, Runner
 from farm.scheduler.reservations import expire_reservations
 from farm.scheduler.sweeper import fail_stale_pinned_tasks
@@ -52,6 +53,7 @@ class Agent:
             asyncio.create_task(self._every(self.sweep_sec, self.sweep_once)),
             asyncio.create_task(self._every(self.heartbeat_sec, self.heartbeat_once)),
             asyncio.create_task(self._every(self.unhealthy_recheck_sec, self.recheck_unhealthy_once)),
+            asyncio.create_task(self._retention_loop()),
         ]
         try:
             await self._stop.wait()
@@ -106,6 +108,14 @@ class Agent:
             except Exception:  # one failed iteration must not stop the loop
                 log.exception("agent loop %s failed", fn.__name__)
             await asyncio.sleep(interval)
+
+    async def _retention_loop(self) -> None:
+        await asyncio.sleep(60)
+        await self._every(86400, self.retention_once)
+
+    async def retention_once(self) -> None:
+        report = await asyncio.to_thread(run_retention, self.db, self.settings)
+        log.info("retention complete: %s", report)
 
     def _recover(self) -> list[str]:
         with self.db.session() as s:

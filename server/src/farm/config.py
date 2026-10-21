@@ -2,7 +2,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     max_apk_mb: int = 500
     max_flows_mb: int = 50
     max_media_mb: int = 10
+    retention_days: int = Field(default=30, ge=0)
+    app_keep_per_package: int = Field(default=20, ge=0)
     github_token: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-6.1-sol"

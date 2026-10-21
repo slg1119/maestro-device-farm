@@ -49,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     ws_sub.add_parser("list", help="list workspaces")
     ws_sub.add_parser("remove", help="unregister a workspace (the repo is untouched)").add_argument("name")
     sub.add_parser("api", help="run farm-api (applies migrations first)")
+    sub.add_parser("doctor", help="호스트와 팜 상태 점검")
+    retention = sub.add_parser("retention", help="보관 기간이 지난 데이터 정리")
+    retention.add_subparsers(dest="retention_cmd", required=True).add_parser("run", help="지금 정리")
     agent = sub.add_parser("agent", help="run farm-agent")
     agent.add_argument("--fake", type=int, default=0, metavar="N",
                        help="simulate N devices with the fake runner instead of adb/maestro")
@@ -149,7 +152,38 @@ def _cmd_api(_args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
-HANDLERS = {"db": _cmd_db, "token": _cmd_token, "workspace": _cmd_workspace, "api": _cmd_api, "agent": _cmd_agent}
+def _cmd_doctor(_args: argparse.Namespace, settings: Settings) -> int:
+    from farm.ops.doctor import run_doctor
+
+    try:
+        db = Database(settings.database_path)
+    except OSError:
+        print("FAIL DB: 데이터 경로 생성 실패 · FARM_DATA_DIR와 디렉터리 권한을 확인하세요")
+        return 1
+    try:
+        checks = run_doctor(db, settings)
+        for check in checks:
+            print(check)
+        return int(any(check.status == "FAIL" for check in checks))
+    finally:
+        db.dispose()
+
+
+def _cmd_retention(_args: argparse.Namespace, settings: Settings) -> int:
+    from dataclasses import asdict
+    from farm.ops.retention import run_retention
+
+    db = Database(settings.database_path)
+    try:
+        report = run_retention(db, settings)
+        print("보관 정리 완료: " + " ".join(f"{key}={value}" for key, value in asdict(report).items()))
+        return 0
+    finally:
+        db.dispose()
+
+
+HANDLERS = {"db": _cmd_db, "token": _cmd_token, "workspace": _cmd_workspace, "api": _cmd_api,
+            "agent": _cmd_agent, "doctor": _cmd_doctor, "retention": _cmd_retention}
 
 
 def main(argv: list[str] | None = None) -> int:
