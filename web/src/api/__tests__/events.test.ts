@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-import { createInvalidator, keysFor } from "../events";
+import { createInvalidator, EVENT_TYPES, keysFor } from "../events";
 
 test("maps event types to query keys", () => {
   expect(keysFor({ type: "device.updated", run_id: null, payload: {} })).toEqual([["devices"]]);
@@ -32,4 +32,10 @@ test("invalidates the AI job, job lists and usage after every AI update", () => 
 test("invalidates device command details and reservations on their events", () => {
   expect(keysFor({ type: "device_command.updated", run_id: null, payload: { id: "cmd1" } })).toEqual([["devices"], ["device-command", "cmd1"]]);
   expect(keysFor({ type: "reservation.updated", run_id: null, payload: {} })).toEqual([["devices"], ["reservations"]]);
+});
+
+test("recording updates refresh the exact recording and active device recording lists", () => {
+  expect(EVENT_TYPES).toContain("recording.updated");
+  expect(keysFor({ type: "recording.updated", run_id: null, payload: { id: "rec1", status: "active", steps: 2 } })).toEqual([["recording", "rec1"], ["device-recordings"]]);
+  expect(keysFor({ type: "recording.updated", run_id: null, payload: {} })).toEqual([["device-recordings"]]);
 });

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiJson, query } from "./client";
-import type { AiJob, AiStatus, AppBuild, ArtifactListing, Device, DeviceCommand, Health, RunDetail, RunSummary, StreamTicket, TaskSteps, Workspace } from "./types";
+import type { AiJob, AiStatus, AppBuild, ArtifactListing, Device, DeviceCommand, Health, Recording, RecordingCreate, RunDetail, RunSummary, StreamTicket, TaskSteps, Workspace } from "./types";
 import { getSettings } from "../lib/settings";
 
 export function createStreamTicket(serial: string, signal?: AbortSignal) {
@@ -29,6 +29,9 @@ export const keys = {
   workspaceHistory: (id: string, sha: string, path?: string) => ["workspace-history", id, sha, path ?? ""] as const,
   deviceCommand: (id: string) => ["device-command", id] as const,
   reservations: ["reservations"] as const,
+  recording: (id: string) => ["recording", id] as const,
+  deviceRecordings: (serial: string) => ["device-recordings", serial] as const,
+  deviceRecordingsAll: ["device-recordings"] as const,
 };
 
 export interface RunFilters {
@@ -89,4 +92,22 @@ export function useDeviceCommand(id: string | null) {
     queryKey: keys.deviceCommand(id ?? ""), queryFn: () => apiJson<DeviceCommand>(`/device-commands/${encodeURIComponent(id!)}`), enabled: id !== null,
     refetchInterval: (query) => query.state.data?.status === "queued" || query.state.data?.status === "running" ? 1000 : false,
   });
+}
+
+export function useRecording(id: string | null) {
+  return useQuery({ queryKey: keys.recording(id ?? ""), queryFn: ({ signal }) => apiJson<Recording>(`/recordings/${encodeURIComponent(id!)}`, { signal }), enabled: id !== null, retry: false });
+}
+
+export function useActiveRecordings(serial: string) {
+  return useQuery({ queryKey: keys.deviceRecordings(serial), queryFn: ({ signal }) => apiJson<Recording[]>(`/devices/${encodeURIComponent(serial)}/recordings?status=active`, { signal }), retry: false });
+}
+
+export function startRecording(serial: string, body: RecordingCreate) {
+  return apiJson<Recording>(`/devices/${encodeURIComponent(serial)}/recordings`, { method: "POST", json: body });
+}
+export function stopRecording(id: string, aiPolish: boolean) {
+  return apiJson<Recording>(`/recordings/${encodeURIComponent(id)}/stop`, { method: "POST", json: { ai_polish: aiPolish } });
+}
+export function cancelRecording(id: string) {
+  return apiJson<Recording>(`/recordings/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

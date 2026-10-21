@@ -14,6 +14,7 @@ import { HistoryPanel } from "./panels/HistoryPanel";
 import { ProblemsPanel } from "./panels/ProblemsPanel";
 import { RunPanel } from "./panels/RunPanel";
 import { ScreenPanel } from "./panels/ScreenPanel";
+import { RecordingDraftImport } from "./panels/screen/RecordingDraftImport";
 import { ResizeHandle } from "./ResizeHandle";
 import { EditorProvider, useEditor, useEditorRuntime } from "./store";
 import { FileTree } from "./tree/FileTree";
@@ -41,6 +42,8 @@ function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initi
   }, retry: false });
   const [params] = useSearchParams();
   const [panel, setPanel] = useState(params.has("aiJob") ? "ai" : "run"); const [mobile, setMobile] = useState(params.has("aiJob") ? "panel" : "code");
+  const aiJobId = params.get("aiJob");
+  useEffect(() => { if (aiJobId) { setPanel("ai"); setMobile("panel"); } }, [aiJobId]);
   const [treeWidth, setTreeWidth] = useState(248); const [panelWidth, setPanelWidth] = useState(360);
   const [conflicts, setConflicts] = useState<string[]>([]); const [fetching, setFetching] = useState(false); const [error, setError] = useState<unknown>(null);
   const [pendingWorkspace, setPendingWorkspace] = useState<string | null>(null);
@@ -54,6 +57,7 @@ function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initi
   const switchWorkspace = (name: string) => { if (count) setPendingWorkspace(name); else navigate(`/editor/${encodeURIComponent(name)}`); };
   const options = [{ value: "run", label: "실행" }, { value: "screen", label: "화면" }, ...(ai.data?.enabled ? [{ value: "ai", label: "AI" }] : []), { value: "history", label: "이력" }, { value: "problems", label: `문제 ${problemCount}` }];
   return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface text-fg">
+    <RecordingDraftImport onImported={() => setMobile("code")} />
     <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2 md:px-4">
       <Menu label={api.workspace.name} icon={<ChevronDown />} items={workspaces.map(ws => ({ label: ws.name, onClick: () => switchWorkspace(ws.name) }))} />
       <span className="order-last min-w-0 basis-full truncate text-xs text-fg-muted md:order-none md:flex-1 md:basis-auto">{api.workspace.repo} · <GitBranch className="inline size-3" /> {api.workspace.branch} · {api.workspace.path}</span>
@@ -75,7 +79,7 @@ function Workbench({ workspaces, initialFile }: { workspaces: Workspace[]; initi
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"><Suspense fallback={<Loading label="편집기를 불러오는 중…" />}><CodeEditor /></Suspense></div>
       </section>
       <ResizeHandle label="패널 너비" value={panelWidth} min={300} max={640} reverse onChange={setPanelWidth} />
-      <aside aria-label="에디터 패널" className={cx("min-h-0 min-w-0 shrink-0 flex-col max-md:!w-full md:flex", mobile !== "panel" ? "hidden" : "flex")} style={{ width: panelWidth }}><Tabs label="에디터 패널" options={options} value={panel} onChange={setPanel} /><div className="min-h-0 flex-1 overflow-auto">{panel === "run" ? <RunPanel onShowScreen={() => { setPanel("screen"); setMobile("panel"); }} /> : panel === "screen" ? <ScreenPanel onReserve={() => setPanel("run")} /> : panel === "ai" && ai.data?.enabled ? <AiPanel /> : panel === "history" ? <HistoryPanel /> : <ProblemsPanel />}</div></aside>
+      <aside aria-label="에디터 패널" className={cx("min-h-0 min-w-0 shrink-0 flex-col max-md:!w-full md:flex", mobile !== "panel" ? "hidden" : "flex")} style={{ width: panelWidth }}><Tabs label="에디터 패널" options={options} value={panel} onChange={setPanel} /><div className="min-h-0 flex-1 overflow-auto">{panel === "run" ? <RunPanel onShowScreen={() => { setPanel("screen"); setMobile("panel"); }} /> : panel === "screen" ? <ScreenPanel onReserve={() => setPanel("run")} onDraftImported={() => setMobile("code")} /> : panel === "ai" && ai.data?.enabled ? <AiPanel /> : panel === "history" ? <HistoryPanel /> : <ProblemsPanel />}</div></aside>
     </div>
     <footer className="flex min-h-7 shrink-0 items-center gap-3 overflow-x-auto border-t border-border bg-surface-2 px-3 text-[11px] whitespace-nowrap text-fg-muted"><button onClick={() => { setPanel("problems"); setMobile("panel"); }} className="min-h-7 focus-visible:outline-accent max-md:min-h-11">문제 {problemCount}</button><span>{api.activePath ? languageFor(api.activePath).toUpperCase() : "—"}</span><span className="font-mono">Ln {runtime.cursor.line}, Col {runtime.cursor.column}</span><span className="ml-auto font-mono">{api.baseSha.slice(0, 7)}</span><span>임시 저장됨</span><span>{runtime.lastCheck ? `검사 ${runtime.lastCheck.toLocaleTimeString("ko-KR")}` : "검사 대기"}</span></footer>
     <CommitDialog />

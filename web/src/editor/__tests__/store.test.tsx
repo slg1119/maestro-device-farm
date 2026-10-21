@@ -128,3 +128,18 @@ test("draft storage is debounced across consecutive edits", async () => {
     expect(write).toHaveBeenCalledTimes(1); expect(write.mock.calls[0]?.[1]).toContain("- scroll");
   } finally { view.unmount(); write.mockRestore(); vi.useRealTimers(); }
 });
+
+test("importDraft creates and opens recorded YAML while preserving existing files and drafts", async () => {
+  setup(); await waitFor(() => expect(api.files).toHaveLength(2));
+  let imported = "";
+  act(() => { imported = api.importDraft("flows/recorded-20261021-1435.yaml", "- launchApp"); });
+  expect(imported).toBe("flows/recorded-20261021-1435.yaml");
+  expect(api.activePath).toBe(imported); expect(api.openPaths).toContain(imported);
+  expect(await api.readFile(imported)).toBe("- launchApp");
+  act(() => { imported = api.importDraft("flows/recorded-20261021-1435.yaml", "- back"); });
+  expect(imported).toBe("flows/recorded-20261021-1435-2.yaml");
+  expect(await api.readFile("flows/recorded-20261021-1435.yaml")).toBe("- launchApp");
+  act(() => { imported = api.importDraft("flow.yaml", "- back"); });
+  expect(imported).toBe("flow-2.yaml"); expect(api.drafts["flow.yaml"]).toBeUndefined();
+  expect(() => api.importDraft("../escape.yaml", "- back")).toThrow();
+});
