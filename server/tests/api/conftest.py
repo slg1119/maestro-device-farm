@@ -24,6 +24,13 @@ def client(app):
 
 
 @pytest.fixture
+def secured_client(settings, db, remotes):
+    """A farm-api started with FARM_REQUIRE_TOKEN=true, sharing the same database."""
+    secured = git_settings(settings, remotes).model_copy(update={"require_token": True})
+    return TestClient(create_app(secured, db=db, apk_parser=FakeApkParser(), syntax_checker=FakeSyntaxChecker()))
+
+
+@pytest.fixture
 def token(db) -> str:
     with db.session() as s:
         return create_token(s, "test")

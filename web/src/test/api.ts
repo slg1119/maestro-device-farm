@@ -19,9 +19,18 @@ export function apiErrorResponse(status: number, code: string, message = code, e
   return jsonResponse(status, { error: { code, message, ...extra } });
 }
 
+export const HEALTH_KEY = "GET /api/v1/healthz";
+
+/** Default /healthz body: an internal farm that does not require tokens. */
+export function healthBody(overrides: Record<string, unknown> = {}) {
+  return { status: "ok", agent: null, auth_required: false, workspace_sync_errors: [], disk_free_bytes: 1, ...overrides };
+}
+
 /**
  * Stubs global fetch. Keys are "METHOD /api/v1/path" (query string ignored). A handler is a value
  * (sent as 200 JSON), a Response, or a function of the request returning either.
+ * `GET /api/v1/healthz` answers healthBody() unless overridden, and is never recorded in `calls`
+ * (it is a background query, e.g. for whether writes need a token).
  */
 export function mockApi(routes: Record<string, Handler>) {
   const calls: MockRequest[] = [];
@@ -45,8 +54,13 @@ export function mockApi(routes: Record<string, Handler>) {
       headers: (init.headers ?? {}) as Record<string, string>,
       body,
     };
-    calls.push(req);
     const key = `${method} ${url.pathname}`;
+    if (key === HEALTH_KEY) {
+      const handler = routes[key] ?? healthBody();
+      const result = typeof handler === "function" ? await (handler as (r: MockRequest) => unknown)(req) : handler;
+      return result instanceof Response ? result : jsonResponse(200, result);
+    }
+    calls.push(req);
     if (!(key in routes)) return apiErrorResponse(404, "not_mocked", key);
     const handler = routes[key];
     const result = typeof handler === "function" ? await (handler as (r: MockRequest) => unknown)(req) : handler;

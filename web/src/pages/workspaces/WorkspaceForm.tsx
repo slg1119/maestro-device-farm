@@ -1,16 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 
+import { useCanWrite } from "../../components/Layout";
 import { apiJson } from "../../api/client";
 import { keys } from "../../api/queries";
 import type { Workspace } from "../../api/types";
 import { Button, ErrorBox, Field, Input, Modal } from "../../components/ui";
-import { useSettings } from "../../lib/settings";
 import type { WorkspaceCreate, WorkspacePatch } from "./types";
 
 export function WorkspaceForm({ workspace, onClose }: { workspace?: Workspace; onClose: () => void }) {
   const client = useQueryClient();
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const [draft, setDraft] = useState({
     name: workspace?.name ?? "",
     repo: workspace?.repo ?? "",
@@ -34,7 +34,7 @@ export function WorkspaceForm({ workspace, onClose }: { workspace?: Workspace; o
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!token || mutation.isPending) return;
+    if (!canWrite || mutation.isPending) return;
     const values: WorkspaceCreate = {
       name: draft.name.trim(),
       repo: draft.repo.trim(),
@@ -80,7 +80,7 @@ export function WorkspaceForm({ workspace, onClose }: { workspace?: Workspace; o
         <ErrorBox error={mutation.error} />
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>취소</Button>
-          <Button type="submit" variant="primary" disabled={!token || mutation.isPending}>
+          <Button type="submit" variant="primary" disabled={!canWrite || mutation.isPending}>
             {mutation.isPending ? (workspace ? "저장 중…" : "확인 중…") : workspace ? "저장" : "등록"}
           </Button>
         </div>

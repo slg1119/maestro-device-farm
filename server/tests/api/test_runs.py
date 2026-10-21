@@ -60,8 +60,18 @@ def test_submit_with_app_spec(client, db, auth, device):
         assert s.get(Run, second.json()["id"]).app_build_id == s.get(Run, first).app_build_id
 
 
-def test_submit_requires_token(client, device):
-    assert _error(_post(client, {}, {"mode": "split"})) == (401, "unauthorized")
+def test_submit_requires_token_when_enabled(secured_client, device):
+    assert _error(_post(secured_client, {}, {"mode": "split"})) == (401, "unauthorized")
+
+
+def test_submit_without_token_records_the_named_user(client, db, device):
+    named = _post(client, {"X-Farm-User": "%ED%99%8D%EA%B8%B8%EB%8F%99%20Kim"}, {"mode": "split"})
+    anonymous = _post(client, {}, {"mode": "split"})
+    assert named.status_code == anonymous.status_code == 201
+    with db.session() as s:
+        assert s.get(Run, named.json()["id"]).created_by == "홍길동 Kim"
+        assert s.get(Run, anonymous.json()["id"]).created_by == "anonymous"
+        assert s.get(AppBuild, s.get(Run, named.json()["id"]).app_build_id).uploaded_by == "홍길동 Kim"
 
 
 @pytest.mark.parametrize(("options", "kwargs", "expected"), [
@@ -110,9 +120,9 @@ def test_list_runs_filters_and_cursor(client, db, auth, device):
     assert client.get("/api/v1/runs", params={"status": "passed"}).json() == []
 
 
-def test_cancel_run(client, auth, device):
+def test_cancel_run(client, secured_client, auth, device):
     run_id = _post(client, auth, {"mode": "split"}).json()["id"]
-    assert client.post(f"/api/v1/runs/{run_id}/cancel").status_code == 401
+    assert secured_client.post(f"/api/v1/runs/{run_id}/cancel").status_code == 401
     body = client.post(f"/api/v1/runs/{run_id}/cancel", headers=auth).json()
     assert body["status"] == "cancelled" and body["counts"]["cancelled"] == 2
 

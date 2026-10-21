@@ -17,8 +17,12 @@ export class ApiError extends Error {
 }
 
 function authHeaders(): Record<string, string> {
-  const { token } = getSettings();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const { token, authorName } = getSettings();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    // Without a token the server records this name as the creator (header values must be ASCII-safe).
+    ...(authorName ? { "X-Farm-User": encodeURIComponent(authorName) } : {}),
+  };
 }
 
 async function toError(res: Response): Promise<ApiError> {

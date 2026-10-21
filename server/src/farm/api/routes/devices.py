@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from farm.api.deps import get_db, get_settings, require_token
+from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
-from farm.db.models import ApiToken, Device, DeviceCommand, Reservation, Task
+from farm.db.models import Device, DeviceCommand, Reservation, Task
 from farm.devices.registry import effective_state, last_heartbeat
 from farm.devices.state import set_device_state
 from farm.events import emit
@@ -105,7 +105,7 @@ def list_devices(request: Request) -> list[DeviceOut]:
 
 @router.patch("/devices/{serial}")
 def patch_device(serial: str, body: DevicePatch, request: Request,
-                 _token: ApiToken = Depends(require_token)) -> DeviceOut:
+                 _writer: Writer = Depends(get_writer)) -> DeviceOut:
     with get_db(request).session() as s:
         device = s.get(Device, serial)
         if device is None:
@@ -126,7 +126,7 @@ def patch_device(serial: str, body: DevicePatch, request: Request,
 
 @router.post("/devices/{serial}/reservations", status_code=201)
 def reserve_device(serial: str, body: ReservationCreate, request: Request,
-                   _token: ApiToken = Depends(require_token)) -> ReservationOut:
+                   _writer: Writer = Depends(get_writer)) -> ReservationOut:
     ttl = get_settings(request).reservation_ttl_sec
     try:
         with get_db(request).session() as s:
@@ -136,7 +136,7 @@ def reserve_device(serial: str, body: ReservationCreate, request: Request,
 
 
 @router.post("/reservations/{reservation_id}/renew")
-def renew(reservation_id: str, request: Request, _token: ApiToken = Depends(require_token)) -> ReservationOut:
+def renew(reservation_id: str, request: Request, _writer: Writer = Depends(get_writer)) -> ReservationOut:
     ttl = get_settings(request).reservation_ttl_sec
     try:
         with get_db(request).session() as s:
@@ -146,7 +146,7 @@ def renew(reservation_id: str, request: Request, _token: ApiToken = Depends(requ
 
 
 @router.delete("/reservations/{reservation_id}")
-def release(reservation_id: str, request: Request, _token: ApiToken = Depends(require_token)) -> ReservationOut:
+def release(reservation_id: str, request: Request, _writer: Writer = Depends(get_writer)) -> ReservationOut:
     try:
         with get_db(request).session() as s:
             return ReservationOut.model_validate(release_reservation(s, reservation_id))
@@ -155,7 +155,7 @@ def release(reservation_id: str, request: Request, _token: ApiToken = Depends(re
 
 
 @router.post("/reservations/{reservation_id}/inspect", status_code=202)
-def request_inspect(reservation_id: str, request: Request, _token: ApiToken = Depends(require_token)) -> dict:
+def request_inspect(reservation_id: str, request: Request, _writer: Writer = Depends(get_writer)) -> dict:
     try:
         with get_db(request).session() as s:
             return {"id": create_inspect_command(s, reservation_id).id}

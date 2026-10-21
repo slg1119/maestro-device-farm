@@ -5,11 +5,10 @@ import { useNavigate } from "react-router";
 import { apiFetch } from "../../api/client";
 import { keys, useApps, useDevices, useWorkspaces } from "../../api/queries";
 import type { AppBuild, Device, RunSummary, Workspace } from "../../api/types";
-import { TokenNotice } from "../../components/Layout";
+import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { DeviceStateBadge } from "../../components/StatusBadge";
 import { Button, Card, Empty, ErrorBox, Field, Input, Loading, PageHeader, Select, Textarea, cx } from "../../components/ui";
 import { timeAgo } from "../../lib/format";
-import { useSettings } from "../../lib/settings";
 import { buildDeviceSelector, buildRunOptions, matchingDevices, type RunForm } from "./options";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -40,7 +39,7 @@ function defaultPackage(workspace: Workspace | undefined, packages: string[]): s
 }
 
 function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; apps: AppBuild[]; devices: Device[] }) {
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const client = useQueryClient();
   const navigate = useNavigate();
   // /apps is ordered by created_at DESC, id DESC, the same order used by @latest.
@@ -75,7 +74,7 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!token || submitRun.isPending) return;
+    if (!canWrite || submitRun.isPending) return;
     submitRun.reset();
     setValidationError(null);
     try {
@@ -229,7 +228,7 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
       </fieldset>
       <ErrorBox error={validationError ?? submitRun.error} />
       <div className="flex justify-end">
-        <Button type="submit" variant="primary" className="min-h-11 w-full sm:w-auto" disabled={!token || submitRun.isPending}>
+        <Button type="submit" variant="primary" className="min-h-11 w-full sm:w-auto" disabled={!canWrite || submitRun.isPending}>
           {submitRun.isPending ? "제출 중…" : "실행 시작"}
         </Button>
       </div>

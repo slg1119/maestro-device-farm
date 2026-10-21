@@ -17,7 +17,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="설정" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label="API 토큰" hint="쓰기 작업에 필요합니다. `farm token create <이름>`으로 발급합니다.">
+        <Field label="API 토큰 (선택)" hint="서버가 FARM_REQUIRE_TOKEN=true로 실행될 때만 필요합니다. `farm token create <이름>`으로 발급합니다.">
           <Input
             type="password"
             autoComplete="off"
@@ -26,7 +26,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             placeholder="farm_..."
           />
         </Field>
-        <Field label="작성자 이름" hint="워크스페이스 커밋의 Co-authored-by에 들어갑니다.">
+        <Field label="작성자 이름" hint="실행과 업로드의 생성자, 워크스페이스 커밋의 Co-authored-by로 기록됩니다.">
           <Input value={draft.authorName} onChange={(e) => setDraft({ ...draft, authorName: e.target.value })} />
         </Field>
         <Field label="작성자 이메일">

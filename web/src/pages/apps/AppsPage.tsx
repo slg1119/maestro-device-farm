@@ -4,13 +4,12 @@ import { useRef, useState } from "react";
 import { API, apiFetch, apiJson } from "../../api/client";
 import { keys, useApps } from "../../api/queries";
 import type { AppBuild } from "../../api/types";
-import { TokenNotice } from "../../components/Layout";
+import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { Badge, Button, Card, Empty, ErrorBox, Input, Loading, PageHeader } from "../../components/ui";
 import { formatBytes, shortSha, timeAgo } from "../../lib/format";
-import { useSettings } from "../../lib/settings";
 
 function BuildRow({ build }: { build: AppBuild }) {
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const client = useQueryClient();
   const pin = useMutation({
     mutationFn: () => apiJson<AppBuild>(`/apps/${encodeURIComponent(build.id)}`, {
@@ -42,8 +41,8 @@ function BuildRow({ build }: { build: AppBuild }) {
           size="sm"
           className="min-h-9 whitespace-nowrap"
           aria-pressed={build.pinned}
-          disabled={!token || pin.isPending}
-          onClick={() => { if (token && !pin.isPending) pin.mutate(); }}
+          disabled={!canWrite || pin.isPending}
+          onClick={() => { if (canWrite && !pin.isPending) pin.mutate(); }}
         >
           {build.pinned ? "고정 해제" : "고정"}
         </Button>
@@ -65,7 +64,7 @@ function BuildRow({ build }: { build: AppBuild }) {
 
 export function AppsPage() {
   const apps = useApps();
-  const { token } = useSettings();
+  const canWrite = useCanWrite();
   const client = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState("");
@@ -107,17 +106,17 @@ export function AppsPage() {
             accept=".apk"
             aria-label="APK 파일"
             hidden
-            disabled={!token || upload.isPending}
+            disabled={!canWrite || upload.isPending}
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               event.currentTarget.value = "";
-              if (file && token && !upload.isPending) upload.mutate(file);
+              if (file && canWrite && !upload.isPending) upload.mutate(file);
             }}
           />
           <Button
             variant="primary"
             className="min-h-10"
-            disabled={!token || upload.isPending}
+            disabled={!canWrite || upload.isPending}
             onClick={() => fileInput.current?.click()}
           >
             {upload.isPending ? "업로드 중…" : "APK 업로드"}

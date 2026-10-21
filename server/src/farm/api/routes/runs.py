@@ -12,14 +12,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from farm.api.deps import get_db, get_settings, require_token
+from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
 from farm.api.uploads import MB, UploadTooLarge, save_upload
 from farm.apps.apk import ApkParseError
 from farm.apps.library import AppResolveError, ingest_apk, resolve_app
 from farm.config import Settings
 from farm.db.engine import Database
-from farm.db.models import ApiToken, AppBuild, Device, Run, Task, TestResult, Workspace
+from farm.db.models import AppBuild, Device, Run, Task, TestResult, Workspace
 from farm.flows.archive import UnsafeArchiveError, safe_extract_zip
 from farm.ids import new_id
 from farm.results import CaseResult
@@ -211,7 +211,7 @@ RUN_FORM = {"requestBody": {"required": True, "content": {"multipart/form-data":
 
 
 @router.post("/runs", status_code=201, openapi_extra=RUN_FORM)
-async def submit_run(request: Request, token: ApiToken = Depends(require_token)) -> dict:
+async def submit_run(request: Request, writer: Writer = Depends(get_writer)) -> dict:
     # Parsed by hand: Starlette caps non-file form fields at 1 MB, and draft runs carry file contents in `options`.
     settings = get_settings(request)
     form = await request.form(max_part_size=OPTIONS_MEDIA_FILES * settings.max_media_mb * MB)
@@ -221,7 +221,7 @@ async def submit_run(request: Request, token: ApiToken = Depends(require_token))
             raise ApiError(400, "invalid_options", "the options form field is required")
         flows, apk = (form.get(name) for name in ("flows", "apk"))
         return await run_in_threadpool(
-            _submit_run, request, token, options,
+            _submit_run, request, writer, options,
             flows if isinstance(flows, StarletteUploadFile) else None,
             apk if isinstance(apk, StarletteUploadFile) else None,
         )
@@ -229,7 +229,7 @@ async def submit_run(request: Request, token: ApiToken = Depends(require_token))
         await form.close()
 
 
-def _submit_run(request: Request, token: ApiToken, options: str, flows: StarletteUploadFile | None,
+def _submit_run(request: Request, writer: Writer, options: str, flows: StarletteUploadFile | None,
                 apk: StarletteUploadFile | None) -> dict:
     settings = get_settings(request)
     try:
@@ -253,7 +253,7 @@ def _submit_run(request: Request, token: ApiToken, options: str, flows: Starlett
                 tmp = save_upload(apk, tmp_apk, settings.max_apk_mb * MB)
                 build, _ = ingest_apk(
                     s, settings.path("apks"), tmp, request.app.state.apk_parser,
-                    source="ci" if opts.origin == "ci" else "dashboard", uploaded_by=token.name,
+                    source="ci" if opts.origin == "ci" else "dashboard", uploaded_by=writer.name,
                     ci_meta=opts.ci_meta,
                 )
             else:
@@ -264,7 +264,7 @@ def _submit_run(request: Request, token: ApiToken, options: str, flows: Starlett
                 ref=snapshot.ref, commit_sha=snapshot.commit_sha, flow_paths=opts.flow_paths, include_tags=opts.include_tags,
                 exclude_tags=opts.exclude_tags, env=opts.env, ci_meta=opts.ci_meta,
                 task_timeout_sec=opts.task_timeout_sec or settings.task_timeout_sec, origin=opts.origin,
-                created_by=token.name, reservation_id=opts.reservation_id,
+                created_by=writer.name, reservation_id=opts.reservation_id,
             ))
     except UploadTooLarge as exc:
         shutil.rmtree(upload_dir, ignore_errors=True)
@@ -340,7 +340,7 @@ def get_run(run_id: str, request: Request) -> RunDetail:
 
 
 @router.post("/runs/{run_id}/cancel")
-def cancel(run_id: str, request: Request, _token: ApiToken = Depends(require_token)) -> RunSummary:
+def cancel(run_id: str, request: Request, _writer: Writer = Depends(get_writer)) -> RunSummary:
     with get_db(request).session() as s:
         _get_run(s, run_id)
         run = cancel_run(s, run_id)

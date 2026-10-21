@@ -23,11 +23,11 @@ def test_upload_list_pin_download(client, auth):
     assert client.get(f"/api/v1/apps/{app['id']}/download").content == fake_apk_bytes()
 
 
-def test_upload_errors(client, auth):
+def test_upload_errors(client, secured_client, auth):
     res = _upload(client, auth, b"garbage")
     assert (res.status_code, res.json()["error"]["code"]) == (400, "invalid_apk")
     res = _upload(client, auth, ci_meta="{not json")
     assert (res.status_code, res.json()["error"]["code"]) == (400, "invalid_ci_meta")
-    assert _upload(client, {}).status_code == 401
+    assert _upload(secured_client, {}).status_code == 401
     assert client.patch("/api/v1/apps/missing", json={"pinned": True}, headers=auth).status_code == 404
     assert client.get("/api/v1/apps/missing/download").status_code == 404

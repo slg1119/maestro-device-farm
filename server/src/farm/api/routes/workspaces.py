@@ -5,9 +5,8 @@ from contextlib import contextmanager
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from farm.api.deps import get_db, get_settings, require_token
+from farm.api.deps import Writer, get_db, get_settings, get_writer
 from farm.api.errors import ApiError
-from farm.db.models import ApiToken
 from farm.workspaces.changes import MB, Change, validate_changes
 from farm.workspaces.commit import CommitRequest, RestoreRequest, commit_changes, restore
 from farm.workspaces.errors import WorkspaceError
@@ -86,7 +85,7 @@ def list_all(request: Request) -> list[WorkspaceOut]:
 
 
 @router.post("/workspaces", status_code=201)
-def create(body: WorkspaceCreate, request: Request, _token: ApiToken = Depends(require_token)) -> WorkspaceOut:
+def create(body: WorkspaceCreate, request: Request, _writer: Writer = Depends(get_writer)) -> WorkspaceOut:
     with workspace_errors():
         ws = create_workspace(get_db(request), get_settings(request), **body.model_dump())
     return WorkspaceOut.model_validate(ws)
@@ -99,21 +98,21 @@ def get_one(key: str, request: Request) -> WorkspaceOut:
 
 
 @router.patch("/workspaces/{key}")
-def patch(key: str, body: WorkspacePatch, request: Request, _token: ApiToken = Depends(require_token)) -> WorkspaceOut:
+def patch(key: str, body: WorkspacePatch, request: Request, _writer: Writer = Depends(get_writer)) -> WorkspaceOut:
     with workspace_errors():
         ws = update_workspace(get_db(request), get_settings(request), key, body.model_dump(exclude_unset=True))
     return WorkspaceOut.model_validate(ws)
 
 
 @router.delete("/workspaces/{key}", status_code=204)
-def delete(key: str, request: Request, _token: ApiToken = Depends(require_token)) -> Response:
+def delete(key: str, request: Request, _writer: Writer = Depends(get_writer)) -> Response:
     with workspace_errors():
         delete_workspace(get_db(request), key)
     return Response(status_code=204)
 
 
 @router.post("/workspaces/{key}/sync")
-def sync(key: str, request: Request, _token: ApiToken = Depends(require_token)) -> WorkspaceOut:
+def sync(key: str, request: Request, _writer: Writer = Depends(get_writer)) -> WorkspaceOut:
     with workspace_errors():
         return WorkspaceOut.model_validate(sync_workspace(get_db(request), get_settings(request), key))
 
@@ -160,7 +159,7 @@ def archive(key: str, request: Request, ref: str | None = None) -> Response:
 
 
 @router.post("/workspaces/{key}/validate")
-def validate(key: str, body: ValidateRequest, request: Request, _token: ApiToken = Depends(require_token)) -> dict:
+def validate(key: str, body: ValidateRequest, request: Request, _writer: Writer = Depends(get_writer)) -> dict:
     settings = get_settings(request)
     with workspace_errors():
         load_workspace(get_db(request), key)
@@ -170,14 +169,14 @@ def validate(key: str, body: ValidateRequest, request: Request, _token: ApiToken
 
 
 @router.post("/workspaces/{key}/commits", status_code=201)
-def commit(key: str, body: CommitRequest, request: Request, _token: ApiToken = Depends(require_token)) -> dict:
+def commit(key: str, body: CommitRequest, request: Request, _writer: Writer = Depends(get_writer)) -> dict:
     with workspace_errors():
         return commit_changes(get_db(request), get_settings(request), key, body, request.app.state.syntax_checker)
 
 
 @router.post("/workspaces/{key}/restore", status_code=201)
 def restore_paths(key: str, body: RestoreRequest, request: Request,
-                  _token: ApiToken = Depends(require_token)) -> dict:
+                  _writer: Writer = Depends(get_writer)) -> dict:
     with workspace_errors():
         return restore(get_db(request), get_settings(request), key, body)
 

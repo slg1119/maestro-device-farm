@@ -86,10 +86,21 @@ def test_submit_failure_returns_2(client, token, project, capsys):
     assert "no_matching_devices" in capsys.readouterr().err
 
 
-def test_missing_token_returns_2(client, project, monkeypatch):
+def test_submit_without_token_uses_user_name(client, db, project, monkeypatch):
+    monkeypatch.delenv("FARM_TOKEN", raising=False)
+    with db.session() as s:
+        add_device(s, "d1")
+    flows, apk = project
+    assert farmctl.dispatch(_args("--user", "배포 봇", "run", "--flows", str(flows), "--apk", str(apk)), client) == 0
+    with db.session() as s:
+        assert s.scalars(select(Run)).one().created_by == "배포 봇"
+
+
+def test_missing_token_is_rejected_when_the_farm_requires_one(secured_client, project, monkeypatch, capsys):
     monkeypatch.delenv("FARM_TOKEN", raising=False)
     flows, apk = project
-    assert farmctl.dispatch(_args("run", "--flows", str(flows), "--apk", str(apk)), client) == 2
+    assert farmctl.dispatch(_args("run", "--flows", str(flows), "--apk", str(apk)), secured_client) == 2
+    assert "unauthorized" in capsys.readouterr().err
 
 
 def test_apps_upload(client, token, project, capsys):

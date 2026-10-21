@@ -4,7 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { formatTime } from "../../../lib/format";
 import { saveSettings } from "../../../lib/settings";
-import { apiErrorResponse, jsonResponse, mockApi } from "../../../test/api";
+import { apiErrorResponse, healthBody, jsonResponse, mockApi } from "../../../test/api";
 import { device } from "../../../test/fixtures";
 import { renderPage } from "../../../test/render";
 import { DevicesPage } from "../DevicesPage";
@@ -144,12 +144,23 @@ test("disables maintenance without confirming even while the current task is bus
 });
 
 test("disables both write controls without a token and shows the token notice", async () => {
-  const { calls } = mockApi({ "GET /api/v1/devices": [device()] });
+  const { calls } = mockApi({ "GET /api/v1/devices": [device()], "GET /api/v1/healthz": healthBody({ auth_required: true }) });
   renderPage(<DevicesPage />);
+  expect(await screen.findByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "태그 편집" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "정비 모드 켜기" })).toBeDisabled();
-  expect(screen.getByText("쓰기 작업에는 API 토큰이 필요합니다.")).toBeInTheDocument();
   expect(calls.every((call) => call.method === "GET")).toBe(true);
+});
+
+test("allows writes without a token when the farm does not require one", async () => {
+  const { calls } = mockApi({
+    "GET /api/v1/devices": [device()],
+    "PATCH /api/v1/devices/emulator-5554": device({ disabled: true, state: "disabled" }),
+  });
+  renderPage(<DevicesPage />);
+  await userEvent.click(await screen.findByRole("button", { name: "정비 모드 켜기" }));
+  expect(screen.queryByText("쓰기 작업에는 API 토큰이 필요합니다.")).not.toBeInTheDocument();
+  expect(calls.find((call) => call.method === "PATCH")?.body).toEqual({ disabled: true });
 });
 
 test("shows tag mutation errors on the affected card and keeps the draft for retry", async () => {
