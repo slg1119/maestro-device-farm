@@ -217,6 +217,7 @@ export interface Health {
   status: "ok";
   agent: { id: string; version: string; started_at: string; last_heartbeat_at: string; age_sec: number } | null;
   auth_required: boolean;
+  default_task_timeout_sec?: number;
   workspace_sync_errors: { name: string; error: string }[];
   disk_free_bytes: number;
 }

@@ -4,11 +4,11 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { apiFetch } from "../../api/client";
-import { keys, useApps, useDevices, useWorkspaces } from "../../api/queries";
+import { keys, useApps, useDevices, useHealth, useWorkspaces } from "../../api/queries";
 import type { AppBuild, Device, RunSummary, Workspace } from "../../api/types";
 import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { Button, Card, ErrorBox, Field, Input, Loading, PageHeader, Select, StatusDot, Textarea, cx } from "../../components/ui";
-import { timeAgo } from "../../lib/format";
+import { formatDurationKo, timeAgo } from "../../lib/format";
 import { DeviceConditions, type DeviceMode } from "./DeviceConditions";
 import { buildDeviceSelector, buildRunOptions, matchingDevices, type RunForm } from "./options";
 
@@ -42,6 +42,8 @@ function defaultPackage(workspace: Workspace | undefined, packages: string[]): s
 
 function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; apps: AppBuild[]; devices: Device[] }) {
   const canWrite = useCanWrite();
+  const health = useHealth();
+  const defaultTimeoutSec = health.data?.default_task_timeout_sec;
   const client = useQueryClient();
   const navigate = useNavigate();
   // /apps is ordered by created_at DESC, id DESC, the same order used by @latest.
@@ -212,6 +214,7 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
               ? "테스트 하나가 이 시간을 넘기면 중단하고 최대 한 번 더 시도합니다. 다시 넘기면 오류로 끝납니다."
               : "기기 한 대가 모든 테스트를 끝내야 하는 시간입니다. 넘기면 그 기기의 테스트를 중단하고 처음부터 최대 한 번 더 시도합니다. 다시 넘기면 오류로 끝납니다."}>
               <Input aria-label="제한 시간(초)" type="number" min={1} step={1} value={form.taskTimeoutSec}
+                placeholder={defaultTimeoutSec === undefined ? "비우면 서버 기본값" : `비우면 ${formatDurationKo(defaultTimeoutSec)}`}
                 onChange={event => update({ taskTimeoutSec: event.target.value })} />
             </Field>
           </div>

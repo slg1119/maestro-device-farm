@@ -25,6 +25,15 @@ export function formatDuration(ms: number): string {
   return `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
+/** Formats whole seconds as Korean hours, minutes and seconds, omitting zero parts. */
+export function formatDurationKo(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const sec = seconds % 60;
+  return [hours ? `${hours}시간` : "", minutes ? `${minutes}분` : "", sec ? `${sec}초` : ""]
+    .filter(Boolean).join(" ") || "0초";
+}
+
 /** Wall-clock time between two timestamps; `end` defaults to now for running items. */
 export function elapsed(start: string | null, end: string | null, now: Date = new Date()): string {
   if (!start) return "-";
