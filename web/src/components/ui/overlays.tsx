@@ -5,14 +5,15 @@ import { createPortal } from "react-dom";
 import { Button, cx, IconButton } from "./primitives";
 
 const focusable = 'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]';
+let openDialogs = 0; let bodyOverflow = "";
 function useDialog(onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (openDialogs === 0) { bodyOverflow = document.body.style.overflow; document.body.style.overflow = "hidden"; }
+    openDialogs += 1;
     const root = ref.current;
     (root?.querySelector<HTMLElement>(focusable) ?? root)?.focus();
     const onKey = (event: KeyboardEvent) => {
@@ -25,15 +26,19 @@ function useDialog(onClose: () => void) {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; before?.focus(); };
+    return () => {
+      document.removeEventListener("keydown", onKey); openDialogs -= 1;
+      if (openDialogs === 0) document.body.style.overflow = bodyOverflow;
+      before?.focus();
+    };
   }, []);
   return ref;
 }
 interface DialogProps { title: string; onClose: () => void; children: ReactNode }
 const modalWidth = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-3xl", xl: "max-w-6xl" };
-export function Modal({ title, onClose, children, wide, size = wide ? "lg" : "md" }: DialogProps & { wide?: boolean; size?: keyof typeof modalWidth }) {
+export function Modal({ title, onClose, children, wide, size = wide ? "lg" : "md", elevated = false }: DialogProps & { wide?: boolean; size?: keyof typeof modalWidth; elevated?: boolean }) {
   const ref = useDialog(onClose);
-  return createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+  return createPortal(<div className={cx("fixed inset-0 flex items-center justify-center bg-black/40 p-4", elevated ? "z-[70]" : "z-50")}
     onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={cx("flex max-h-[calc(100dvh-32px)] w-full min-w-0 flex-col rounded-xl border border-border bg-surface text-fg shadow-xl outline-none", modalWidth[size])}>
       <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3"><h2 className="text-sm font-semibold">{title}</h2><IconButton aria-label="닫기" onClick={onClose}><X /></IconButton></div>

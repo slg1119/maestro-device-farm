@@ -13,10 +13,11 @@ export interface RecordingControlsProps {
   workspace?: Workspace;
   appPackage?: string | null;
   onComplete?: (recording: Recording) => void;
+  enlarged?: boolean;
 }
 type Action = { kind: "start"; body: RecordingCreate } | { kind: "stop"; id: string; ai: boolean } | { kind: "cancel"; id: string };
 
-export function RecordingControls({ serial, canControl, workspace, appPackage, onComplete }: RecordingControlsProps) {
+export function RecordingControls({ serial, canControl, workspace, appPackage, onComplete, enlarged = false }: RecordingControlsProps) {
   const client = useQueryClient(); const navigate = useNavigate();
   const workspaces = useWorkspaces(); const ai = useAiStatus(); const active = useActiveRecordings(serial);
   const [id, setId] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export function RecordingControls({ serial, canControl, workspace, appPackage, o
       {picker}<ErrorBox error={workspaces.error} /><Button size="sm" icon={<FileCode2 />} disabled={!selected} onClick={openEditor}>에디터에서 열기</Button>
     </section>}
     {notice && <p role="status" className="text-xs text-passed-fg">{notice}</p>}
-    {dialog === "start" && <Modal title="녹화 시작" onClose={closeDialog}><form className="space-y-4" onSubmit={event => {
+    {dialog === "start" && <Modal title="녹화 시작" onClose={closeDialog} elevated={enlarged}><form className="space-y-4" onSubmit={event => {
       event.preventDefault(); if (!canControl || busy || running) return;
       change.mutate({ kind: "start", body: { include_launch_app: includeLaunch && Boolean(appInput.trim()), ...(selected ? { workspace: selected.name } : {}), ...(appInput.trim() ? { app_package: appInput.trim() } : {}) } });
     }}>
@@ -99,7 +100,7 @@ export function RecordingControls({ serial, canControl, workspace, appPackage, o
       <Checkbox label="launchApp 포함" checked={includeLaunch && Boolean(appInput.trim())} disabled={busy || !appInput.trim()} onChange={event => setIncludeLaunch(event.target.checked)} />
       <ErrorBox error={error} /><div className="flex flex-wrap justify-end gap-2"><Button disabled={busy} onClick={closeDialog}>닫기</Button><Button type="submit" variant="primary" disabled={!canControl || busy}>{busy ? "시작 중…" : "시작"}</Button></div>
     </form></Modal>}
-    {dialog === "stop" && <Modal title="녹화 중지" onClose={closeDialog}><div className="space-y-3"><p className="text-sm text-fg-muted">기록한 단계를 어떻게 사용할까요?</p>
+    {dialog === "stop" && <Modal title="녹화 중지" onClose={closeDialog} elevated={enlarged}><div className="space-y-3"><p className="text-sm text-fg-muted">기록한 단계를 어떻게 사용할까요?</p>
       <Button className="w-full" variant="primary" disabled={!canControl || busy || !running} onClick={() => finish(false)}>그대로 YAML 만들기</Button>
       {ai.data?.enabled && <><Button className="w-full" variant="ai" disabled={!canControl || busy || !running || !polishWorkspaceReady} onClick={() => finish(true)}>AI로 다듬기</Button>{!polishWorkspaceReady && <p className="text-xs text-fg-muted">{recording?.workspace_id ? "AI로 다듬으려면 워크스페이스를 동기화하세요." : "AI로 다듬으려면 워크스페이스를 지정해 녹화를 시작하세요."}</p>}</>}
       <Button className="w-full" disabled={!canControl || busy || !running} onClick={() => { if (canControl && recording && !busy) change.mutate({ kind: "cancel", id: recording.id }); }}>취소</Button>
