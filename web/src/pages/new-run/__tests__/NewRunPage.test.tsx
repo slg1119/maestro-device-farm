@@ -45,6 +45,8 @@ test("submits the default workspace form as multipart and navigates after invali
   expect(await screen.findByRole("combobox", { name: "워크스페이스" })).toHaveValue("example-app");
   expect(screen.getByPlaceholderText("main")).toHaveValue("");
   expect(screen.getByRole("radio", { name: /split/ })).toBeChecked();
+  expect(screen.getByRole("radio", { name: "사용 가능한 기기 전체" })).toBeChecked();
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   expect(screen.getByRole("combobox", { name: "패키지" })).toHaveValue("com.example.app");
   await user.click(screen.getByRole("button", { name: "실행 시작" }));
   expect(await screen.findByTestId("navigated")).toBeInTheDocument();
@@ -101,18 +103,25 @@ test("defaults to the workspace package, hides purged builds and previews the se
       app({ id: "new", version_name: "2.0", version_code: 2, min_sdk: 35 }),
       app({ id: "old", min_sdk: 24, created_at: "2026-10-19T05:00:00Z" }),
     ],
+    "GET /api/v1/devices": [device({ tags: ["tablet"] })],
   });
   expect(await screen.findByRole("combobox", { name: "패키지" })).toHaveValue("com.example.app");
   expect(screen.queryByRole("option", { name: /purged/ })).not.toBeInTheDocument();
   expect(screen.getByText("조건에 맞는 기기 0대")).toBeInTheDocument();
-  expect(screen.getByText("제출하면 거절됩니다")).toBeInTheDocument();
+  const devices = within(screen.getByRole("group", { name: "기기 조건" }));
+  expect(devices.getByRole("status")).toHaveTextContent("실행할 기기 0대");
+  expect(devices.getByRole("status")).toHaveTextContent("앱 최소 SDK 35 조건으로 1대 제외");
+  expect(devices.getByRole("status")).toHaveTextContent("실행할 수 있는 기기가 없습니다.");
+  expect(screen.getByRole("button", { name: "실행 시작" })).toBeDisabled();
   await user.selectOptions(screen.getByRole("combobox", { name: "빌드" }), "old");
   expect(screen.getByText("조건에 맞는 기기 1대")).toBeInTheDocument();
-  await user.type(screen.getByRole("textbox", { name: "기기 태그" }), "tablet");
-  expect(screen.getByText("조건에 맞는 기기 0대")).toBeInTheDocument();
+  await user.click(screen.getByRole("radio", { name: "조건으로 고르기" }));
+  await user.click(screen.getByRole("button", { name: "tablet" }));
+  await user.selectOptions(screen.getByRole("combobox", { name: "빌드" }), "new");
+  expect(devices.getByRole("status")).toHaveTextContent("실행할 기기 0대");
   await user.click(screen.getByRole("radio", { name: "APK 업로드" }));
-  await user.clear(screen.getByRole("textbox", { name: "기기 태그" }));
   expect(screen.getByText("조건에 맞는 기기 1대")).toBeInTheDocument();
+  expect(devices.getByRole("status")).not.toHaveTextContent("앱 최소 SDK");
 });
 
 test("changing workspace picks its default package and changing packages clears a selected build", async () => {
@@ -191,17 +200,27 @@ test("rejects malformed env before posting and keeps the input", async () => {
   expect(calls.filter(c => c.method === "POST")).toHaveLength(0);
 });
 
-test("previews checkbox serials and SDK bounds and submits all optional filters", async () => {
+test("requires every selected device tag and submits advanced conditions with optional flow filters", async () => {
   const { calls, user } = setup({
-    "GET /api/v1/devices": [device({ tags: ["smoke"] }), device({ serial: "second", model: "Tablet", sdk_int: 30 })],
+    "GET /api/v1/devices": [
+      device({ tags: ["smoke", "tablet", "smoke"] }),
+      device({ serial: "second", model: "Tablet", sdk_int: 30, tags: ["smoke"] }),
+    ],
   });
   await screen.findByRole("combobox", { name: "워크스페이스" });
   expect(screen.getByText("조건에 맞는 기기 2대")).toBeInTheDocument();
-  await user.click(screen.getByRole("checkbox", { name: /Pixel 7 \(emulator-5554\)/ }));
+  await user.click(screen.getByRole("radio", { name: "조건으로 고르기" }));
+  expect(screen.getByRole("textbox", { name: "모델" })).not.toBeVisible();
+  expect(screen.getAllByRole("button", { name: "smoke" })).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: "smoke" }));
+  expect(screen.getByText("조건에 맞는 기기 2대")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "tablet" }));
   expect(screen.getByText("조건에 맞는 기기 1대")).toBeInTheDocument();
   await user.click(screen.getByRole("radio", { name: /matrix/ }));
-  await user.type(screen.getByRole("textbox", { name: "기기 태그" }), "smoke");
-  await user.type(screen.getByRole("textbox", { name: "모델" }), "Pixel 7");
+  await user.click(screen.getByText("고급 조건"));
+  expect(screen.getByRole("spinbutton", { name: "최소 SDK" })).toHaveValue(null);
+  expect(screen.getByRole("spinbutton", { name: "최대 SDK" })).toHaveValue(null);
+  await user.type(screen.getByRole("textbox", { name: "모델" }), "Pixel 7, Tablet");
   fireEvent.change(screen.getByRole("spinbutton", { name: "최소 SDK" }), { target: { value: "24" } });
   fireEvent.change(screen.getByRole("spinbutton", { name: "최대 SDK" }), { target: { value: "33" } });
   expect(screen.getByText("조건에 맞는 기기 0대")).toBeInTheDocument();
@@ -215,7 +234,143 @@ test("previews checkbox serials and SDK bounds and submits all optional filters"
   await screen.findByTestId("navigated");
   const options = JSON.parse(String((calls.find(c => c.method === "POST")!.body as FormData).get("options")));
   expect(options).toMatchObject({
-    mode: "matrix", device_selector: { tags: ["smoke"], models: ["Pixel 7"], serials: ["emulator-5554"], min_sdk: 24, max_sdk: 35 },
+    mode: "matrix", device_selector: { tags: ["smoke", "tablet"], models: ["Pixel 7", "Tablet"], min_sdk: 24, max_sdk: 35 },
     include_tags: ["fast"], exclude_tags: ["slow"], flow_paths: ["login.yaml", "home.yaml"], env: { A: "x=y" }, task_timeout_sec: 120,
   });
+});
+
+test("picks serials from compact rows and folds disabled and offline devices into an unselectable list", async () => {
+  const { calls, user } = setup({
+    "GET /api/v1/devices": [
+      device(), device({ serial: "busy", state: "busy" }),
+      device({ serial: "offline", state: "offline" }), device({ serial: "disabled", disabled: true }),
+      device({ serial: "reserved", state: "reserved" }), device({ serial: "unhealthy", state: "unhealthy" }),
+    ],
+  });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  await user.click(screen.getByRole("radio", { name: "직접 고르기" }));
+  expect(screen.getByRole("checkbox", { name: "emulator-5554 (Pixel 7)" })).toBeVisible();
+  expect(screen.getByRole("checkbox", { name: "busy (Pixel 7)" })).toBeVisible();
+  expect(screen.getByRole("checkbox", { name: "offline (Pixel 7)" })).not.toBeVisible();
+  expect(screen.getByRole("checkbox", { name: "disabled (Pixel 7)" })).not.toBeVisible();
+  expect(screen.getByRole("button", { name: "실행 시작" })).toBeDisabled();
+  await user.click(screen.getByText("사용할 수 없는 기기 4대"));
+  expect(screen.getByRole("checkbox", { name: "offline (Pixel 7)" })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "disabled (Pixel 7)" })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "reserved (Pixel 7)" })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "unhealthy (Pixel 7)" })).toBeDisabled();
+  expect(screen.getByText("오프라인")).toBeInTheDocument();
+  expect(screen.getByText("정비 모드")).toBeInTheDocument();
+  await user.click(screen.getByRole("checkbox", { name: "busy (Pixel 7)" }));
+  const summary = within(screen.getByRole("group", { name: "기기 조건" })).getByRole("status");
+  expect(summary).toHaveTextContent("실행할 기기 1대 · busy");
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  await screen.findByTestId("navigated");
+  const options = JSON.parse(String((calls.find(c => c.method === "POST")!.body as FormData).get("options")));
+  expect(options.device_selector).toEqual({ serials: ["busy"] });
+});
+
+test("selects only runnable devices with select-all and treats clear-selection as zero devices", async () => {
+  const { calls, user } = setup({
+    "GET /api/v1/devices": [
+      device(), device({ serial: "busy", state: "busy" }),
+      device({ serial: "offline", state: "offline" }), device({ serial: "disabled", disabled: true }),
+      device({ serial: "held", reservation: {
+        id: "res1", device_serial: "held", holder_name: "Kim", status: "active",
+        created_at: "2026-10-20T05:00:00Z", expires_at: "2026-10-20T06:00:00Z", released_at: null,
+      } }),
+    ],
+  });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  await user.click(screen.getByRole("radio", { name: "직접 고르기" }));
+  await user.click(screen.getByRole("button", { name: "모두 선택" }));
+  expect(screen.getAllByRole("checkbox", { checked: true })).toHaveLength(2);
+  await user.click(screen.getByRole("button", { name: "선택 해제" }));
+  for (const checkbox of screen.getAllByRole("checkbox")) expect(checkbox).not.toBeChecked();
+  const summary = within(screen.getByRole("group", { name: "기기 조건" })).getByRole("status");
+  expect(summary).toHaveTextContent("실행할 기기 0대");
+  expect(summary).toHaveTextContent("실행할 수 있는 기기가 없습니다.");
+  expect(screen.getByRole("button", { name: "실행 시작" })).toBeDisabled();
+  fireEvent.submit(screen.getByRole("button", { name: "실행 시작" }).closest("form")!);
+  expect(calls.some(c => c.method === "POST")).toBe(false);
+  await user.click(screen.getByRole("button", { name: "모두 선택" }));
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  await screen.findByTestId("navigated");
+  const options = JSON.parse(String((calls.find(c => c.method === "POST")!.body as FormData).get("options")));
+  expect(options.device_selector).toEqual({ serials: ["emulator-5554", "busy"] });
+});
+
+test.each(["사용 가능한 기기 전체", "조건으로 고르기"])("clears manual serials when switching to %s", async mode => {
+  const { calls, user } = setup({ "GET /api/v1/devices": [device(), device({ serial: "second" })] });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  await user.click(screen.getByRole("radio", { name: "직접 고르기" }));
+  await user.click(screen.getByRole("checkbox", { name: "emulator-5554 (Pixel 7)" }));
+  await user.click(screen.getByRole("radio", { name: mode }));
+  expect(screen.getByText("조건에 맞는 기기 2대")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  await screen.findByTestId("navigated");
+  const options = JSON.parse(String((calls.find(c => c.method === "POST")!.body as FormData).get("options")));
+  expect(options.device_selector).toEqual({});
+});
+
+test.each(["사용 가능한 기기 전체", "직접 고르기"])("clears tags and advanced fields when switching to %s", async mode => {
+  const { calls, user } = setup({
+    "GET /api/v1/devices": [device({ tags: ["smoke"] }), device({ serial: "second", model: "Tablet", sdk_int: 30 })],
+  });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  await user.click(screen.getByRole("radio", { name: "조건으로 고르기" }));
+  await user.click(screen.getByRole("button", { name: "smoke" }));
+  await user.click(screen.getByText("고급 조건"));
+  await user.type(screen.getByRole("textbox", { name: "모델" }), "Pixel 7");
+  fireEvent.change(screen.getByRole("spinbutton", { name: "최소 SDK" }), { target: { value: "33" } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "최대 SDK" }), { target: { value: "34" } });
+  // Clicking the selected mode must not clear its conditions.
+  await user.click(screen.getByRole("radio", { name: "조건으로 고르기" }));
+  expect(screen.getByRole("textbox", { name: "모델" })).toHaveValue("Pixel 7");
+  await user.click(screen.getByRole("radio", { name: mode }));
+  if (mode === "직접 고르기") {
+    await user.click(screen.getByRole("checkbox", { name: "second (Tablet)" }));
+  }
+  expect(screen.getByText(`조건에 맞는 기기 ${mode === "직접 고르기" ? 1 : 2}대`)).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  await screen.findByTestId("navigated");
+  const options = JSON.parse(String((calls.find(c => c.method === "POST")!.body as FormData).get("options")));
+  expect(options.device_selector).toEqual(mode === "직접 고르기" ? { serials: ["second"] } : {});
+});
+
+test("summarizes the first five matching serials and the remaining count", async () => {
+  setup({ "GET /api/v1/devices": Array.from({ length: 7 }, (_, i) => device({ serial: `serial-${i + 1}` })) });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  const summary = within(screen.getByRole("group", { name: "기기 조건" })).getByRole("status");
+  expect(summary).toHaveTextContent("실행할 기기 7대 · serial-1, serial-2, serial-3, serial-4, serial-5 외 2대");
+  expect(summary).not.toHaveTextContent("serial-6");
+});
+
+test("warns and prevents submitting when no devices can run", async () => {
+  const { calls, user } = setup({ "GET /api/v1/devices": [device({ state: "offline" })] });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  const summary = within(screen.getByRole("group", { name: "기기 조건" })).getByRole("status");
+  expect(summary).toHaveTextContent("실행할 기기 0대");
+  expect(summary).toHaveTextContent("실행할 수 있는 기기가 없습니다.");
+  await user.click(screen.getByRole("button", { name: "실행 시작" }));
+  expect(calls.some(c => c.method === "POST")).toBe(false);
+});
+
+test("supports keyboard mode selection and toggling a tag off", async () => {
+  const { user } = setup({
+    "GET /api/v1/devices": [device({ tags: ["smoke"] }), device({ serial: "second" })],
+  });
+  await screen.findByRole("combobox", { name: "워크스페이스" });
+  screen.getByRole("radio", { name: "사용 가능한 기기 전체" }).focus();
+  await user.keyboard("{ArrowRight}");
+  expect(screen.getByRole("radio", { name: "직접 고르기" })).toHaveFocus();
+  expect(screen.getByRole("radio", { name: "직접 고르기" })).toBeChecked();
+  await user.keyboard("{ArrowRight}");
+  expect(screen.getByRole("radio", { name: "조건으로 고르기" })).toHaveFocus();
+  await user.click(screen.getByRole("button", { name: "smoke" }));
+  expect(screen.getByRole("button", { name: "smoke" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByText("조건에 맞는 기기 1대")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "smoke" }));
+  expect(screen.getByRole("button", { name: "smoke" })).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByText("조건에 맞는 기기 2대")).toBeInTheDocument();
 });

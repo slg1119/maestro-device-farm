@@ -7,9 +7,9 @@ import { apiFetch } from "../../api/client";
 import { keys, useApps, useDevices, useWorkspaces } from "../../api/queries";
 import type { AppBuild, Device, RunSummary, Workspace } from "../../api/types";
 import { TokenNotice, useCanWrite } from "../../components/Layout";
-import { DeviceStateBadge } from "../../components/StatusBadge";
-import { Button, Card, Empty, ErrorBox, Field, Input, Loading, PageHeader, Select, StatusDot, Textarea, cx } from "../../components/ui";
+import { Button, Card, ErrorBox, Field, Input, Loading, PageHeader, Select, StatusDot, Textarea, cx } from "../../components/ui";
 import { timeAgo } from "../../lib/format";
+import { DeviceConditions, type DeviceMode } from "./DeviceConditions";
 import { buildDeviceSelector, buildRunOptions, matchingDevices, type RunForm } from "./options";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -56,11 +56,23 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
   const [flows, setFlows] = useState<File | null>(null);
   const [apk, setApk] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<unknown>(null);
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>("all");
   const selectedWorkspace = workspaces.find(workspace => workspace.name === form.workspace);
   const packageBuilds = availableBuilds.filter(build => build.package_name === form.packageName);
   const selectedBuild = form.appBuildId ? packageBuilds.find(build => build.id === form.appBuildId) : packageBuilds[0];
-  const count = matchingDevices(devices, buildDeviceSelector(form), form.appSource === "library" ? selectedBuild?.min_sdk : undefined).length;
+  const selector = buildDeviceSelector(form);
+  // An empty manual selection means no devices, while the API's omitted serials means all.
+  if (deviceMode === "manual") selector.serials = form.serials;
+  const appMinSdk = form.appSource === "library" ? selectedBuild?.min_sdk : undefined;
+  const eligible = matchingDevices(devices, selector);
+  const matches = matchingDevices(eligible, {}, appMinSdk);
+  const count = matches.length;
   const update = (patch: Partial<RunForm>) => setForm(previous => ({ ...previous, ...patch }));
+  const changeDeviceMode = (mode: DeviceMode) => {
+    if (mode === deviceMode) return;
+    setDeviceMode(mode);
+    update({ serials: [], tags: "", models: "", minSdk: "", maxSdk: "" });
+  };
 
   const submitRun = useMutation({
     mutationFn: async (body: FormData) => {
@@ -76,7 +88,7 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canWrite || submitRun.isPending) return;
+    if (!canWrite || submitRun.isPending || !count) return;
     submitRun.reset();
     setValidationError(null);
     try {
@@ -164,36 +176,8 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
         </Section>
 
         <Section title="기기 조건">
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="기기 태그" hint="쉼표로 구분. 모든 태그가 있는 기기만 선택됩니다.">
-              <Input aria-label="기기 태그" value={form.tags} onChange={event => update({ tags: event.target.value })} placeholder="smoke, tablet" />
-            </Field>
-            <Field label="모델" hint="쉼표로 구분">
-              <Input aria-label="모델" value={form.models} onChange={event => update({ models: event.target.value })} placeholder="Pixel 7" />
-            </Field>
-            <Field label="최소 SDK">
-              <Input type="number" min={0} step={1} value={form.minSdk} onChange={event => update({ minSdk: event.target.value })} />
-            </Field>
-            <Field label="최대 SDK">
-              <Input type="number" min={0} step={1} value={form.maxSdk} onChange={event => update({ maxSdk: event.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="min-w-0">
-            <legend className="mb-1 text-xs font-medium text-fg-muted">기기 지정</legend>
-            <p className="mb-2 text-xs text-fg-subtle">선택하지 않으면 모든 기기에 조건을 적용합니다.</p>
-            {devices.length ? <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {devices.map(device => <label key={device.serial}
-                className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2 rounded-lg border border-border p-2 text-sm">
-                <input type="checkbox" className="mt-1 accent-accent focus-visible:outline-2 focus-visible:outline-accent" checked={form.serials.includes(device.serial)}
-                  onChange={event => update({ serials: event.target.checked
-                    ? [...form.serials, device.serial] : form.serials.filter(serial => serial !== device.serial) })} />
-                <span className="min-w-0 space-y-1">
-                  <span className="block break-all">{device.model} ({device.serial})</span>
-                  <DeviceStateBadge state={device.state} />
-                </span>
-              </label>)}
-            </div> : <Empty>연결된 기기가 없습니다.</Empty>}
-          </fieldset>
+          <DeviceConditions devices={devices} form={form} mode={deviceMode} onModeChange={changeDeviceMode} update={update}
+            matches={matches} appMinSdk={appMinSdk} sdkExcluded={eligible.length - count} />
         </Section>
 
         <Section title="Flow 선택">
@@ -245,10 +229,10 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
           <div role="status" aria-live="polite" className={cx("rounded-lg px-3 py-3 text-sm",
             count ? "bg-passed-bg text-passed-fg" : "bg-warning-bg text-warning-fg")}>
             <p className="flex items-center gap-2"><StatusDot tone={count ? "passed" : "warning"} />조건에 맞는 기기 {count}대</p>
-            {!count && <p className="mt-1 text-xs">제출하면 거절됩니다</p>}
+            {!count && <p className="mt-1 text-xs">기기 상태와 선택 조건을 확인하세요.</p>}
           </div>
           <ErrorBox error={validationError ?? submitRun.error} />
-          <Button type="submit" variant="primary" icon={<Play />} className="w-full" disabled={!canWrite || submitRun.isPending}>
+          <Button type="submit" variant="primary" icon={<Play />} className="w-full" disabled={!canWrite || submitRun.isPending || !count}>
             {submitRun.isPending ? "제출 중…" : "실행 시작"}
           </Button>
         </Card>
