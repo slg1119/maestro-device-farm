@@ -18,8 +18,8 @@ test("splits comma and newline lists and ignores empty items", () => {
 test("parses env comments, blanks and values containing equals", () => {
   expect(parseEnv("A=1\n# c\n\nB=x=y")).toEqual({ A: "1", B: "x=y" });
   expect(parseEnv("  # comment\n EMPTY=\n A = spaced value ")).toEqual({ EMPTY: "", A: " spaced value " });
-  expect(() => parseEnv("NOPE")).toThrow("KEY=VALUE 형식이 아닙니다: NOPE");
-  expect(() => parseEnv("=value")).toThrow("KEY=VALUE 형식이 아닙니다: =value");
+  expect(() => parseEnv("NOPE")).toThrow("테스트에 넘길 값은 KEY=VALUE 형식으로 입력하세요: NOPE");
+  expect(() => parseEnv("=value")).toThrow("테스트에 넘길 값은 KEY=VALUE 형식으로 입력하세요: =value");
 });
 
 test("builds exactly the default workspace and latest-app split options", () => {

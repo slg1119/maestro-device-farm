@@ -92,10 +92,10 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
     submitRun.reset();
     setValidationError(null);
     try {
-      if (form.flowSource === "workspace" && !selectedWorkspace) throw new Error("워크스페이스를 선택하세요.");
-      if (form.flowSource === "upload" && !flows) throw new Error("Flow zip 파일을 선택하세요.");
-      if (form.appSource === "library" && !selectedBuild) throw new Error("앱 빌드를 선택하세요.");
-      if (form.appSource === "upload" && !apk) throw new Error("APK 파일을 선택하세요.");
+      if (form.flowSource === "workspace" && !selectedWorkspace) throw new Error("저장소를 고르세요.");
+      if (form.flowSource === "upload" && !flows) throw new Error("테스트 zip 파일을 올리세요.");
+      if (form.appSource === "library" && !selectedBuild) throw new Error("앱 버전을 고르세요.");
+      if (form.appSource === "upload" && !apk) throw new Error("APK 파일을 올리세요.");
       const body = new FormData();
       body.append("options", JSON.stringify(buildRunOptions(form)));
       if (form.flowSource === "upload" && flows) body.append("flows", flows);
@@ -110,51 +110,51 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
     <form onSubmit={submit} className="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_288px] xl:grid-cols-[minmax(0,1fr)_304px]">
       <fieldset disabled={submitRun.isPending} className="min-w-0 space-y-4">
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2">
-          <Section title="Flow 출처">
+          <Section title="테스트 파일 가져올 곳">
             <div className="flex flex-wrap gap-x-5 gap-y-1">
-              <Choice name="flow-source" label="워크스페이스" checked={form.flowSource === "workspace"}
+              <Choice name="flow-source" label="등록된 저장소" checked={form.flowSource === "workspace"}
                 onChange={() => { update({ flowSource: "workspace" }); setFlows(null); }} />
-              <Choice name="flow-source" label="zip 업로드" checked={form.flowSource === "upload"}
+              <Choice name="flow-source" label="zip 파일 올리기" checked={form.flowSource === "upload"}
                 onChange={() => { update({ flowSource: "upload" }); setFlows(null); }} />
             </div>
             {form.flowSource === "workspace" ? <>
-              <Field label="워크스페이스">
+              <Field label="저장소">
                 <Select value={form.workspace} onChange={event => {
                   const workspace = workspaces.find(item => item.name === event.target.value);
                   update({ workspace: event.target.value, ref: "", packageName: defaultPackage(workspace, packages), appBuildId: "" });
                 }}>
-                  {!workspaces.length && <option value="">등록된 워크스페이스가 없습니다</option>}
+                  {!workspaces.length && <option value="">등록된 저장소가 없습니다</option>}
                   {workspaces.map(workspace => <option key={workspace.id} value={workspace.name}>
                     {workspace.name} ({workspace.repo}@{workspace.branch})
                   </option>)}
                 </Select>
               </Field>
-              <Field label="ref" hint="브랜치 이름이나 40자리 커밋 SHA. 비우면 브랜치 최신 커밋">
-                <Input aria-label="ref" value={form.ref} placeholder={selectedWorkspace?.branch}
+              <Field label="브랜치 또는 커밋" hint={selectedWorkspace ? `비우면 ${selectedWorkspace.branch} 브랜치의 최신 상태로 실행합니다.` : "저장소를 먼저 고르세요."}>
+                <Input aria-label="브랜치 또는 커밋" value={form.ref} placeholder={selectedWorkspace?.branch}
                   onChange={event => update({ ref: event.target.value })} />
               </Field>
-            </> : <Field label="Flow zip">
+            </> : <Field label="테스트 zip 파일">
               <Input type="file" accept=".zip" onChange={event => setFlows(event.target.files?.[0] ?? null)} />
             </Field>}
           </Section>
 
           <Section title="앱">
             <div className="flex flex-wrap gap-x-5 gap-y-1">
-              <Choice name="app-source" label="보관함" checked={form.appSource === "library"}
+              <Choice name="app-source" label="올려둔 앱" checked={form.appSource === "library"}
                 onChange={() => { update({ appSource: "library" }); setApk(null); }} />
-              <Choice name="app-source" label="APK 업로드" checked={form.appSource === "upload"}
+              <Choice name="app-source" label="APK 파일 올리기" checked={form.appSource === "upload"}
                 onChange={() => { update({ appSource: "upload" }); setApk(null); }} />
             </div>
             {form.appSource === "library" ? <>
-              <Field label="패키지">
+              <Field label="앱">
                 <Select value={form.packageName} onChange={event => update({ packageName: event.target.value, appBuildId: "" })}>
-                  {!packages.length && <option value="">보관된 앱이 없습니다</option>}
+                  {!packages.length && <option value="">올려둔 앱이 없습니다</option>}
                   {packages.map(pkg => <option key={pkg} value={pkg}>{pkg}</option>)}
                 </Select>
               </Field>
-              <Field label="빌드">
+              <Field label="버전">
                 <Select value={form.appBuildId} onChange={event => update({ appBuildId: event.target.value })}>
-                  <option value="">최신 빌드</option>
+                  <option value="">가장 최근 버전</option>
                   {packageBuilds.map(build => <option key={build.id} value={build.id}>
                     {build.version_name} ({build.version_code}) · {timeAgo(build.created_at)}
                   </option>)}
@@ -166,42 +166,52 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
           </Section>
         </div>
 
-        <Section title="모드">
+        <Section title="실행 방식">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Choice name="mode" label="split" hint="flow를 기기들에 나눠 실행" checked={form.mode === "split"}
+            <Choice name="mode" label="나눠서 한 번씩" hint="테스트를 여러 기기에 나눠 각각 한 번만 돌립니다. 빨리 끝납니다." checked={form.mode === "split"}
               onChange={() => update({ mode: "split" })} />
-            <Choice name="mode" label="matrix" hint="모든 기기에서 전체 flow 실행" checked={form.mode === "matrix"}
+            <Choice name="mode" label="기기마다 전부" hint="고른 기기마다 모든 테스트를 돌립니다. 기기별 차이를 볼 때 씁니다." checked={form.mode === "matrix"}
               onChange={() => update({ mode: "matrix" })} />
           </div>
         </Section>
 
-        <Section title="기기 조건">
+        <Section title="실행할 기기">
           <DeviceConditions devices={devices} form={form} mode={deviceMode} onModeChange={changeDeviceMode} update={update}
             matches={matches} appMinSdk={appMinSdk} sdkExcluded={eligible.length - count} />
         </Section>
 
-        <Section title="Flow 선택">
+        <Section title="실행할 테스트">
+          <p className="text-xs text-fg-subtle">비워두면 전체 테스트를 돌립니다.</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="포함 태그" hint="쉼표로 구분">
-              <Input aria-label="포함 태그" value={form.includeTags} onChange={event => update({ includeTags: event.target.value })} />
+            <Field label="이 태그가 하나라도 붙은 테스트만" hint="쉼표로 구분. 예: smoke">
+              <Input aria-label="이 태그가 하나라도 붙은 테스트만" disabled={form.flowPaths.length > 0} value={form.includeTags} onChange={event => update({ includeTags: event.target.value })} />
             </Field>
-            <Field label="제외 태그" hint="쉼표로 구분">
-              <Input aria-label="제외 태그" value={form.excludeTags} onChange={event => update({ excludeTags: event.target.value })} />
+            <Field label="이 태그가 붙은 테스트는 빼기" hint="예: known-issue">
+              <Input aria-label="이 태그가 붙은 테스트는 빼기" disabled={form.flowPaths.length > 0} value={form.excludeTags} onChange={event => update({ excludeTags: event.target.value })} />
             </Field>
           </div>
-          <Field label="Flow 경로" hint="비우면 전체 flow. 한 줄에 하나씩 또는 쉼표로 구분하세요.">
-            <Textarea aria-label="Flow 경로" rows={3} value={form.flowPaths} onChange={event => update({ flowPaths: event.target.value })} />
+          <p className="text-xs text-fg-subtle">{form.flowPaths.length > 0
+            ? "파일을 직접 지정한 동안에는 태그 조건을 쓰지 않습니다."
+            : "테스트 폴더의 config.yaml에 정한 태그 조건도 함께 적용합니다."}</p>
+          <Field label="테스트 파일 직접 지정" hint={form.flowSource === "upload"
+            ? "zip 안의 경로, 한 줄에 하나. 지정하면 태그 조건은 쓰지 않습니다."
+            : selectedWorkspace
+              ? `${selectedWorkspace.path || "저장소 루트"} 폴더 기준 파일 경로, 한 줄에 하나. 지정하면 태그 조건은 쓰지 않습니다.`
+              : "저장소를 먼저 고르세요."}>
+            <Textarea aria-label="테스트 파일 직접 지정" placeholder="flows/login.yaml" rows={3} value={form.flowPaths} onChange={event => update({ flowPaths: event.target.value })} />
           </Field>
         </Section>
 
-        <Section title="환경 변수 및 타임아웃">
-          <Field label="환경 변수" hint="값은 API 응답에서 가려집니다. 비밀번호 같은 값은 여기에 넣으세요.">
-            <Textarea aria-label="환경 변수" rows={4} spellCheck={false} autoComplete="off" placeholder="KEY=VALUE"
+        <Section title="추가 설정 (선택)">
+          <Field label="테스트에 넘길 값" hint="KEY=VALUE 형식, 한 줄에 하나. 실행 결과에서는 값이 가려집니다. 비밀번호 같은 값은 여기에 넣으세요.">
+            <Textarea aria-label="테스트에 넘길 값" rows={4} spellCheck={false} autoComplete="off" placeholder="KEY=VALUE"
               value={form.env} onChange={event => update({ env: event.target.value })} />
           </Field>
           <div className="sm:max-w-xs">
-            <Field label="Task 타임아웃(초)">
-              <Input type="number" min={1} step={1} value={form.taskTimeoutSec}
+            <Field label="제한 시간(초)" hint={form.mode === "split"
+              ? "테스트 하나가 이 시간을 넘기면 중단하고 최대 한 번 더 시도합니다. 다시 넘기면 오류로 끝납니다."
+              : "기기 한 대가 모든 테스트를 끝내야 하는 시간입니다. 넘기면 그 기기의 테스트를 중단하고 처음부터 최대 한 번 더 시도합니다. 다시 넘기면 오류로 끝납니다."}>
+              <Input aria-label="제한 시간(초)" type="number" min={1} step={1} value={form.taskTimeoutSec}
                 onChange={event => update({ taskTimeoutSec: event.target.value })} />
             </Field>
           </div>
@@ -212,28 +222,28 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
           <h2 className="text-sm font-semibold text-fg">실행 요약</h2>
           <dl className="space-y-4 text-sm">
             <div className="min-w-0">
-              <dt className="mb-1 text-xs text-fg-subtle">Flow 출처</dt>
-              <dd className="break-all font-medium text-fg">{form.flowSource === "workspace" ? selectedWorkspace?.name || "워크스페이스 미선택" : flows?.name || "zip 파일 미선택"}</dd>
+              <dt className="mb-1 text-xs text-fg-subtle">테스트 파일 가져올 곳</dt>
+              <dd className="break-all font-medium text-fg">{form.flowSource === "workspace" ? selectedWorkspace?.name || "저장소를 고르세요" : flows?.name || "zip 파일을 올리세요"}</dd>
               {form.flowSource === "workspace" && selectedWorkspace && <dd className="mt-1 break-all font-mono text-xs text-fg-muted">{form.ref || selectedWorkspace.branch}</dd>}
             </div>
             <div className="min-w-0">
               <dt className="mb-1 text-xs text-fg-subtle">앱</dt>
-              <dd className="break-all font-mono text-xs leading-5 text-fg">{form.appSource === "upload" ? apk?.name || "APK 파일 미선택" : !selectedBuild ? "앱 빌드 미선택" : form.appBuildId
-                ? `${selectedBuild.package_name} · ${selectedBuild.version_name} (${selectedBuild.version_code})` : `${form.packageName}@latest`}</dd>
+              <dd className="break-all font-mono text-xs leading-5 text-fg">{form.appSource === "upload" ? apk?.name || "APK 파일을 올리세요" : !selectedBuild ? "앱 버전을 고르세요" : form.appBuildId
+                ? `${selectedBuild.package_name} · ${selectedBuild.version_name} (${selectedBuild.version_code})` : `${form.packageName} · 가장 최근 버전`}</dd>
             </div>
             <div>
-              <dt className="mb-1 text-xs text-fg-subtle">모드</dt>
-              <dd className="font-mono text-xs text-fg">{form.mode}</dd>
+              <dt className="mb-1 text-xs text-fg-subtle">실행 방식</dt>
+              <dd className="text-xs text-fg">{form.mode === "split" ? "나눠서 한 번씩" : "기기마다 전부"}</dd>
             </div>
           </dl>
           <div role="status" aria-live="polite" className={cx("rounded-lg px-3 py-3 text-sm",
             count ? "bg-passed-bg text-passed-fg" : "bg-warning-bg text-warning-fg")}>
-            <p className="flex items-center gap-2"><StatusDot tone={count ? "passed" : "warning"} />조건에 맞는 기기 {count}대</p>
+            <p className="flex items-center gap-2"><StatusDot tone={count ? "passed" : "warning"} />실행할 기기 {count}대</p>
             {!count && <p className="mt-1 text-xs">기기 상태와 선택 조건을 확인하세요.</p>}
           </div>
           <ErrorBox error={validationError ?? submitRun.error} />
           <Button type="submit" variant="primary" icon={<Play />} className="w-full" disabled={!canWrite || submitRun.isPending || !count}>
-            {submitRun.isPending ? "제출 중…" : "실행 시작"}
+            {submitRun.isPending ? "시작하는 중…" : "실행 시작"}
           </Button>
         </Card>
       </aside>
@@ -248,7 +258,7 @@ export function NewRunPage() {
   const error = workspaces.error ?? apps.error ?? devices.error;
   const ready = workspaces.data !== undefined && apps.data !== undefined && devices.data !== undefined;
   return <>
-    <PageHeader title="새 실행" description="Flow와 앱을 선택하고 실행할 기기 조건을 설정합니다." />
+    <PageHeader title="새 실행" description="어떤 테스트를, 어떤 앱으로, 어떤 기기에서 돌릴지 고릅니다." />
     <TokenNotice />
     {error && <div className="mb-4"><ErrorBox error={error} /></div>}
     {ready ? <NewRunForm workspaces={workspaces.data!} apps={apps.data!} devices={devices.data!} /> : !error && <Loading />}
