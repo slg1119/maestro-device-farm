@@ -26,7 +26,7 @@ test("draft query fetches the recording, imports YAML once, opens its tab and co
   await waitFor(() => expect(api.activePath).toMatch(/^flows\/recorded-\d{8}-\d{4}\.yaml$/));
   expect(await api.readFile(api.activePath!)).toBe(done.yaml);
   expect(api.openPaths).toContain(api.activePath);
-  expect(screen.getByLabelText("주소")).not.toHaveTextContent("draft=");
+  await waitFor(() => expect(screen.getByLabelText("주소")).not.toHaveTextContent("draft="));
   expect(view.calls.filter(c => c.path.endsWith("/rec1"))).toHaveLength(1);
   expect(view.onImported).toHaveBeenCalledOnce();
 });
@@ -39,7 +39,7 @@ test.each([
   setup(recording);
   expect(await screen.findByRole("status")).toHaveTextContent(/녹화/);
   expect(api.drafts).toEqual({}); expect(api.openPaths).toEqual([]);
-  expect(screen.getByLabelText("주소")).not.toHaveTextContent("draft=");
+  await waitFor(() => expect(screen.getByLabelText("주소")).not.toHaveTextContent("draft="));
 });
 
 test("editor live recording uses the workspace/app and opens either a draft or the existing AI job flow", async () => {

@@ -1,4 +1,4 @@
-import { ArrowLeft, Circle, Square } from "lucide-react";
+import { ArrowLeft, Circle, Maximize2, Minimize2, Square } from "lucide-react";
 import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCanWrite } from "../Layout";
 import { IconButton, Input, StatusDot, cx } from "../ui";
@@ -10,6 +10,19 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
   const canWrite = useCanWrite(); const canvas = useRef<HTMLCanvasElement>(null);
   const stream = useLiveStream({ serial, control, canWrite, canvas });
   const [text, setText] = useState("");
+  const [enlarged, setEnlarged] = useState(false); const toggle = useRef<HTMLButtonElement>(null);
+  const section = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!enlarged) return;
+    // Capture Escape inside the view before the Drawer, leaving portaled dialogs to handle it.
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (!section.current?.contains(event.target instanceof Node ? event.target : null) && !section.current?.contains(document.activeElement)) return;
+      event.preventDefault(); event.stopPropagation(); setEnlarged(false); toggle.current?.focus();
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => window.removeEventListener("keydown", escape, true);
+  }, [enlarged]);
   const pointer = useRef<{ id: number; x: number; y: number } | null>(null);
   // Layout cleanup precedes the stream hook's passive socket cleanup.
   useLayoutEffect(() => () => {
@@ -50,22 +63,30 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
   }, [stream.canControl, stream.size, stream.send]);
 
   if (stream.phase === "unsupported") return <p role="status" className="p-4 text-sm leading-6 text-fg-muted">이 브라우저는 실시간 화면을 지원하지 않습니다 (Chrome/Edge 최신 버전 권장)</p>;
-  return <section aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 space-y-3 text-fg", compact ? "p-3" : "p-4")}>
-    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">테스트 실행 중 · 조작하면 결과가 달라질 수 있음</p>}
-    <div className={cx("relative min-w-0 overflow-hidden rounded-xl border border-border bg-surface-2", compact ? "h-[min(50dvh,480px)]" : "h-[min(60dvh,640px)]")}>
+  return <section ref={section} aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 text-fg", enlarged ? "fixed inset-0 z-[60] flex h-dvh flex-col gap-3 overflow-y-auto overscroll-contain bg-surface p-3 sm:p-4" : cx("space-y-3", compact ? "p-3" : "p-4"))}
+    onKeyDown={event => {
+      if (!enlarged || event.key !== "Tab" || !event.currentTarget.contains(event.target as Node)) return;
+      const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')];
+      const first = items[0]; const last = items.at(-1); event.stopPropagation();
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }}>
+    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="shrink-0 rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">테스트 실행 중 · 조작하면 결과가 달라질 수 있음</p>}
+    <div className={cx("relative min-w-0 overflow-hidden rounded-xl border border-border bg-surface-2", enlarged ? "min-h-24 flex-1" : compact ? "h-[min(50dvh,480px)]" : "h-[min(60dvh,640px)]")}>
       <canvas ref={canvas} aria-label="실시간 기기 화면" className={cx("h-full w-full object-contain", stream.canControl ? "touch-none cursor-crosshair" : "touch-auto")}
         onPointerDown={event => touch(event, "down")} onPointerMove={event => touch(event, "move")} onPointerUp={event => touch(event, "up")}
         onPointerCancel={cancelTouch} onLostPointerCapture={cancelTouch} onContextMenu={event => { if (stream.canControl) event.preventDefault(); }} />
       {!stream.size && <p role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-fg-muted">{stream.phase === "ended" ? "화면 연결 종료" : stream.phase === "reconnecting" ? "다시 연결하는 중…" : "실시간 화면에 연결하는 중…"}</p>}
     </div>
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-fg-muted" aria-live="polite">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-fg-muted" aria-live="polite">
       <span className="inline-flex items-center gap-1.5"><StatusDot tone={stream.phase === "connected" ? "passed" : "neutral"} />{stream.phase === "connected" ? "연결됨" : stream.phase === "ended" ? "연결 종료" : "연결 중"}</span>
       <span>시청자 {stream.status?.viewers ?? 0}명</span><span className="break-all">조작자 {stream.status?.controller ?? "없음"}</span>
       {stream.status?.recording && <span className="inline-flex items-center gap-1.5 text-failed-fg"><StatusDot tone="failed" />녹화 중</span>}
       {!stream.canControl && <span>보기 전용</span>}
     </div>
-    {stream.message && <p role="status" className="break-words text-xs text-warning-fg">{stream.message}</p>}
-    <div className="flex flex-wrap items-center gap-2" aria-label="기기 조작">
+    {stream.message && <p role="status" className="shrink-0 break-words text-xs text-warning-fg">{stream.message}</p>}
+    <div className="flex shrink-0 flex-wrap items-center gap-2" aria-label="기기 조작">
+      <IconButton ref={toggle} aria-label={enlarged ? "작게 보기" : "크게 보기"} title={enlarged ? "작게 보기" : "크게 보기"} aria-pressed={enlarged} onClick={() => { setEnlarged(!enlarged); toggle.current?.focus(); }}>{enlarged ? <Minimize2 /> : <Maximize2 />}</IconButton>
       <IconButton aria-label="뒤로" title="뒤로" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "BACK" })}><ArrowLeft /></IconButton>
       <IconButton aria-label="홈" title="홈" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "HOME" })}><Circle /></IconButton>
       <IconButton aria-label="최근 앱" title="최근 앱" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "APP_SWITCH" })}><Square /></IconButton>
@@ -73,6 +94,6 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
         <Input aria-label="기기에 텍스트 입력" placeholder="텍스트 입력 후 Enter" maxLength={300} disabled={!stream.canControl} value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
       </form>
     </div>
-    <RecordingControls key={serial} serial={serial} canControl={stream.canControl && canWrite && control !== "never"} workspace={workspace} appPackage={appPackage} onComplete={onRecordingComplete} />
+    <div className={cx("min-w-0 shrink-0", enlarged && "max-h-[min(20dvh,160px)] overflow-y-auto overscroll-contain")}><RecordingControls key={serial} serial={serial} enlarged={enlarged} canControl={stream.canControl && canWrite && control !== "never"} workspace={workspace} appPackage={appPackage} onComplete={onRecordingComplete} /></div>
   </section>;
 }
