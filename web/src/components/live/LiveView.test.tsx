@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useEffect } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { LiveView } from "./LiveView";
 import { Drawer } from "../ui";
 import { renderPage } from "../../test/render";
 import { mockApi } from "../../test/api";
+import { LIVE_DRAWER_STORAGE_KEY, LIVE_HEIGHT_STORAGE_KEYS } from "./useResizableSize";
 
 const mock = vi.hoisted(() => ({ stream: vi.fn(), write: vi.fn() }));
 vi.mock("./useLiveStream", () => ({ useLiveStream: mock.stream }));
@@ -78,8 +79,9 @@ test.each([false, true])("enlarged controls and recording dialogs retain keyboar
   renderPage(compact ? <LiveView serial="s1" compact /> : <Drawer title="기기 라이브" onClose={vi.fn()}><LiveView serial="s1" /></Drawer>);
   const toggle = screen.getByRole("button", { name: "크게 보기" }); fireEvent.click(toggle);
   const recording = screen.getByRole("button", { name: "녹화" }); await waitFor(() => expect(recording).toBeEnabled());
-  recording.focus(); fireEvent.keyDown(recording, { key: "Tab" }); expect(toggle).toHaveFocus();
-  fireEvent.keyDown(toggle, { key: "Tab", shiftKey: true }); expect(recording).toHaveFocus();
+  const resize = screen.getByRole("separator", { name: "화면 크기 조절" });
+  recording.focus(); fireEvent.keyDown(recording, { key: "Tab" }); expect(resize).toHaveFocus();
+  fireEvent.keyDown(resize, { key: "Tab", shiftKey: true }); expect(recording).toHaveFocus();
   fireEvent.click(recording);
   expect(screen.getByRole("dialog", { name: "녹화 시작" }).parentElement).toHaveClass("z-[70]");
   const start = screen.getByRole("button", { name: "시작" }); start.focus(); fireEvent.keyDown(start, { key: "Tab" });
@@ -151,4 +153,98 @@ test("unmount releases an active touch before the socket closes", () => {
 test("shows unsupported browser copy without control UI", () => {
   mock.stream.mockReturnValue({ ...state(false), phase: "unsupported" }); render(<LiveView serial="s1" control="never" compact />);
   expect(screen.getByText("이 브라우저는 실시간 화면을 지원하지 않습니다 (Chrome/Edge 최신 버전 권장)")).toBeInTheDocument(); expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});
+
+test.each([{ compact: false, enlarged: false }, { compact: true, enlarged: false }, { compact: false, enlarged: true }, { compact: true, enlarged: true }])("screen drag and keyboard resizing preserve canvas, stream and recording ($compact / $enlarged)", ({ compact, enlarged }) => {
+  vi.stubGlobal("innerHeight", 1000);
+  const mounted = vi.fn(); const disconnected = vi.fn(); const stream = state();
+  mock.stream.mockImplementation(function useMockLiveStream() { useEffect(() => { mounted(); return disconnected; }, []); return stream; });
+  const { canvas } = mount(compact);
+  if (enlarged) fireEvent.click(screen.getByRole("button", { name: "크게 보기" }));
+  const recording = screen.getByRole("button", { name: "녹화" });
+  const handle = screen.getByRole("separator", { name: "화면 크기 조절" });
+  expect(handle).toHaveAttribute("aria-orientation", "horizontal"); expect(handle).toHaveAttribute("tabindex", "0");
+  const maximum = Number(handle.getAttribute("aria-valuemax"));
+  fireEvent.keyDown(handle, { key: "Home" }); expect(handle).toHaveAttribute("aria-valuenow", "200");
+  Object.assign(handle, { setPointerCapture: vi.fn(), hasPointerCapture: () => true, releasePointerCapture: vi.fn() });
+  pointer(handle, "pointerdown", 10, 300); pointer(handle, "pointermove", 10, 380, 2);
+  expect(handle).toHaveAttribute("aria-valuenow", "200");
+  pointer(handle, "pointermove", 10, 380); pointer(handle, "pointerup", 10, 380);
+  expect(handle).toHaveAttribute("aria-valuenow", "280"); expect(canvas.parentElement).toHaveStyle({ height: "280px" });
+  expect(handle.setPointerCapture).toHaveBeenCalledWith(1); expect(handle.releasePointerCapture).toHaveBeenCalledWith(1);
+  expect(handle).toHaveFocus(); expect(send).not.toHaveBeenCalled();
+  fireEvent.keyDown(handle, { key: "ArrowUp" }); expect(handle).toHaveAttribute("aria-valuenow", "260");
+  fireEvent.keyDown(handle, { key: "ArrowDown" }); expect(handle).toHaveAttribute("aria-valuenow", "280");
+  fireEvent.keyDown(handle, { key: "End" }); expect(handle).toHaveAttribute("aria-valuenow", String(maximum));
+  pointer(handle, "pointerdown", 10, 300); pointer(handle, "pointermove", 10, 20000); pointer(handle, "pointercancel", 10, 20000);
+  pointer(handle, "pointermove", 10, 100); expect(handle).toHaveAttribute("aria-valuenow", String(maximum));
+  fireEvent.doubleClick(handle); const fit = Number(handle.getAttribute("aria-valuenow"));
+  fireEvent.keyDown(handle, { key: "Home" }); fireEvent.click(screen.getByRole("button", { name: "맞춤" }));
+  expect(handle).toHaveAttribute("aria-valuenow", String(fit));
+  expect(canvas).toHaveClass("object-contain", "w-full"); expect(screen.getByLabelText("실시간 기기 화면")).toBe(canvas);
+  expect(screen.getByRole("button", { name: "녹화" })).toBe(recording); expect(screen.getByText("조작자 운영자")).toBeInTheDocument(); expect(screen.getByText("녹화 중")).toBeInTheDocument();
+  expect(mounted).toHaveBeenCalledTimes(1); expect(disconnected).not.toHaveBeenCalled(); expect(send).not.toHaveBeenCalled();
+});
+
+test("normal, compact and enlarged heights persist independently and clamp on load and resize", () => {
+  vi.stubGlobal("innerHeight", 1000);
+  localStorage.setItem(LIVE_HEIGHT_STORAGE_KEYS.normal, "9999"); localStorage.setItem(LIVE_HEIGHT_STORAGE_KEYS.compact, "100"); localStorage.setItem(LIVE_HEIGHT_STORAGE_KEYS.enlarged, "700");
+  const view = mount(); const handle = screen.getByRole("separator", { name: "화면 크기 조절" });
+  expect(handle).toHaveAttribute("aria-valuenow", "900"); expect(localStorage.getItem(LIVE_HEIGHT_STORAGE_KEYS.normal)).toBe("900");
+  fireEvent.keyDown(handle, { key: "ArrowUp" }); expect(localStorage.getItem(LIVE_HEIGHT_STORAGE_KEYS.normal)).toBe("880");
+  const toggle = screen.getByRole("button", { name: "크게 보기" }); fireEvent.click(toggle);
+  expect(handle).toHaveAttribute("aria-valuenow", "700"); fireEvent.keyDown(handle, { key: "ArrowUp" });
+  expect(localStorage.getItem(LIVE_HEIGHT_STORAGE_KEYS.enlarged)).toBe("680"); fireEvent.click(toggle);
+  expect(handle).toHaveAttribute("aria-valuenow", "880");
+  vi.stubGlobal("innerHeight", 600); fireEvent(window, new Event("resize"));
+  expect(handle).toHaveAttribute("aria-valuenow", "540"); expect(localStorage.getItem(LIVE_HEIGHT_STORAGE_KEYS.normal)).toBe("540");
+  view.unmount(); const compact = mount(true);
+  expect(screen.getByRole("separator", { name: "화면 크기 조절" })).toHaveAttribute("aria-valuenow", "200");
+  fireEvent.keyDown(screen.getByRole("separator", { name: "화면 크기 조절" }), { key: "ArrowDown" }); compact.unmount(); mount(true);
+  expect(screen.getByRole("separator", { name: "화면 크기 조절" })).toHaveAttribute("aria-valuenow", "220");
+});
+
+test("enlarged maximum excludes measured controls and updates as controls resize", () => {
+  vi.stubGlobal("innerHeight", 800);
+  let notify = () => {}; let controlHeight = 100;
+  vi.stubGlobal("ResizeObserver", class { constructor(callback: () => void) { notify = callback; } observe() {} disconnect() {} });
+  const { canvas } = mount(); const root = screen.getByRole("region", { name: "s1 실시간 화면" });
+  const controls = [...root.children].filter(child => child !== canvas.parentElement);
+  const measures = controls.map(child => vi.spyOn(child, "getBoundingClientRect").mockImplementation(() => ({ height: controlHeight } as DOMRect)));
+  fireEvent.click(screen.getByRole("button", { name: "크게 보기" }));
+  const handle = screen.getByRole("separator", { name: "화면 크기 조절" });
+  expect(handle).toHaveAttribute("aria-valuemax", String(800 - controls.length * 100));
+  controlHeight = 120; fireEvent.keyDown(handle, { key: "End" });
+  // A real ResizeObserver reports wrapped controls after a panel/viewport change.
+  act(() => notify());
+  expect(handle).toHaveAttribute("aria-valuenow", String(800 - controls.length * 120));
+  measures.forEach(measure => measure.mockRestore());
+});
+
+test("resizing a live drawer and screen keeps instances and maps input using the resized rect", () => {
+  const mounted = vi.fn(); const disconnected = vi.fn(); const stream = state();
+  mock.stream.mockImplementation(function useMockLiveStream() { useEffect(() => { mounted(); return disconnected; }, []); return stream; });
+  renderPage(<Drawer title="기기 라이브" onClose={vi.fn()} resizable storageKey={LIVE_DRAWER_STORAGE_KEY}><LiveView serial="s1" /></Drawer>);
+  const canvas = screen.getByLabelText("실시간 기기 화면"); const recording = screen.getByRole("button", { name: "녹화" });
+  const screenHandle = screen.getByRole("separator", { name: "화면 크기 조절" }); const drawerHandle = screen.getByRole("separator", { name: "패널 너비 조절" });
+  for (const handle of [screenHandle, drawerHandle]) { pointer(handle, "pointerdown", 400, 400); pointer(handle, "pointermove", 300, 450); pointer(handle, "pointerup", 300, 450); }
+  expect(send).not.toHaveBeenCalled(); expect(screen.getByLabelText("실시간 기기 화면")).toBe(canvas); expect(screen.getByRole("button", { name: "녹화" })).toBe(recording);
+  vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({ left: 20, top: 30, width: 1000, height: 600 } as DOMRect);
+  Object.assign(canvas, { setPointerCapture: vi.fn() });
+  pointer(canvas, "pointerdown", 445, 180); pointer(canvas, "pointerup", 595, 480);
+  expect(send.mock.calls).toEqual([[{ type: "touch", action: "down", x: 25, y: 50 }], [{ type: "touch", action: "up", x: 75, y: 150 }]]);
+  fireEvent.wheel(canvas, { clientX: 520, clientY: 330, deltaY: 100 }); expect(send).toHaveBeenLastCalledWith({ type: "scroll", x: 50, y: 100, dx: 0, dy: 1 });
+  expect(mounted).toHaveBeenCalledTimes(1); expect(disconnected).not.toHaveBeenCalled();
+});
+
+test("blocked or invalid height storage falls back to fit and remains resizable", () => {
+  vi.stubGlobal("innerHeight", 1000); localStorage.setItem(LIVE_HEIGHT_STORAGE_KEYS.normal, "NaN");
+  const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+  const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+  const remove = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new Error("blocked"); });
+  try {
+    mount(); const handle = screen.getByRole("separator", { name: "화면 크기 조절" }); expect(handle).toHaveAttribute("aria-valuenow", "600");
+    fireEvent.keyDown(handle, { key: "Home" }); expect(handle).toHaveAttribute("aria-valuenow", "200");
+    fireEvent.click(screen.getByRole("button", { name: "맞춤" })); expect(handle).toHaveAttribute("aria-valuenow", "600");
+  } finally { get.mockRestore(); set.mockRestore(); remove.mockRestore(); }
 });

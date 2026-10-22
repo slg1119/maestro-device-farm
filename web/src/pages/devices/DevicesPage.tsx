@@ -1,4 +1,5 @@
 import { LiveView } from "../../components/live/LiveView";
+import { LIVE_DRAWER_STORAGE_KEY } from "../../components/live/useResizableSize";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Camera, MoreHorizontal, Smartphone, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -210,7 +211,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
         <div className="ml-auto"><Menu label="기기 메뉴" icon={<MoreHorizontal />} items={[{ label: device.disabled ? "정비 모드 끄기" : "정비 모드 켜기", disabled: writesDisabled, onClick: toggleMaintenance }]} /></div>
       </div>
     </Card>
-    {liveOpen && <Drawer title={`${device.model} 라이브`} onClose={() => setLiveOpen(false)}><LiveView serial={device.serial} /></Drawer>}
+    {liveOpen && <Drawer title={`${device.model} 라이브`} onClose={() => setLiveOpen(false)} resizable storageKey={LIVE_DRAWER_STORAGE_KEY}><LiveView serial={device.serial} /></Drawer>}
     {modalOpen && snapshot && <Modal title={`${device.model} 스냅샷`} onClose={() => setModalOpen(false)}>
       <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? "계층 정보 없음" : `계층 요소 ${snapshot.count}개`}</p>
       <img src={snapshot.src} alt={`${device.model} 화면`} className="mx-auto max-h-[65dvh] max-w-full rounded-lg border border-border object-contain" />

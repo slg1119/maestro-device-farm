@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button, cx, IconButton } from "./primitives";
+import { useResizableSize, useViewportSize } from "../live/useResizableSize";
 
 const focusable = 'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]';
 const openDialogs: symbol[] = []; let bodyOverflow = "";
@@ -47,13 +48,19 @@ export function Modal({ title, onClose, children, wide, size = wide ? "lg" : "md
     </div>
   </div>, document.body);
 }
-export function Drawer({ title, onClose, children, side = "right", className }: DialogProps & { side?: "left" | "right"; className?: string }) {
+export function Drawer({ title, onClose, children, side = "right", className, resizable = false, storageKey }: DialogProps & { side?: "left" | "right"; className?: string; resizable?: boolean; storageKey?: string }) {
   const ref = useDialog(onClose);
+  const viewport = useViewportSize();
+  const width = useResizableSize({ storageKey: resizable ? storageKey : undefined, defaultSize: 384, min: 320, max: viewport.width - 32, axis: "x", direction: side === "right" ? -1 : 1 });
   return createPortal(<div className={cx("fixed inset-0 z-50 flex bg-black/40", side === "right" ? "justify-end" : "justify-start")}
     onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={cx("flex h-dvh w-96 max-w-[calc(100vw-32px)] flex-col border border-border bg-surface text-fg shadow-xl outline-none", className)}>
+    <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} style={resizable ? { width: width.size } : undefined} className={cx("relative flex h-dvh w-96 max-w-[calc(100vw-32px)] flex-col border border-border bg-surface text-fg shadow-xl outline-none", className)}>
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">{title}</h2><IconButton aria-label="닫기" onClick={onClose}><X /></IconButton></div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+      {resizable && <div {...width.handleProps} aria-label="패널 너비 조절" title="드래그 또는 좌우 방향키로 조절 · 두 번 누르면 맞춤"
+        className={cx("absolute inset-y-0 flex w-3 touch-none cursor-col-resize items-center justify-center text-fg-muted outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent", side === "right" ? "left-0" : "right-0")}>
+        <span aria-hidden="true" className="h-10 w-1 rounded-full bg-current" />
+      </div>}
     </div>
   </div>, document.body);
 }
