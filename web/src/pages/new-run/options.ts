@@ -31,7 +31,7 @@ export function parseEnv(text: string): Record<string, string> {
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
     const equals = line.indexOf("=");
     const key = line.slice(0, equals).trim();
-    if (equals < 0 || !key) throw new Error(`KEY=VALUE 형식이 아닙니다: ${line}`);
+    if (equals < 0 || !key) throw new Error(`테스트에 넘길 값은 KEY=VALUE 형식으로 입력하세요: ${line}`);
     // Preserve the value verbatim, including spaces and any further '=' characters.
     entries.push([key, line.slice(equals + 1)]);
   }

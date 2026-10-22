@@ -23,7 +23,7 @@ function DeviceRow({ device, selected, unavailable = false, onChange }: {
   </label>;
 }
 
-export function DeviceConditions({ devices, form, mode, onModeChange, update, matches, appMinSdk, sdkExcluded }: {
+export function DeviceConditions({ devices, form, mode, onModeChange, update, matches, sdkExcluded }: {
   devices: Device[];
   form: RunForm;
   mode: DeviceMode;
@@ -78,18 +78,18 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
         </div> : <p className="text-xs text-fg-subtle">등록된 기기 태그가 없습니다.</p>}
       </fieldset>
       <details>
-        <summary className="w-fit cursor-pointer py-2 text-xs text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">고급 조건</summary>
+        <summary className="w-fit cursor-pointer py-2 text-xs text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">모델·안드로이드 버전</summary>
         <div className="mt-2 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Field label="모델" hint="쉼표로 구분">
               <Input aria-label="모델" value={form.models} onChange={event => update({ models: event.target.value })} placeholder="Pixel 7" />
             </Field>
           </div>
-          <Field label="최소 SDK">
-            <Input type="number" min={0} step={1} value={form.minSdk} onChange={event => update({ minSdk: event.target.value })} />
+          <Field label="안드로이드 API 레벨 (이상)" hint="예: 30 = 안드로이드 11">
+            <Input aria-label="안드로이드 API 레벨 (이상)" type="number" min={0} step={1} value={form.minSdk} onChange={event => update({ minSdk: event.target.value })} />
           </Field>
-          <Field label="최대 SDK">
-            <Input type="number" min={0} step={1} value={form.maxSdk} onChange={event => update({ maxSdk: event.target.value })} />
+          <Field label="안드로이드 API 레벨 (이하)" hint="예: 30 = 안드로이드 11">
+            <Input aria-label="안드로이드 API 레벨 (이하)" type="number" min={0} step={1} value={form.maxSdk} onChange={event => update({ maxSdk: event.target.value })} />
           </Field>
         </div>
       </details>
@@ -98,7 +98,7 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
       className={cx("break-all text-xs leading-5", matches.length ? "text-fg-muted" : "text-warning-fg")}>
       <span className="font-medium">실행할 기기 {matches.length}대</span>
       {!!matches.length && <> · {matches.slice(0, 5).map(device => device.serial).join(", ")}{matches.length > 5 && ` 외 ${matches.length - 5}대`}</>}
-      {sdkExcluded > 0 && <> · 앱 최소 SDK {appMinSdk} 조건으로 {sdkExcluded}대 제외</>}
+      {sdkExcluded > 0 && <> · 앱이 지원하지 않는 안드로이드 버전이라 {sdkExcluded}대 제외</>}
       {!matches.length && <> · 실행할 수 있는 기기가 없습니다. 기기 상태와 선택 조건을 확인하세요.</>}
     </p>
   </>;
