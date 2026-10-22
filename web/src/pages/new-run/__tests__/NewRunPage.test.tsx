@@ -40,7 +40,9 @@ test("keeps the execution summary in sync with source, app, mode and device elig
 });
 
 test("submits the default workspace form as multipart and navigates after invalidating runs", async () => {
-  const { calls, client, user } = setup();
+  const { calls, client, user } = setup({
+    "GET /api/v1/healthz": healthBody({ default_task_timeout_sec: 1800 }),
+  });
   const invalidate = vi.spyOn(client, "invalidateQueries");
   expect(await screen.findByRole("combobox", { name: "저장소" })).toHaveValue("example-app");
   expect(screen.getByPlaceholderText("main")).toHaveValue("");
@@ -48,6 +50,7 @@ test("submits the default workspace form as multipart and navigates after invali
   expect(screen.getByRole("radio", { name: "사용 가능한 기기 전체" })).toBeChecked();
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   expect(screen.getByRole("combobox", { name: "앱" })).toHaveValue("com.example.app");
+  expect(await screen.findByPlaceholderText("비우면 30분")).toHaveValue(null);
   await user.click(screen.getByRole("button", { name: "실행 시작" }));
   expect(await screen.findByTestId("navigated")).toBeInTheDocument();
   const post = calls.find(c => c.method === "POST")!;
@@ -63,6 +66,35 @@ test("submits the default workspace form as multipart and navigates after invali
   expect(body.has("flows")).toBe(false);
   expect(body.has("apk")).toBe(false);
   expect(invalidate).toHaveBeenCalledWith({ queryKey: keys.runsAll });
+});
+
+test.each([
+  [1800, "비우면 30분"],
+  [5400, "비우면 1시간 30분"],
+])("shows the server's %i-second default as the timeout placeholder", async (seconds, placeholder) => {
+  setup({ "GET /api/v1/healthz": healthBody({ default_task_timeout_sec: seconds }) });
+  const timeout = await screen.findByPlaceholderText(placeholder);
+  expect(timeout).toHaveAccessibleName("제한 시간(초)");
+  expect(timeout).toHaveValue(null);
+});
+
+test("uses a generic timeout placeholder when an older server omits the default", async () => {
+  const { client } = setup();
+  const timeout = await screen.findByRole("spinbutton", { name: "제한 시간(초)" });
+  await vi.waitFor(() => expect(client.getQueryState(keys.health)?.status).toBe("success"));
+  expect(timeout).toHaveAttribute("placeholder", "비우면 서버 기본값");
+  expect(timeout).toHaveValue(null);
+});
+
+test("uses a generic timeout placeholder while health loads and preserves typed input when it arrives", async () => {
+  let resolveHealth!: (body: ReturnType<typeof healthBody>) => void;
+  const health = new Promise<ReturnType<typeof healthBody>>(resolve => { resolveHealth = resolve; });
+  setup({ "GET /api/v1/healthz": () => health });
+  const timeout = await screen.findByRole("spinbutton", { name: "제한 시간(초)" });
+  expect(timeout).toHaveAttribute("placeholder", "비우면 서버 기본값");
+  fireEvent.change(timeout, { target: { value: "120" } });
+  resolveHealth(healthBody({ default_task_timeout_sec: 5400 }));
+  expect(await screen.findByPlaceholderText("비우면 1시간 30분")).toHaveValue(120);
 });
 
 test("shows no_matching_devices without losing form values or navigating", async () => {

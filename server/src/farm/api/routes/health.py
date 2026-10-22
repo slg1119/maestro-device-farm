@@ -25,5 +25,6 @@ def healthz(request: Request) -> dict:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     return {"status": "ok", "agent": agent, "auth_required": settings.require_token,
             "ai_enabled": enabled(request.app),
+            "default_task_timeout_sec": settings.task_timeout_sec,
             "workspace_sync_errors": sync_errors,
             "disk_free_bytes": shutil.disk_usage(settings.data_dir).free}

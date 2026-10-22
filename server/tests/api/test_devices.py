@@ -6,9 +6,15 @@ from tests.factories import add_device, beat
 def test_healthz_reports_agent(client, db):
     body = client.get("/api/v1/healthz").json()
     assert body["status"] == "ok" and body["agent"] is None and body["disk_free_bytes"] > 0
+    assert body["default_task_timeout_sec"] == 1800
     beat(db)
     agent = client.get("/api/v1/healthz").json()["agent"]
     assert agent["id"] == "test-host" and agent["age_sec"] < 5
+
+
+def test_healthz_reports_configured_task_timeout(client, app, monkeypatch):
+    monkeypatch.setattr(app.state.settings, "task_timeout_sec", 5400)
+    assert client.get("/api/v1/healthz").json()["default_task_timeout_sec"] == 5400
 
 
 def test_devices_look_offline_without_agent_heartbeat(client, db):

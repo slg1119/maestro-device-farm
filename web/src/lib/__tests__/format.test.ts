@@ -1,4 +1,16 @@
-import { elapsed, formatBytes, formatDuration, parseTs, shortSha, timeAgo } from "../format";
+import { elapsed, formatBytes, formatDuration, formatDurationKo, parseTs, shortSha, timeAgo } from "../format";
+
+test.each([
+  [1800, "30분"],
+  [3600, "1시간"],
+  [5400, "1시간 30분"],
+  [90, "1분 30초"],
+  [45, "45초"],
+  [3605, "1시간 5초"],
+  [0, "0초"],
+])("formats %i seconds in Korean without zero parts", (seconds, expected) => {
+  expect(formatDurationKo(seconds)).toBe(expected);
+});
 
 test("parses server timestamps with microseconds", () => {
   expect(parseTs("2026-10-20T05:31:00.123456Z").toISOString()).toBe("2026-10-20T05:31:00.123Z");
