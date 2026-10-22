@@ -11,11 +11,13 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
   const stream = useLiveStream({ serial, control, canWrite, canvas });
   const [text, setText] = useState("");
   const [enlarged, setEnlarged] = useState(false); const toggle = useRef<HTMLButtonElement>(null);
+  const section = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!enlarged) return;
-    // Capture Escape before the surrounding Drawer's document listener.
+    // Capture Escape inside the view before the Drawer, leaving portaled dialogs to handle it.
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (!section.current?.contains(event.target instanceof Node ? event.target : null) && !section.current?.contains(document.activeElement)) return;
       event.preventDefault(); event.stopPropagation(); setEnlarged(false); toggle.current?.focus();
     };
     window.addEventListener("keydown", escape, true);
@@ -61,7 +63,7 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
   }, [stream.canControl, stream.size, stream.send]);
 
   if (stream.phase === "unsupported") return <p role="status" className="p-4 text-sm leading-6 text-fg-muted">이 브라우저는 실시간 화면을 지원하지 않습니다 (Chrome/Edge 최신 버전 권장)</p>;
-  return <section aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 text-fg", enlarged ? "fixed inset-0 z-[60] flex h-dvh flex-col gap-3 overflow-y-auto overscroll-contain bg-surface p-3 sm:p-4" : cx("space-y-3", compact ? "p-3" : "p-4"))}
+  return <section ref={section} aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 text-fg", enlarged ? "fixed inset-0 z-[60] flex h-dvh flex-col gap-3 overflow-y-auto overscroll-contain bg-surface p-3 sm:p-4" : cx("space-y-3", compact ? "p-3" : "p-4"))}
     onKeyDown={event => {
       if (!enlarged || event.key !== "Tab" || !event.currentTarget.contains(event.target as Node)) return;
       const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')];

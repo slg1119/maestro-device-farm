@@ -5,18 +5,19 @@ import { createPortal } from "react-dom";
 import { Button, cx, IconButton } from "./primitives";
 
 const focusable = 'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]';
-let openDialogs = 0; let bodyOverflow = "";
+const openDialogs: symbol[] = []; let bodyOverflow = "";
 function useDialog(onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
-    if (openDialogs === 0) { bodyOverflow = document.body.style.overflow; document.body.style.overflow = "hidden"; }
-    openDialogs += 1;
+    if (openDialogs.length === 0) { bodyOverflow = document.body.style.overflow; document.body.style.overflow = "hidden"; }
+    const dialog = Symbol(); openDialogs.push(dialog);
     const root = ref.current;
     (root?.querySelector<HTMLElement>(focusable) ?? root)?.focus();
     const onKey = (event: KeyboardEvent) => {
+      if (openDialogs.at(-1) !== dialog) return;
       if (event.key === "Escape") { event.preventDefault(); close.current(); }
       if (event.key !== "Tab" || !root) return;
       const items = [...root.querySelectorAll<HTMLElement>(focusable)];
@@ -27,8 +28,8 @@ function useDialog(onClose: () => void) {
     };
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("keydown", onKey); openDialogs -= 1;
-      if (openDialogs === 0) document.body.style.overflow = bodyOverflow;
+      document.removeEventListener("keydown", onKey); openDialogs.splice(openDialogs.indexOf(dialog), 1);
+      if (openDialogs.length === 0) document.body.style.overflow = bodyOverflow;
       before?.focus();
     };
   }, []);

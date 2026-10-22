@@ -59,6 +59,21 @@ test("Escape leaves enlarged mode and restores toggle focus before the drawer ca
   fireEvent.keyDown(toggle, { key: "Escape" }); expect(close).toHaveBeenCalledTimes(1);
 });
 
+test("Escape closes a recording dialog before leaving enlarged mode without closing the drawer", async () => {
+  const close = vi.fn(); renderPage(<Drawer title="기기 라이브" onClose={close}><LiveView serial="s1" /></Drawer>);
+  const section = screen.getByRole("region", { name: "s1 실시간 화면" });
+  const toggle = screen.getByRole("button", { name: "크게 보기" }); fireEvent.click(toggle);
+  const recording = screen.getByRole("button", { name: "녹화" }); await waitFor(() => expect(recording).toBeEnabled());
+  recording.focus(); fireEvent.click(recording);
+  const dialog = screen.getByRole("dialog", { name: "녹화 시작" });
+  expect(dialog).toContainElement(document.activeElement as HTMLElement);
+  fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+  expect(screen.queryByRole("dialog", { name: "녹화 시작" })).not.toBeInTheDocument();
+  expect(section).toHaveClass("fixed"); expect(recording).toHaveFocus(); expect(close).not.toHaveBeenCalled();
+  fireEvent.keyDown(recording, { key: "Escape" });
+  expect(section).not.toHaveClass("fixed"); expect(toggle).toHaveFocus(); expect(close).not.toHaveBeenCalled();
+});
+
 test.each([false, true])("enlarged controls and recording dialogs retain keyboard focus and stacking (compact: %s)", async compact => {
   renderPage(compact ? <LiveView serial="s1" compact /> : <Drawer title="기기 라이브" onClose={vi.fn()}><LiveView serial="s1" /></Drawer>);
   const toggle = screen.getByRole("button", { name: "크게 보기" }); fireEvent.click(toggle);
