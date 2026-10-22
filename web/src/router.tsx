@@ -6,6 +6,7 @@ import { OverviewPage } from "./pages/overview/OverviewPage";
 import { Layout } from "./components/Layout";
 import { AppsPage } from "./pages/apps/AppsPage";
 import { DevicesPage } from "./pages/devices/DevicesPage";
+import { LiveBoardPage } from "./pages/live-board/LiveBoardPage";
 import { NewRunPage } from "./pages/new-run/NewRunPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { RunDetailPage } from "./pages/run-detail/RunDetailPage";
@@ -24,6 +25,7 @@ export const routes: RouteObject[] = [
       { path: "editor", element: editor },
       { path: "editor/:workspace", element: editor },
       { path: "devices", element: <DevicesPage /> },
+      { path: "live", element: <LiveBoardPage /> },
       { path: "runs", element: <RunsPage /> },
       { path: "runs/new", element: <NewRunPage /> },
       { path: "runs/:runId", element: <RunDetailPage /> },

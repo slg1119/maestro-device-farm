@@ -11,6 +11,7 @@ import { cx, Drawer, IconButton, StatusDot } from "./ui";
 const nav = [
   { to: "/", label: "개요", icon: LayoutGrid, end: true },
   { to: "/devices", label: "기기", icon: Smartphone },
+  { to: "/live", label: "라이브 보드", icon: Monitor },
   { to: "/runs", label: "실행", icon: ListChecks },
   { to: "/editor", label: "에디터", icon: FileCode2 },
   { to: "/workspaces", label: "워크스페이스", icon: GitBranch },
