@@ -26,6 +26,10 @@ state file under `~/.cache/maestro-device-farm-demo/` holds service ports and
 the temporary data path. The script never starts the agent when another adb
 device is listed.
 
+After merging dashboard or server changes, run `python3 tools/demo/manage.py
+refresh` to rebuild and restart the services while retaining the same demo
+history. It checks the adb inventory again before restarting the agent.
+
 `seed` creates a local Git remote with the Android Settings example flows,
 registers it as `settings-demo`, and uploads the Settings APK from the demo
 emulator. `verify` submits a pinned passing flow and an intentional failure,

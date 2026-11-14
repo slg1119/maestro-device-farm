@@ -257,6 +257,37 @@ def stop() -> None:
     print("Demo services stopped; AVD retained")
 
 
+def refresh() -> None:
+    """Reload merged server and dashboard code without discarding demo history."""
+    s = state()
+    assert_isolated()
+    stop_pid(s.get("guard_pid"))
+    s["guard_pid"] = None
+    save_state(s)
+    stop_pid(s.get("api_pid"))
+    s["api_pid"] = None
+    save_state(s)
+    env = demo_env(s)
+    pnpm = shutil.which("pnpm") or "pnpm"
+    uv = shutil.which("uv") or "uv"
+    subprocess.run([pnpm, "--dir", str(ROOT / "web"), "build"], cwd=ROOT, env=env,
+                   check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([uv, "sync", "--project", str(ROOT / "server"), "--frozen"], cwd=ROOT,
+                   env=env, check=True, stdout=subprocess.DEVNULL)
+    farm = ROOT / "server/.venv/bin/farm"
+    s["api_pid"] = spawn([str(farm), "api"], env, Path(s["data_dir"]) / "api.out")
+    save_state(s)
+    wait_http(s["api_url"] + API_PREFIX + "/healthz")
+    assert_isolated()
+    s["guard_pid"] = spawn([sys.executable, str(Path(__file__).resolve()), "guard"],
+                           env, Path(s["data_dir"]) / "guard.out")
+    save_state(s)
+    time.sleep(2)
+    if not alive(s["guard_pid"]):
+        raise RuntimeError("Agent supervisor exited; see guard.out")
+    print(json.dumps({"api_url": s["api_url"], "web_url": s["web_url"], "data_dir": s["data_dir"]}))
+
+
 def api(method: str, path: str, body: bytes | None = None, content_type: str = "application/json"):
     s = state()
     request = urllib.request.Request(s["api_url"] + API_PREFIX + path, data=body, method=method,
@@ -392,18 +423,21 @@ def verify() -> None:
     save_state(s)
     print(json.dumps({"passed_run": passed["id"], "passed_states": good_states,
                       "failed_run": failed["id"], "failed_states": bad_states,
-                      "failed_artifacts": names}))
+                      "failed_screenshots": len([name for name in names if name.endswith(".png")]),
+                      "junit_present": "junit.xml" in names}))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("start", "stop", "seed", "verify", "status", "guard"))
+    parser.add_argument("command", choices=("start", "stop", "refresh", "seed", "verify", "status", "guard"))
     args = parser.parse_args()
     try:
         if args.command == "start":
             start()
         elif args.command == "stop":
             stop()
+        elif args.command == "refresh":
+            refresh()
         elif args.command == "seed":
             seed()
         elif args.command == "verify":
