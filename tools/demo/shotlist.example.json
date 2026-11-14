@@ -1,0 +1,30 @@
+{
+  "shots": [
+    {
+      "name": "live-board.png",
+      "path": "/live",
+      "ready": "article[aria-label*='emulator-5560'] canvas",
+      "livePixels": true,
+      "callouts": [
+        { "selector": "article[aria-label*='emulator-5560']", "number": 1 }
+      ]
+    },
+    {
+      "name": "runs.png",
+      "path": "/runs",
+      "ready": "main",
+      "callouts": []
+    }
+  ],
+  "gifs": [
+    {
+      "name": "live-board.gif",
+      "path": "/live",
+      "ready": "article[aria-label*='emulator-5560'] canvas",
+      "seconds": 4,
+      "callouts": [
+        { "selector": "article[aria-label*='emulator-5560']", "number": 1 }
+      ]
+    }
+  ]
+}
