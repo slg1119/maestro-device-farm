@@ -80,3 +80,19 @@ test("opens settings from mobile navigation without stacking dialogs", async () 
   expect(screen.queryByRole("dialog", { name: "메뉴" })).not.toBeInTheDocument();
   expect(screen.getByRole("dialog", { name: "설정" })).toBeInTheDocument();
 });
+
+test("switches the dashboard language and persists the choice", async () => {
+  mockApi({ "GET /api/v1/healthz": healthBody(), "GET /api/v1/devices": [] });
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/"] })} />
+    </QueryClientProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "영어로 전환" }));
+  expect(localStorage.getItem("farm.language")).toBe("en");
+  expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Switch to Korean" }));
+  expect(localStorage.getItem("farm.language")).toBe("ko");
+  expect(screen.getByRole("link", { name: "개요" })).toBeInTheDocument();
+});

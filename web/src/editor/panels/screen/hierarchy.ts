@@ -1,3 +1,4 @@
+import { t } from "../../../lib/i18n";
 import type { SelectorCandidate } from "../../store";
 
 export interface Bounds { x: number; y: number; width: number; height: number }
@@ -48,7 +49,7 @@ export function candidatesFor(node: ScreenElement, nodes: ScreenElement[]): Sele
     const value = node.attributes[attribute];
     if (!value?.trim()) return [];
     const count = nodes.filter(n => n.attributes[attribute] === value).length;
-    return [{ kind, value, note: count === 1 ? kind === "id" ? "권장 · 고유" : "고유" : `같은 ${kind} ${count}개` }];
+    return [{ kind, value, note: count === 1 ? kind === "id" ? t("m_ca6717e5ba") : t("m_5640facafb") : t("m_9994bd07b8", [kind, count]) }];
   });
 }
 
@@ -70,7 +71,7 @@ export function selectorInsertion(command: SelectorCommand, candidate: SelectorC
   const line = lines[cursor.line - 1] ?? "";
   const prefix = line.slice(0, Math.max(0, cursor.column - 1));
   const suffix = line.slice(Math.max(0, cursor.column - 1));
-  if (prefix.trim() && suffix.trim()) throw new Error("명령을 삽입할 빈 줄이나 줄 끝에 커서를 놓아주세요.");
+  if (prefix.trim() && suffix.trim()) throw new Error(t("m_946f145882"));
   const indentation = line.match(/^ */)?.[0] ?? "";
   const typedDash = /^ *- +$/.test(prefix);
   const blankPrefix = /^ *$/.test(prefix);

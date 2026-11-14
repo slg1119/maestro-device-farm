@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -16,11 +17,11 @@ import { TaskList } from "./TaskList";
 import { TaskPanel } from "./TaskPanel";
 import { ACTION_LINK, LINK } from "./links";
 
-const ORIGIN = { ci: "CI", dashboard: "대시보드", editor: "편집기", ai: "AI" };
-const MODE = { matrix: "매트릭스", split: "분할" };
+const ORIGIN = { ci: "CI", dashboard: t("m_2859873b5b"), editor: t("m_36538c6295"), ai: "AI" };
+const MODE = { matrix: t("m_d41c4aab0b"), split: t("m_380a547835") };
 const COUNTS = [
-  ["passed", "통과"], ["failed", "실패"], ["error", "오류"],
-  ["running", "실행 중"], ["queued", "대기"], ["cancelled", "취소"],
+  ["passed", t("m_66409b6272")], ["failed", t("m_732fe33ab1")], ["error", t("m_3efa8afd60")],
+  ["running", t("m_0d01d3e76a")], ["queued", t("m_df72a8753d")], ["cancelled", t("m_19b2d19bc1")],
 ] as const;
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
@@ -28,22 +29,22 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Source({ run, workspace }: { run: RunDetail; workspace?: Workspace }) {
-  const source = `${workspace?.name ?? run.workspace_id ?? "워크스페이스"} @ ${shortSha(run.commit_sha)}`;
+  const source = t("m_574ccb3efc", [workspace?.name ?? run.workspace_id ?? t("m_3291059946"), shortSha(run.commit_sha)]);
   return (
     <div className="space-y-2 break-words text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        {run.flow_source === "upload" ? <span>업로드한 flow</span> : <>
+        {run.flow_source === "upload" ? <span>{t("m_ac6d2617b2")}</span> : <>
           {workspace && run.commit_sha
             ? <a className={LINK} href={githubCommitUrl(workspace.repo, run.commit_sha)} target="_blank" rel="noreferrer">{source}</a>
             : <span className="break-all">{source}</span>}
-          {run.ref && <span className="break-all text-fg-subtle">ref: {run.ref}</span>}
-          {run.flow_source === "draft" && <span className="text-fg-subtle">(초안, 기준 커밋)</span>}
+          {run.ref && <span className="break-all text-fg-subtle">{t("e_42e0721f56")} {run.ref}</span>}
+          {run.flow_source === "draft" && <span className="text-fg-subtle">{t("m_f61c99e8cf")}</span>}
         </>}
       </div>
       {Object.keys(run.ci_meta).length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-subtle">
-          {run.ci_meta.branch && <span className="break-all">브랜치: {run.ci_meta.branch}</span>}
-          {run.ci_meta.commit && <span title={run.ci_meta.commit}>커밋: {shortSha(run.ci_meta.commit)}</span>}
+          {run.ci_meta.branch && <span className="break-all">{t("m_5b7da52563")} {run.ci_meta.branch}</span>}
+          {run.ci_meta.commit && <span title={run.ci_meta.commit}>{t("m_15b0c966f4")} {shortSha(run.ci_meta.commit)}</span>}
         </div>
       )}
     </div>
@@ -55,17 +56,17 @@ function RunOptions({ run }: { run: RunDetail }) {
   return (
     <Card>
       <details className="p-4">
-        <summary className="cursor-pointer text-sm font-medium">실행 옵션</summary>
+        <summary className="cursor-pointer text-sm font-medium">{t("m_abccce1e63")}</summary>
         <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Detail label="기기 시리얼">{selector.serials?.join(", ") || "-"}</Detail>
-          <Detail label="기기 태그">{selector.tags?.join(", ") || "-"}</Detail>
-          <Detail label="기기 모델">{selector.models?.join(", ") || "-"}</Detail>
-          <Detail label="SDK 범위">{selector.min_sdk ?? "제한 없음"} – {selector.max_sdk ?? "제한 없음"}</Detail>
-          <Detail label="flow 경로">{run.flow_paths?.join(", ") || "전체"}</Detail>
-          <Detail label="포함 태그">{run.include_tags.join(", ") || "-"}</Detail>
-          <Detail label="제외 태그">{run.exclude_tags.join(", ") || "-"}</Detail>
-          <Detail label="환경변수">{Object.keys(run.env).length ? Object.keys(run.env).sort().map((key) => <div key={key} className="break-all font-mono text-xs">{key}=***</div>) : "-"}</Detail>
-          <Detail label="task 제한 시간">{run.task_timeout_sec}초</Detail>
+          <Detail label={t("m_47b30d3d52")}>{selector.serials?.join(", ") || "-"}</Detail>
+          <Detail label={t("m_3e75bcb911")}>{selector.tags?.join(", ") || "-"}</Detail>
+          <Detail label={t("m_f30d6a6a0a")}>{selector.models?.join(", ") || "-"}</Detail>
+          <Detail label={t("m_7323281448")}>{selector.min_sdk ?? t("m_4efeea4126")} – {selector.max_sdk ?? t("m_4efeea4126")}</Detail>
+          <Detail label={t("m_700698c615")}>{run.flow_paths?.join(", ") || t("m_934dd25ec5")}</Detail>
+          <Detail label={t("m_20180117bf")}>{run.include_tags.join(", ") || "-"}</Detail>
+          <Detail label={t("m_10ca43e627")}>{run.exclude_tags.join(", ") || "-"}</Detail>
+          <Detail label={t("m_300285376c")}>{Object.keys(run.env).length ? Object.keys(run.env).sort().map((key) => <div key={key} className="break-all font-mono text-xs">{key}=***</div>) : "-"}</Detail>
+          <Detail label={t("m_62f4dc3d59")}>{run.task_timeout_sec}{t("m_3845248e28")}</Detail>
         </dl>
       </details>
     </Card>
@@ -97,41 +98,41 @@ function RunContent({ run }: { run: RunDetail }) {
   });
   const tones = { passed: "passed", failed: "failed", error: "warning", running: "running", queued: "neutral", cancelled: "neutral" } as const;
   return <div className="min-w-0 space-y-5 text-fg">
-    <Link to="/runs" className={`inline-flex min-h-11 items-center gap-1.5 text-xs ${LINK}`}><ArrowLeft size={14} strokeWidth={1.8} />실행 목록</Link>
+    <Link to="/runs" className={`inline-flex min-h-11 items-center gap-1.5 text-xs ${LINK}`}><ArrowLeft size={14} strokeWidth={1.8} />{t("m_b609b643d9")}</Link>
     <div className="[&_h1]:break-all [&_h1]:font-mono">
       <PageHeader title={`Run ${run.id}`} actions={<>
-        <a href={`${API}/runs/${encodeURIComponent(run.id)}/junit`} download className={ACTION_LINK}><Download size={16} strokeWidth={1.8} />JUnit 다운로드</a>
-        {failed && <Button disabled={!canWrite || rerun.isPending} onClick={() => rerun.mutate(true)}>실패만 다시 실행</Button>}
-        <Button variant="primary" icon={<RotateCcw />} disabled={!canWrite || rerun.isPending} onClick={() => rerun.mutate(false)}>다시 실행</Button>
+        <a href={`${API}/runs/${encodeURIComponent(run.id)}/junit`} download className={ACTION_LINK}><Download size={16} strokeWidth={1.8} />{t("m_085739bab6")}</a>
+        {failed && <Button disabled={!canWrite || rerun.isPending} onClick={() => rerun.mutate(true)}>{t("m_ba2609c7de")}</Button>}
+        <Button variant="primary" icon={<RotateCcw />} disabled={!canWrite || rerun.isPending} onClick={() => rerun.mutate(false)}>{t("m_689760632f")}</Button>
         {(run.status === "queued" || run.status === "running") && <Button variant="danger" disabled={!canWrite || cancel.isPending}
-          onClick={() => { if (canWrite && window.confirm("이 run을 취소할까요?")) cancel.mutate(); }}>취소</Button>}
+          onClick={() => { if (canWrite && window.confirm(t("m_e045d5ddb5"))) cancel.mutate(); }}>{t("m_19b2d19bc1")}</Button>}
       </>}>
-        <span className="flex flex-wrap items-center gap-2"><StatusBadge status={run.status} /><Badge>{MODE[run.mode]}</Badge>{run.cancel_requested && run.status === "running" && <Badge>취소 요청됨</Badge>}</span>
+        <span className="flex flex-wrap items-center gap-2"><StatusBadge status={run.status} /><Badge>{MODE[run.mode]}</Badge>{run.cancel_requested && run.status === "running" && <Badge>{t("m_3648602811")}</Badge>}</span>
         <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-fg-subtle">
-          <span>{ORIGIN[run.origin]} · {run.created_by}</span><span>시작 {formatTime(run.started_at)}</span><span>소요 시간 {elapsed(run.started_at, run.finished_at)}</span>
-          {run.ci_meta.pr_url && <a className={LINK} href={run.ci_meta.pr_url} target="_blank" rel="noreferrer">PR</a>}
-          {run.ci_meta.workflow_url && <a className={LINK} href={run.ci_meta.workflow_url} target="_blank" rel="noreferrer">워크플로</a>}
+          <span>{ORIGIN[run.origin]} · {run.created_by}</span><span>{t("m_e89cc866ba")} {formatTime(run.started_at)}</span><span>{t("m_2c6a412305")} {elapsed(run.started_at, run.finished_at)}</span>
+          {run.ci_meta.pr_url && <a className={LINK} href={run.ci_meta.pr_url} target="_blank" rel="noreferrer">{t("e_55af20415e")}</a>}
+          {run.ci_meta.workflow_url && <a className={LINK} href={run.ci_meta.workflow_url} target="_blank" rel="noreferrer">{t("m_8423200a37")}</a>}
         </span>
       </PageHeader>
     </div>
     <ErrorBox error={cancel.error ?? rerun.error} />
     <div className="grid min-w-0 gap-3 lg:grid-cols-3">
-      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">실행 결과</h2>
-        <p className="text-xs text-fg-muted">전체 {run.counts.total}</p>
-        <ProgressBar label="실행 결과 분포" total={run.counts.total} segments={COUNTS.map(([status]) => ({ value: run.counts[status], tone: tones[status] }))} />
+      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">{t("m_466944daa5")}</h2>
+        <p className="text-xs text-fg-muted">{t("m_934dd25ec5")} {run.counts.total}</p>
+        <ProgressBar label={t("m_eb55cc28a5")} total={run.counts.total} segments={COUNTS.map(([status]) => ({ value: run.counts[status], tone: tones[status] }))} />
         <div className="flex flex-wrap gap-x-3 gap-y-2">{COUNTS.filter(([status]) => run.counts[status] > 0).map(([status, label]) => <span key={status} className="inline-flex items-center gap-1.5 text-xs text-fg-muted"><StatusDot tone={tones[status]} />{label} {run.counts[status]}</span>)}</div>
       </Card>
-      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">flow 소스</h2><Source run={run} workspace={workspaces.data?.find((workspace) => workspace.id === run.workspace_id)} /></Card>
-      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">앱</h2><p className="break-all font-mono text-xs">{run.app.package_name}</p><p className="text-xs text-fg-muted">{run.app.version_name} ({run.app.version_code})</p><dl className="grid grid-cols-2 gap-3"><Detail label="생성">{formatTime(run.created_at)}</Detail><Detail label="종료">{formatTime(run.finished_at)}</Detail></dl></Card>
+      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">{t("m_4d9c73a4f1")}</h2><Source run={run} workspace={workspaces.data?.find((workspace) => workspace.id === run.workspace_id)} /></Card>
+      <Card className="min-w-0 space-y-3 p-4"><h2 className="text-sm font-semibold">{t("m_053d5241c7")}</h2><p className="break-all font-mono text-xs">{run.app.package_name}</p><p className="text-xs text-fg-muted">{run.app.version_name} ({run.app.version_code})</p><dl className="grid grid-cols-2 gap-3"><Detail label={t("m_d1a2d3a223")}>{formatTime(run.created_at)}</Detail><Detail label={t("m_cafdc61bbf")}>{formatTime(run.finished_at)}</Detail></dl></Card>
     </div>
     <RunOptions run={run} />
     <div className="grid min-w-0 items-start gap-4 min-[1200px]:grid-cols-[minmax(0,1fr)_400px]">
-      <Card className="min-w-0 overflow-hidden"><div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">{run.mode === "matrix" ? "기기별 flow 결과" : "분할 실행 task"}</h2></div>
+      <Card className="min-w-0 overflow-hidden"><div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">{run.mode === "matrix" ? t("m_f762c2f99d") : t("m_3ecf97a2d5")}</h2></div>
         {run.mode === "matrix"
           ? <MatrixGrid run={run} devices={devices.data ?? []} selectedId={selected?.id ?? null} selectedFlow={selection?.flow ?? null} onSelect={(id, flow) => setSelection({ id, flow })} />
           : <TaskList tasks={run.tasks} devices={devices.data ?? []} selectedId={selected?.id ?? null} onSelect={(id) => setSelection({ id, flow: null })} />}
       </Card>
-      {selected ? <TaskPanel key={`${selected.id}:${selected.attempt}:${selected.status}`} task={selected} results={run.results} run={run} devices={devices.data ?? []} selectedFlow={selection?.flow} /> : <Card className="min-w-0 px-4"><Empty>task를 선택하면 산출물을 볼 수 있습니다.</Empty></Card>}
+      {selected ? <TaskPanel key={`${selected.id}:${selected.attempt}:${selected.status}`} task={selected} results={run.results} run={run} devices={devices.data ?? []} selectedFlow={selection?.flow} /> : <Card className="min-w-0 px-4"><Empty>{t("m_69261d59df")}</Empty></Card>}
     </div>
   </div>;
 }
@@ -142,7 +143,7 @@ export function RunDetailPage() {
   return <>
     <TokenNotice />
     {run.isPending ? <Loading /> : run.error instanceof ApiError && run.error.code === "run_not_found"
-      ? <Empty>run을 찾을 수 없습니다.</Empty>
+      ? <Empty>{t("m_1f8c6f2ba8")}</Empty>
       : run.data ? <><ErrorBox error={run.error} /><RunContent key={run.data.id} run={run.data} /></>
       : <ErrorBox error={run.error} />}
   </>;

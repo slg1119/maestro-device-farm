@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 
@@ -58,30 +59,30 @@ export function WorkspaceForm({ workspace, onClose }: { workspace?: Workspace; o
   };
 
   return (
-    <Modal title={workspace ? "워크스페이스 수정" : "워크스페이스 등록"} onClose={onClose}>
+    <Modal title={workspace ? t("m_4ff3c40bbd") : t("m_4a2c1eb5cc")} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         {!workspace && <>
-          <Field label="이름" hint="소문자 slug, 예: example-app">
+          <Field label={t("m_9aa18e5071")} hint={t("m_a34dac9fe7")}>
             <Input required autoFocus value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
           </Field>
-          <Field label="레포" hint="owner/name">
-            <Input required placeholder="example-org/example-app" value={draft.repo} onChange={(event) => setDraft({ ...draft, repo: event.target.value })} />
+          <Field label={t("m_a6543aefbe")} hint={t("e_d05842b62b")}>
+            <Input required placeholder={t("e_907a8e1392")} value={draft.repo} onChange={(event) => setDraft({ ...draft, repo: event.target.value })} />
           </Field>
         </>}
-        <Field label="브랜치">
+        <Field label={t("m_8544c1c90e")}>
           <Input required autoFocus={Boolean(workspace)} value={draft.branch} onChange={(event) => setDraft({ ...draft, branch: event.target.value })} />
         </Field>
-        <Field label="경로" hint="레포 루트 기준. 앱 레포라면 .maestro, 비우면 레포 루트">
+        <Field label={t("m_bae4002d8d")} hint={t("m_7a003468aa")}>
           <Input value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} />
         </Field>
-        <Field label="기본 앱 패키지" hint="선택 사항. 새 실행과 AI Flow 생성에 사용할 기본 패키지입니다.">
-          <Input placeholder="com.example.app" value={draft.default_app_package} onChange={(event) => setDraft({ ...draft, default_app_package: event.target.value })} />
+        <Field label={t("m_e345556086")} hint={t("m_5a932863b5")}>
+          <Input placeholder={t("e_a003f1da17")} value={draft.default_app_package} onChange={(event) => setDraft({ ...draft, default_app_package: event.target.value })} />
         </Field>
         <ErrorBox error={mutation.error} />
         <div className="flex justify-end gap-2">
-          <Button onClick={onClose}>취소</Button>
+          <Button onClick={onClose}>{t("m_19b2d19bc1")}</Button>
           <Button type="submit" variant="primary" disabled={!canWrite || mutation.isPending}>
-            {mutation.isPending ? (workspace ? "저장 중…" : "확인 중…") : workspace ? "저장" : "등록"}
+            {mutation.isPending ? (workspace ? t("m_9f678504e8") : t("m_33c1f78f44")) : workspace ? t("m_1f1712acff") : t("m_1ac11e9b41")}
           </Button>
         </div>
       </form>

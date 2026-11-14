@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 import { ApiError } from "../../api/client";
@@ -58,7 +59,7 @@ export function Badge({ className, children, tone = "neutral" }: { className?: s
   return <span className={cx("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs leading-5 font-medium", toneBadge[tone], className)}>{children}</span>;
 }
 export function Kbd({ className, ...props }: HTMLAttributes<HTMLElement>) { return <kbd className={cx("rounded border border-border-strong bg-surface-2 px-1 py-0.5 font-mono text-[11px] text-fg-muted", className)} {...props} />; }
-export function Loading({ label = "불러오는 중…" }: { label?: string }) { return <div role="status" className="py-8 text-center text-sm text-fg-muted">{label}</div>; }
+export function Loading({ label = t("m_c78656b445") }: { label?: string }) { return <div role="status" className="py-8 text-center text-sm text-fg-muted">{label}</div>; }
 export function Empty({ children }: { children: ReactNode }) { return <div className="py-8 text-center text-sm text-fg-muted">{children}</div>; }
 export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null;

@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCheck, GitCommitHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -46,7 +47,7 @@ function CommitForm({ onSuccess }: { onSuccess(message: string): void }) {
     await api.rebase(sha); api.discard();
     void client.invalidateQueries({ queryKey: keys.workspaces });
     void client.invalidateQueries({ queryKey: ["workspace-history", api.workspace.id] });
-    onSuccess(`커밋했습니다 (${sha.slice(0, 7)})`); runtime.closeCommit();
+    onSuccess(t("m_96102b40e9", [sha.slice(0, 7)])); runtime.closeCommit();
   };
   const submit = async () => {
     if (busy || savedSha || !canWrite || !author || !message.trim() || !valid || !changes.length || conflict) return;
@@ -61,22 +62,22 @@ function CommitForm({ onSuccess }: { onSuccess(message: string): void }) {
     try { await api.rebase(remoteHead); setRemotePath(null); setError(null); } catch (e) { setError(e); } finally { setBusy(false); }
   };
   const jump = (issue: Issue) => { runtime.revealIssue(issue); runtime.closeCommit(); };
-  return <Modal title="커밋" size="xl" onClose={close}>
+  return <Modal title={t("m_20f402949b")} size="xl" onClose={close}>
     <div className="space-y-4"><TokenNotice />
       <header className="flex flex-wrap items-center justify-between gap-2 text-xs text-fg-muted"><span className="break-all">{api.workspace.name} · {api.workspace.branch} · <span className="font-mono">{api.baseSha.slice(0, 7)}</span></span>
-        <Badge tone={valid ? "passed" : issues.length ? "failed" : "neutral"}><CheckCheck className="size-3.5" />{validation.isFetching ? "검증 중…" : valid ? `검증 통과 ${puts.length}/${puts.length}` : validation.isError ? "검증 실패" : !validation.data ? "검증 대기" : `검증 통과 ${Math.max(0, passed)}/${puts.length}`}</Badge></header>
+        <Badge tone={valid ? "passed" : issues.length ? "failed" : "neutral"}><CheckCheck className="size-3.5" />{validation.isFetching ? t("m_d4d7dbfbec") : valid ? t("m_78d6ac595a", [puts.length, puts.length]) : validation.isError ? t("m_ded9ac50c8") : !validation.data ? t("m_291f34d0b1") : t("m_78d6ac595a", [Math.max(0, passed), puts.length])}</Badge></header>
       <ErrorBox error={validation.error} /><ErrorBox error={error} />
-      {savedSha && <div className="space-y-2 text-sm text-warning-fg"><p>커밋은 완료되었습니다 ({savedSha.slice(0, 7)}). 에디터 동기화를 다시 시도하세요.</p><Button disabled={busy} onClick={() => { setBusy(true); void finish(savedSha).catch(setError).finally(() => setBusy(false)); }}>에디터 동기화</Button></div>}
+      {savedSha && <div className="space-y-2 text-sm text-warning-fg"><p>{t("m_df565f03e0")}{savedSha.slice(0, 7)}{t("m_8354c5bf55")}</p><Button disabled={busy} onClick={() => { setBusy(true); void finish(savedSha).catch(setError).finally(() => setBusy(false)); }}>{t("m_11c742fd1a")}</Button></div>}
       {[...issues, ...serverIssues].map((issue, i) => <button key={`${issue.path}:${i}`} type="button" onClick={() => jump(issue)} className="block min-h-11 w-full break-all rounded-lg bg-failed-bg px-3 py-2 text-left text-xs text-failed-fg focus-visible:outline-accent">{issue.path}:{issue.line ?? 1}:{issue.column ?? 1} · {issue.message}</button>)}
-      {conflict && <section aria-label="충돌한 파일" className="space-y-2 rounded-lg border border-warning/25 bg-warning-bg p-3 text-sm text-warning-fg"><p>원격 파일이 변경되었습니다. 내용을 비교하고 내 변경을 다시 적용하세요.</p>{paths.map(path => <div key={path} className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 break-all font-mono text-xs">{path}</span><Button size="sm" disabled={busy} onClick={() => setRemotePath(path)}>원격 내용 보기</Button></div>)}<Button disabled={!canWrite || !remoteHead || busy} onClick={() => { void reapply(); }}>내 변경으로 다시 적용</Button></section>}
-      {preview.isLoading ? <Loading /> : preview.error ? <ErrorBox error={preview.error} /> : !files.length ? <Empty>커밋할 변경이 없습니다.</Empty> : <div className="grid min-w-0 gap-3 md:grid-cols-[240px_minmax(0,1fr)]">
-        <div aria-label="변경 파일" className="max-h-44 space-y-1 overflow-y-auto md:max-h-[460px]">{files.map(file => <FileChoice key={file.path} file={file} selected={!remotePath && file.path === active?.path} counts onClick={() => { setSelected(file.path); setRemotePath(null); }} />)}</div>
-        <div className="min-w-0">{remotePath && remote.isFetching ? <Loading /> : remotePath && remote.error ? <ErrorBox error={remote.error} /> : shown && <DiffView file={shown} fromLabel={remotePath ? `원격 ${remoteHead.slice(0, 7)}` : `기준 ${api.baseSha.slice(0, 7)}`} toLabel="내 변경" />}</div>
+      {conflict && <section aria-label={t("m_1a40e2e5d2")} className="space-y-2 rounded-lg border border-warning/25 bg-warning-bg p-3 text-sm text-warning-fg"><p>{t("m_58d6d2a225")}</p>{paths.map(path => <div key={path} className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 break-all font-mono text-xs">{path}</span><Button size="sm" disabled={busy} onClick={() => setRemotePath(path)}>{t("m_9d057d8bec")}</Button></div>)}<Button disabled={!canWrite || !remoteHead || busy} onClick={() => { void reapply(); }}>{t("m_1b0b8e10be")}</Button></section>}
+      {preview.isLoading ? <Loading /> : preview.error ? <ErrorBox error={preview.error} /> : !files.length ? <Empty>{t("m_1e8ee042de")}</Empty> : <div className="grid min-w-0 gap-3 md:grid-cols-[240px_minmax(0,1fr)]">
+        <div aria-label={t("m_d9e4f71277")} className="max-h-44 space-y-1 overflow-y-auto md:max-h-[460px]">{files.map(file => <FileChoice key={file.path} file={file} selected={!remotePath && file.path === active?.path} counts onClick={() => { setSelected(file.path); setRemotePath(null); }} />)}</div>
+        <div className="min-w-0">{remotePath && remote.isFetching ? <Loading /> : remotePath && remote.error ? <ErrorBox error={remote.error} /> : shown && <DiffView file={shown} fromLabel={remotePath ? t("m_055633bb7c", [remoteHead.slice(0, 7)]) : t("m_4c8aa72501", [api.baseSha.slice(0, 7)])} toLabel={t("m_a38963d329")} />}</div>
       </div>}
       <form onSubmit={event => { event.preventDefault(); void submit(); }} className="space-y-3 border-t border-border pt-4">
-        <Field label="커밋 메시지"><Input required maxLength={5000} value={message} disabled={busy || Boolean(savedSha)} onChange={event => setMessage(event.target.value)} placeholder="변경한 내용을 적어주세요" /></Field>
-        {author ? <p className="break-all text-xs text-fg-muted">Co-authored-by: {author.name} &lt;{author.email}&gt;</p> : <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-warning-fg"><span>설정에서 작성자 이름과 이메일을 입력하세요.</span><Button onClick={openSettings}>설정 열기</Button></div>}
-        <footer className="flex flex-wrap justify-end gap-2"><Button disabled={busy} onClick={close}>취소</Button><Button type="submit" variant="primary" icon={<GitCommitHorizontal />} disabled={busy || Boolean(savedSha) || !canWrite || !author || !message.trim() || !valid || !changes.length || Boolean(conflict)}>{busy ? "처리 중…" : `${api.workspace.branch}에 커밋`}</Button></footer>
+        <Field label={t("m_69c17530f6")}><Input required maxLength={5000} value={message} disabled={busy || Boolean(savedSha)} onChange={event => setMessage(event.target.value)} placeholder={t("m_1b12457ac4")} /></Field>
+        {author ? <p className="break-all text-xs text-fg-muted">{t("e_5587250b50")} {author.name} {t("e_c4dd3c8cdd")}{author.email}{t("e_091385be99")}</p> : <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-warning-fg"><span>{t("m_826980af8a")}</span><Button onClick={openSettings}>{t("m_9009d31193")}</Button></div>}
+        <footer className="flex flex-wrap justify-end gap-2"><Button disabled={busy} onClick={close}>{t("m_19b2d19bc1")}</Button><Button type="submit" variant="primary" icon={<GitCommitHorizontal />} disabled={busy || Boolean(savedSha) || !canWrite || !author || !message.trim() || !valid || !changes.length || Boolean(conflict)}>{busy ? t("m_24cd06a1a4") : t("m_7e287cf815", [api.workspace.branch])}</Button></footer>
       </form>
     </div>
   </Modal>;

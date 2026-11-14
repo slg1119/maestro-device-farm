@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Package, Upload } from "lucide-react";
 import { useRef, useState } from "react";
@@ -23,11 +24,11 @@ function BuildRow({ build }: { build: AppBuild }) {
     <tr className="border-t border-border align-top">
       <td className="px-4 py-3 font-medium text-fg">
         <div>{build.version_name} ({build.version_code})</div>
-        {build.pinned && <div className="mt-1"><Badge><StatusDot />고정됨</Badge></div>}
+        {build.pinned && <div className="mt-1"><Badge><StatusDot />{t("m_97985586ac")}</Badge></div>}
       </td>
       <td className="px-4 py-3">{build.min_sdk}</td>
       <td className="px-4 py-3 whitespace-nowrap">{formatBytes(build.size_bytes)}</td>
-      <td className="px-4 py-3 whitespace-nowrap">{build.source === "ci" ? "CI" : "대시보드"}</td>
+      <td className="px-4 py-3 whitespace-nowrap">{build.source === "ci" ? "CI" : t("m_2859873b5b")}</td>
       <td className="px-4 py-3">
         <div className="max-w-48 break-all">{build.uploaded_by}</div>
         <div className="mt-1 whitespace-nowrap text-xs text-fg-subtle">{timeAgo(build.created_at)}</div>
@@ -45,17 +46,17 @@ function BuildRow({ build }: { build: AppBuild }) {
           disabled={!canWrite || pin.isPending}
           onClick={() => { if (canWrite && !pin.isPending) pin.mutate(); }}
         >
-          {build.pinned ? "고정 해제" : "고정"}
+          {build.pinned ? t("m_82fb3cffc6") : t("m_4f48c00403")}
         </Button>
         {pin.error && <div className="mt-2 min-w-40"><ErrorBox error={pin.error} /></div>}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
-        {build.purged ? <Badge><StatusDot />파일 삭제됨</Badge> : (
+        {build.purged ? <Badge><StatusDot />{t("m_8c10b71b3b")}</Badge> : (
           <a
             href={`${API}/apps/${encodeURIComponent(build.id)}/download`}
             className="inline-flex min-h-9 items-center rounded text-accent underline underline-offset-2 outline-none hover:text-accent-hover focus-visible:ring-2 focus-visible:ring-accent max-md:min-h-11"
           >
-            다운로드
+            {t("m_5c5095ab96")}
           </a>
         )}
       </td>
@@ -82,8 +83,8 @@ export function AppsPage() {
     onMutate: () => setNotice(null),
     onSuccess: ({ status, build }) => {
       setNotice(status === 201
-        ? `${build.package_name} ${build.version_name} (${build.version_code}) 추가됨`
-        : "이미 보관함에 있는 빌드입니다");
+        ? t("m_85ccfc46e9", [build.package_name, build.version_name, build.version_code])
+        : t("m_ecf75c7555"));
       return client.invalidateQueries({ queryKey: keys.appsAll });
     },
   });
@@ -100,13 +101,13 @@ export function AppsPage() {
 
   return (
     <>
-      <PageHeader title="앱" description="APK 빌드를 보관하고 실행에 사용할 버전을 관리합니다." actions={
+      <PageHeader title={t("m_053d5241c7")} description={t("m_48a19ae3df")} actions={
         <>
           <input
             ref={fileInput}
             type="file"
             accept=".apk"
-            aria-label="APK 파일"
+            aria-label={t("m_cb7f89a9af")}
             hidden
             disabled={!canWrite || upload.isPending}
             onChange={(event) => {
@@ -121,14 +122,14 @@ export function AppsPage() {
             disabled={!canWrite || upload.isPending}
             onClick={() => fileInput.current?.click()}
           >
-            {upload.isPending ? "업로드 중…" : "APK 업로드"}
+            {upload.isPending ? t("m_7cc8ef1fcd") : t("m_95a2e79288")}
           </Button>
         </>
       } />
       <TokenNotice />
       <div className="space-y-4">
         <section
-          aria-label="APK 업로드 영역"
+          aria-label={t("m_9e10c930fc")}
           aria-disabled={!canWrite || upload.isPending}
           aria-busy={upload.isPending}
           className={cx("flex min-w-0 flex-col items-center gap-3 rounded-[10px] border border-dashed p-6 text-center transition-colors sm:p-8",
@@ -148,28 +149,28 @@ export function AppsPage() {
         >
           <span aria-hidden="true" className="rounded-lg bg-accent-soft p-3 text-accent-soft-fg"><Upload size={18} strokeWidth={1.8} /></span>
           <div>
-            <p className="font-semibold text-fg">APK 파일을 여기에 끌어 놓으세요</p>
-            <p className="mt-1 text-xs text-fg-muted">또는 파일을 선택해 보관함에 추가하세요.</p>
+            <p className="font-semibold text-fg">{t("m_6d503b74f5")}</p>
+            <p className="mt-1 text-xs text-fg-muted">{t("m_cba68f3f94")}</p>
           </div>
-          <Button disabled={!canWrite || upload.isPending} onClick={() => fileInput.current?.click()}>파일 선택</Button>
+          <Button disabled={!canWrite || upload.isPending} onClick={() => fileInput.current?.click()}>{t("m_a3d68212dd")}</Button>
         </section>
         {notice && (
           <div role="status" className="flex items-center justify-between gap-3 rounded-lg border border-passed/25 bg-passed-bg px-3 py-2 text-sm text-passed-fg">
             <span className="min-w-0 break-all">{notice}</span>
-            <Button size="sm" variant="ghost" className="shrink-0" aria-label="알림 닫기" onClick={() => setNotice(null)}>닫기</Button>
+            <Button size="sm" variant="ghost" className="shrink-0" aria-label={t("m_d7556ddd22")} onClick={() => setNotice(null)}>{t("m_94b7dba159")}</Button>
           </div>
         )}
         <ErrorBox error={upload.error} />
         <Input
-          placeholder="패키지 이름 검색"
-          aria-label="패키지 이름 검색"
+          placeholder={t("m_d06f1b17c1")}
+          aria-label={t("m_d06f1b17c1")}
           className="sm:max-w-sm"
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
         />
         {apps.isPending ? <Loading /> : apps.isError ? <ErrorBox error={apps.error} /> : !apps.data.length ? (
-          <Empty>{"보관함이 비어 있습니다. CI에서 `farmctl apps upload`로 올리거나 여기서 업로드하세요."}</Empty>
-        ) : !groups.size ? <Empty>검색 결과가 없습니다.</Empty> : (
+          <Empty>{t("m_8c131c48d9")}</Empty>
+        ) : !groups.size ? <Empty>{t("m_300d3cac5f")}</Empty> : (
           [...groups].map(([packageName, builds]) => (
             <Card key={packageName} className="min-w-0 overflow-hidden">
               <div className="flex items-start gap-3 px-4 py-4">
@@ -178,13 +179,13 @@ export function AppsPage() {
                   <h2 className="break-all font-mono text-sm font-semibold text-fg">{packageName}</h2>
                   <div className="mt-1 break-all text-xs text-fg-muted">{builds[0]?.label}</div>
                 </div>
-                <Badge>{builds.length}개 빌드</Badge>
+                <Badge>{builds.length}{t("m_821f1f43fc")}</Badge>
               </div>
               <div className="overflow-x-auto">
-                <table aria-label={`${packageName} 빌드`} className="w-full min-w-[880px] text-left text-sm text-fg-muted">
+                <table aria-label={t("m_e2e3ead219", [packageName])} className="w-full min-w-[880px] text-left text-sm text-fg-muted">
                   <thead className="border-t border-border bg-surface-2 text-xs text-fg-subtle">
                     <tr>
-                      {["버전", "minSdk", "크기", "출처", "업로드", "CI 정보", "고정", "다운로드"].map((column) => (
+                      {[t("m_593f8a81a6"), "minSdk", t("m_8451e9aa31"), t("m_2151edbebc"), t("m_51672ccd18"), t("m_a892df926c"), t("m_4f48c00403"), t("m_5c5095ab96")].map((column) => (
                         <th key={column} scope="col" className="px-4 py-2 font-medium whitespace-nowrap">{column}</th>
                       ))}
                     </tr>

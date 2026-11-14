@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { LiveView } from "../../components/live/LiveView";
 import { LIVE_DRAWER_STORAGE_KEY } from "../../components/live/useResizableSize";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,12 +16,12 @@ import { formatTime, parseTs, timeAgo } from "../../lib/format";
 import { useSettings } from "../../lib/settings";
 
 const STATES: { state: DeviceState; label: string }[] = [
-  { state: "available", label: "사용 가능" }, { state: "busy", label: "실행 중" },
-  { state: "reserved", label: "예약됨" }, { state: "unhealthy", label: "점검 필요" },
-  { state: "disabled", label: "정비 모드" }, { state: "offline", label: "오프라인" },
+  { state: "available", label: t("m_d4bbb3d8e2") }, { state: "busy", label: t("m_0d01d3e76a") },
+  { state: "reserved", label: t("m_69692a2a38") }, { state: "unhealthy", label: t("m_96a951f890") },
+  { state: "disabled", label: t("m_fc3f661f68") }, { state: "offline", label: t("m_7e422cfc63") },
 ];
 const FILTERS = [
-  { value: "all", label: "전체" }, { value: "available", label: "사용 가능" }, { value: "problem", label: "문제 있음" },
+  { value: "all", label: t("m_934dd25ec5") }, { value: "available", label: t("m_d4bbb3d8e2") }, { value: "problem", label: t("m_7d7a79cec2") },
 ] as const;
 type Filter = typeof FILTERS[number]["value"];
 type Snapshot = { src: string; count: number | null };
@@ -36,7 +37,7 @@ function elementCount(root: HierarchyNode): number {
 
 /** Command file URLs are supplied by the API, including its /api/v1 prefix. */
 function commandFilePath(url: string): string {
-  if (!url.startsWith(`${API}/device-commands/`)) throw new Error("스냅샷 파일 경로를 확인할 수 없습니다.");
+  if (!url.startsWith(`${API}/device-commands/`)) throw new Error(t("m_a9aa22606c"));
   return url.slice(API.length);
 }
 
@@ -44,7 +45,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
   const canWrite = useCanWrite();
   const client = useQueryClient();
   const { authorName } = useSettings();
-  const holderName = authorName.trim() || "대시보드";
+  const holderName = authorName.trim() || t("m_2859873b5b");
   const reservation = activeReservation(device);
   // The reservation contract exposes a holder name, rather than an owner/user id.
   const reservedByOther = reservation !== null && reservation.holder_name !== holderName;
@@ -89,7 +90,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
     let failure = error;
     try { await releaseTemporary(); }
     catch (releaseError) {
-      failure = new Error(`${error instanceof Error ? `${error.message} · ` : ""}임시 예약 해제 실패: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`);
+      failure = new Error(t("m_99878a158e", [error instanceof Error ? `${error.message} · ` : "", releaseError instanceof Error ? releaseError.message : String(releaseError)]));
       await refresh();
     }
     capture.current = null;
@@ -108,9 +109,9 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
     void (async () => {
       try {
         if (command.error) throw command.error;
-        if (result?.status === "error") throw new Error(result.error_message || "스냅샷을 가져오지 못했습니다.");
+        if (result?.status === "error") throw new Error(result.error_message || t("m_8606d100e7"));
         const src = result?.files["screen.png"];
-        if (!src) throw new Error("스냅샷 이미지가 없습니다.");
+        if (!src) throw new Error(t("m_e2a6de4724"));
         const hierarchyUrl = result?.files["hierarchy.json"];
         const count = hierarchyUrl ? elementCount(await apiJson<HierarchyNode>(commandFilePath(hierarchyUrl))) : null;
         if (mounted.current) { setSnapshot({ src, count }); setModalOpen(true); }
@@ -154,7 +155,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
 
   const toggleMaintenance = () => {
     if (writesDisabled) return;
-    if (!device.disabled && device.state === "busy" && !window.confirm("실행 중인 task는 끝까지 돌고 이후 배정이 멈춥니다. 정비 모드를 켤까요?")) return;
+    if (!device.disabled && device.state === "busy" && !window.confirm(t("m_b214c4beb4"))) return;
     reserve.reset(); setSnapshotError(null);
     patch.mutate({ disabled: !device.disabled });
   };
@@ -163,18 +164,18 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
     <Card className="flex h-full min-w-0 flex-col rounded-xl">
       <div className="flex min-w-0 gap-4 p-5">
         <div className="flex h-32 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border-strong bg-surface-2 text-fg-subtle">
-          {snapshot ? <img className="h-full w-full object-contain" src={snapshot.src} alt={`${device.model} 최근 스냅샷`} />
+          {snapshot ? <img className="h-full w-full object-contain" src={snapshot.src} alt={t("m_d2a5f3869b", [device.model])} />
             : <Smartphone aria-hidden="true" className="size-7 stroke-[1.8]" />}
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="break-words text-base font-semibold text-fg">{device.model}</h2>
           <p className="mt-1 break-all font-mono text-[11px] text-fg-subtle">{device.serial}</p>
           <div className="mt-2"><DeviceStateBadge state={device.state} /></div>
-          <p className="mt-3 text-xs text-fg-muted">Android {device.os_version} · SDK {device.sdk_int}</p>
+          <p className="mt-3 text-xs text-fg-muted">{t("e_1928f95c59")} {device.os_version} {t("e_88a3a456d3")} {device.sdk_int}</p>
           <div className="mt-2 flex items-center gap-2">
-            <ProgressBar className="max-w-24" total={100} label="배터리" segments={device.battery === null ? [] : [{ value: device.battery, tone: device.battery < 20 ? "failed" : "passed" }]} />
+            <ProgressBar className="max-w-24" total={100} label={t("m_40524c64e1")} segments={device.battery === null ? [] : [{ value: device.battery, tone: device.battery < 20 ? "failed" : "passed" }]} />
             <span className={cx("text-xs", device.battery !== null && device.battery < 20 ? "text-failed-fg" : "text-fg-muted")}>
-              {device.battery === null ? "배터리 정보 없음" : `${device.battery}%`}
+              {device.battery === null ? t("m_ea6c5f9b29") : `${device.battery}%`}
             </span>
           </div>
         </div>
@@ -182,39 +183,39 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
 
       <div className="flex flex-1 flex-col gap-3 px-5 pb-4">
         <div className="space-y-1 break-words text-xs text-fg-muted">
-          {device.current_run_id && <Link className="inline-block min-h-6 text-accent hover:underline max-md:min-h-11 max-md:py-3" to={`/runs/${device.current_run_id}`}>실행 중인 run</Link>}
-          {device.reservation && <p>예약: {device.reservation.holder_name} · {parseTs(device.reservation.expires_at).getTime() <= Date.now() ? "만료됨" : `${formatTime(device.reservation.expires_at)}까지`}</p>}
+          {device.current_run_id && <Link className="inline-block min-h-6 text-accent hover:underline max-md:min-h-11 max-md:py-3" to={`/runs/${device.current_run_id}`}>{t("m_9315a486bd")}</Link>}
+          {device.reservation && <p>{t("m_3e5bf6c12a")} {device.reservation.holder_name} · {parseTs(device.reservation.expires_at).getTime() <= Date.now() ? t("m_a406de1f50") : t("m_51ed06d4b2", [formatTime(device.reservation.expires_at)])}</p>}
           {device.state_reason && <p>{device.state_reason}</p>}
-          {!device.current_run_id && !device.reservation && !device.state_reason && <p title={formatTime(device.last_seen_at)}>마지막 확인 {timeAgo(device.last_seen_at)}</p>}
+          {!device.current_run_id && !device.reservation && !device.state_reason && <p title={formatTime(device.last_seen_at)}>{t("m_e6a91bff5d")} {timeAgo(device.last_seen_at)}</p>}
         </div>
         {editing ? <form className="space-y-2" onSubmit={(event) => {
           event.preventDefault();
           if (!writesDisabled) patch.mutate({ tags: [...new Set(tags.split(",").map((tag) => tag.trim()).filter(Boolean))].sort() });
         }}>
-          <Field label="태그" hint="쉼표로 구분해 입력하세요."><Input autoFocus value={tags} disabled={writesDisabled} onChange={(event) => setTags(event.target.value)} /></Field>
+          <Field label={t("m_104dbb78fe")} hint={t("m_dc9727f1d5")}><Input autoFocus value={tags} disabled={writesDisabled} onChange={(event) => setTags(event.target.value)} /></Field>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" disabled={writesDisabled}>저장</Button>
-            <Button disabled={patch.isPending} onClick={() => { setEditing(false); patch.reset(); }}>취소</Button>
+            <Button type="submit" variant="primary" disabled={writesDisabled}>{t("m_1f1712acff")}</Button>
+            <Button disabled={patch.isPending} onClick={() => { setEditing(false); patch.reset(); }}>{t("m_19b2d19bc1")}</Button>
           </div>
         </form> : <div className="flex flex-wrap gap-1.5">
-          {device.tags.length ? device.tags.map((tag) => <Badge key={tag}><span className="break-all">{tag}</span></Badge>) : <span className="text-xs text-fg-subtle">태그 없음</span>}
+          {device.tags.length ? device.tags.map((tag) => <Badge key={tag}><span className="break-all">{tag}</span></Badge>) : <span className="text-xs text-fg-subtle">{t("m_b9c9b1a7ba")}</span>}
         </div>}
-        {capturing && <p role="status" className="text-xs text-fg-muted">스냅샷을 가져오는 중…</p>}
+        {capturing && <p role="status" className="text-xs text-fg-muted">{t("m_067bd326cb")}</p>}
         <ErrorBox error={patch.error || reserve.error || snapshotError} />
       </div>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-        {!unavailable && <Button size="sm" disabled={writesDisabled} onClick={() => { patch.reset(); setSnapshotError(null); reserve.mutate(); }}>{reservation ? "예약 해제" : "예약"}</Button>}
-        <Button size="sm" disabled={device.state === "offline"} onClick={() => setLiveOpen(true)}>라이브</Button>
-        <Button size="sm" icon={<Camera />} disabled={writesDisabled || unavailable || reservedByOther} title={reservedByOther ? "다른 사용자가 예약한 기기입니다." : undefined} onClick={() => void takeSnapshot()}>스냅샷</Button>
-        {!editing && <Button size="sm" variant="ghost" icon={<Tag />} disabled={writesDisabled} onClick={() => { setTags(device.tags.join(", ")); patch.reset(); reserve.reset(); setSnapshotError(null); setEditing(true); }}>태그</Button>}
-        <div className="ml-auto"><Menu label="기기 메뉴" icon={<MoreHorizontal />} items={[{ label: device.disabled ? "정비 모드 끄기" : "정비 모드 켜기", disabled: writesDisabled, onClick: toggleMaintenance }]} /></div>
+        {!unavailable && <Button size="sm" disabled={writesDisabled} onClick={() => { patch.reset(); setSnapshotError(null); reserve.mutate(); }}>{reservation ? t("m_7605231461") : t("m_17f4b4781b")}</Button>}
+        <Button size="sm" disabled={device.state === "offline"} onClick={() => setLiveOpen(true)}>{t("m_db12b62c3a")}</Button>
+        <Button size="sm" icon={<Camera />} disabled={writesDisabled || unavailable || reservedByOther} title={reservedByOther ? t("m_6a78116a2f") : undefined} onClick={() => void takeSnapshot()}>{t("m_d019d21f90")}</Button>
+        {!editing && <Button size="sm" variant="ghost" icon={<Tag />} disabled={writesDisabled} onClick={() => { setTags(device.tags.join(", ")); patch.reset(); reserve.reset(); setSnapshotError(null); setEditing(true); }}>{t("m_104dbb78fe")}</Button>}
+        <div className="ml-auto"><Menu label={t("m_6931eba792")} icon={<MoreHorizontal />} items={[{ label: device.disabled ? t("m_f364daa3d7") : t("m_693f6c5873"), disabled: writesDisabled, onClick: toggleMaintenance }]} /></div>
       </div>
     </Card>
-    {liveOpen && <Drawer title={`${device.model} 라이브`} onClose={() => setLiveOpen(false)} resizable storageKey={LIVE_DRAWER_STORAGE_KEY}><LiveView serial={device.serial} /></Drawer>}
-    {modalOpen && snapshot && <Modal title={`${device.model} 스냅샷`} onClose={() => setModalOpen(false)}>
-      <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? "계층 정보 없음" : `계층 요소 ${snapshot.count}개`}</p>
-      <img src={snapshot.src} alt={`${device.model} 화면`} className="mx-auto max-h-[65dvh] max-w-full rounded-lg border border-border object-contain" />
+    {liveOpen && <Drawer title={t("m_bdd0003871", [device.model])} onClose={() => setLiveOpen(false)} resizable storageKey={LIVE_DRAWER_STORAGE_KEY}><LiveView serial={device.serial} /></Drawer>}
+    {modalOpen && snapshot && <Modal title={t("m_6bb7bdc3f2", [device.model])} onClose={() => setModalOpen(false)}>
+      <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? t("m_f28acc0d99") : t("m_bcaaf0ccd9", [snapshot.count])}</p>
+      <img src={snapshot.src} alt={t("m_a487e1b0a0", [device.model])} className="mx-auto max-h-[65dvh] max-w-full rounded-lg border border-border object-contain" />
     </Modal>}
   </article>;
 }
@@ -231,18 +232,18 @@ export function DevicesPage() {
   const tags = [...new Set(data?.flatMap((device) => device.tags) ?? [])].sort();
 
   return <>
-    <PageHeader title="기기">{summary}</PageHeader>
+    <PageHeader title={t("m_d79c455f9b")}>{summary}</PageHeader>
     <TokenNotice />
     <div className="mb-5 flex flex-wrap items-center gap-3">
-      <Segmented label="기기 상태 필터" options={FILTERS} value={filter} onChange={setFilter} />
-      <Select aria-label="태그 필터" className="w-full md:w-44" value={tag} onChange={(event) => setTag(event.target.value)}>
-        <option value="">모든 태그</option>
+      <Segmented label={t("m_793a2ba251")} options={FILTERS} value={filter} onChange={setFilter} />
+      <Select aria-label={t("m_de0e38a53f")} className="w-full md:w-44" value={tag} onChange={(event) => setTag(event.target.value)}>
+        <option value="">{t("m_e88a36f55b")}</option>
         {tag && !tags.includes(tag) && <option value={tag}>{tag}</option>}
         {tags.map((value) => <option key={value} value={value}>{value}</option>)}
       </Select>
     </div>
-    {isPending ? <Loading /> : error ? <ErrorBox error={error} /> : !data?.length ? <Empty>연결된 기기가 없습니다. farm-agent가 실행 중인지 확인하세요.</Empty> : <>
-      {!data.some(matches) && <Empty>조건에 맞는 기기가 없습니다.</Empty>}
+    {isPending ? <Loading /> : error ? <ErrorBox error={error} /> : !data?.length ? <Empty>{t("m_a8e9093964")}</Empty> : <>
+      {!data.some(matches) && <Empty>{t("m_4833bb9e9c")}</Empty>}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
         {/* Keep card sessions mounted during filtering so in-flight captures still release their reservation. */}
         {[...data].sort((a, b) => a.serial.localeCompare(b.serial)).map((device) => <DeviceCard key={device.serial} device={device} hidden={!matches(device)} />)}

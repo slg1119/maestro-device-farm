@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-// Per-browser settings: the API token for writes and the author used for commits (spec §13.5 공통).
+// Per-browser settings: the API token for writes and the author used for commits (shared settings).
 export interface FarmSettings {
   token: string;
   authorName: string;

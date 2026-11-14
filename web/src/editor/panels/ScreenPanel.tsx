@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { RecordingLiveView } from "./screen/RecordingLiveView";
 import { Camera, Copy, List, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,13 +17,13 @@ interface Snapshot { commandId: string; time: string; nodes: ScreenElement[] }
 export function ScreenPanel({ onReserve, onDraftImported }: { onReserve?: () => void; onDraftImported?: () => void }) {
   const { reservation, setSnapshotSelectors } = useEditor();
   useEffect(() => { setSnapshotSelectors([]); }, [reservation?.id, setSnapshotSelectors]);
-  if (!reservation || reservation.status !== "active") return <div className="p-4"><Empty><Smartphone aria-hidden="true" className="mx-auto mb-3 size-8 text-fg-subtle" /><p>화면을 확인하려면 기기를 예약하세요.</p><Button className="mt-4" onClick={onReserve}>기기 예약</Button></Empty></div>;
+  if (!reservation || reservation.status !== "active") return <div className="p-4"><Empty><Smartphone aria-hidden="true" className="mx-auto mb-3 size-8 text-fg-subtle" /><p>{t("m_da741f4c3c")}</p><Button className="mt-4" onClick={onReserve}>{t("m_6c99a584b4")}</Button></Empty></div>;
   return <ScreenModes key={reservation.id} reservation={reservation} onDraftImported={onDraftImported} />;
 }
 
 function ScreenModes({ reservation, onDraftImported }: { reservation: Reservation; onDraftImported?: () => void }) {
   const [mode, setMode] = useState<"live" | "snapshot">("live");
-  return <div className="min-w-0"><div className="p-3 pb-0"><Segmented label="화면 모드" options={[{ value: "live", label: "라이브" }, { value: "snapshot", label: "스냅샷" }]} value={mode} onChange={setMode} /></div>
+  return <div className="min-w-0"><div className="p-3 pb-0"><Segmented label={t("m_dd9a9c5418")} options={[{ value: "live", label: t("m_db12b62c3a") }, { value: "snapshot", label: t("m_d019d21f90") }]} value={mode} onChange={setMode} /></div>
     {mode === "live" ? <RecordingLiveView serial={reservation.device_serial} onImported={onDraftImported} /> : <ReservedScreen reservation={reservation} />}
   </div>;
 }
@@ -51,11 +52,11 @@ function ReservedScreen({ reservation }: { reservation: Reservation }) {
     void (async () => {
       try {
         if (command.error) throw command.error;
-        if (!result || result.status === "error") throw new Error(result?.error_message || "스냅샷을 가져오지 못했습니다.");
-        if (result.reservation_id !== reservation.id || result.device_serial !== reservation.device_serial) throw new Error("예약 기기와 스냅샷이 일치하지 않습니다.");
-        if (!result.files["screen.png"] || !result.files["hierarchy.json"]) throw new Error("스냅샷 이미지 또는 요소 정보가 없습니다.");
+        if (!result || result.status === "error") throw new Error(result?.error_message || t("m_8606d100e7"));
+        if (result.reservation_id !== reservation.id || result.device_serial !== reservation.device_serial) throw new Error(t("m_8d5a26c8de"));
+        if (!result.files["screen.png"] || !result.files["hierarchy.json"]) throw new Error(t("m_dee78443bc"));
         const root = await apiJson<unknown>(`/device-commands/${encodeURIComponent(commandId)}/files/hierarchy.json`, { signal: lifetime.current?.signal });
-        if (!root || typeof root !== "object") throw new Error("화면 요소 정보를 읽을 수 없습니다.");
+        if (!root || typeof root !== "object") throw new Error(t("m_dcceab15d1"));
         if (!active || lifetime.current?.signal.aborted) return;
         const nodes = flattenHierarchy(root);
         setSnapshot({ commandId, time: result.finished_at ?? new Date().toISOString(), nodes });
@@ -72,7 +73,7 @@ function ReservedScreen({ reservation }: { reservation: Reservation }) {
     setCapturing(true); setError(null); setFeedback("");
     try {
       const result = await apiJson<{ id: string }>(`/reservations/${encodeURIComponent(reservation.id)}/inspect`, { method: "POST", signal: lifetime.current?.signal });
-      if (!result.id) throw new Error("스냅샷 명령을 확인할 수 없습니다.");
+      if (!result.id) throw new Error(t("m_eeac7cffda"));
       if (!lifetime.current?.signal.aborted) setCommandId(result.id);
     } catch (failure) { if (!lifetime.current?.signal.aborted) { setError(failure); setCapturing(false); } }
   };
@@ -83,8 +84,8 @@ function ReservedScreen({ reservation }: { reservation: Reservation }) {
   const canInsert = canWrite && Boolean(api.activePath && /\.ya?ml$/i.test(api.activePath)) && !inserting;
 
   const copy = async (candidate: SelectorCandidate) => {
-    try { await navigator.clipboard.writeText(selectorText(candidate)); if (!lifetime.current?.signal.aborted) setFeedback("셀렉터를 복사했습니다."); }
-    catch { if (!lifetime.current?.signal.aborted) setError(new Error("셀렉터를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.")); }
+    try { await navigator.clipboard.writeText(selectorText(candidate)); if (!lifetime.current?.signal.aborted) setFeedback(t("m_f3875c73b1")); }
+    catch { if (!lifetime.current?.signal.aborted) setError(new Error(t("m_60db3d99df"))); }
   };
   const insert = async (action: SelectorCommand, candidate: SelectorCandidate) => {
     const path = api.activePath; const cursor = { ...runtime.cursor };
@@ -93,27 +94,27 @@ function ReservedScreen({ reservation }: { reservation: Reservation }) {
     try {
       const content = await api.readFile(path);
       if (lifetime.current?.signal.aborted) return;
-      if (current.current.api.activePath !== path || current.current.runtime.cursor.line !== cursor.line || current.current.runtime.cursor.column !== cursor.column) throw new Error("삽입 위치가 바뀌었습니다. 다시 삽입하세요.");
+      if (current.current.api.activePath !== path || current.current.runtime.cursor.line !== cursor.line || current.current.runtime.cursor.column !== cursor.column) throw new Error(t("m_5c4d5adc64"));
       current.current.api.insertAtCursor(selectorInsertion(action, candidate, content, cursor));
-      setFeedback(`${action} 명령을 삽입했습니다.`);
+      setFeedback(t("m_5f3bf95de1", [action]));
     } catch (failure) { if (!lifetime.current?.signal.aborted) setError(failure); }
     finally { if (!lifetime.current?.signal.aborted) setInserting(false); }
   };
 
   return <div className="min-w-0 space-y-4 p-3 text-fg">
     <header className="space-y-3">
-      <div className="flex min-w-0 items-start gap-2"><Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-muted" /><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{device?.model || reservation.device_serial}</h2><p className="truncate font-mono text-[11px] text-fg-subtle">{reservation.device_serial}</p></div><Badge tone="reserved"><StatusDot tone="reserved" />예약됨</Badge></div>
-      <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs text-fg-muted">{snapshot ? <><time dateTime={snapshot.time}>{formatTime(snapshot.time)}</time><span className="ml-2">요소 {nodes.length}개</span></> : "아직 찍은 화면이 없습니다."}</div></div>
-      <div className="flex flex-wrap gap-2"><Button size="sm" icon={<List />} aria-pressed={showList} aria-controls="screen-elements" onClick={() => setShowList(!showList)}>요소 목록</Button><Button size="sm" variant="primary" icon={<Camera />} disabled={!canWrite || capturing} onClick={() => { void takeSnapshot(); }}>{capturing ? "찍는 중…" : "다시 찍기"}</Button></div>
+      <div className="flex min-w-0 items-start gap-2"><Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-muted" /><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{device?.model || reservation.device_serial}</h2><p className="truncate font-mono text-[11px] text-fg-subtle">{reservation.device_serial}</p></div><Badge tone="reserved"><StatusDot tone="reserved" />{t("m_69692a2a38")}</Badge></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs text-fg-muted">{snapshot ? <><time dateTime={snapshot.time}>{formatTime(snapshot.time)}</time><span className="ml-2">{t("m_a2314fdb82")} {nodes.length}{t("m_11600c9ada")}</span></> : t("m_00dbdab3d4")}</div></div>
+      <div className="flex flex-wrap gap-2"><Button size="sm" icon={<List />} aria-pressed={showList} aria-controls="screen-elements" onClick={() => setShowList(!showList)}>{t("m_38d3de4301")}</Button><Button size="sm" variant="primary" icon={<Camera />} disabled={!canWrite || capturing} onClick={() => { void takeSnapshot(); }}>{capturing ? t("m_05c94074ef") : t("m_6e794da935")}</Button></div>
     </header>
     <ErrorBox error={error} />
-    {capturing && <p role="status" className="text-xs text-fg-muted">예약 기기의 화면과 요소 정보를 가져오는 중입니다.</p>}
-    {snapshot ? <><SnapshotImage key={snapshot.commandId} src={`${API}/device-commands/${encodeURIComponent(snapshot.commandId)}/files/screen.png`} nodes={nodes} selected={selected} onSelect={node => { setSelected(node); setFeedback(""); }} onList={() => setShowList(true)} onError={() => setError(new Error("스냅샷 이미지를 불러오지 못했습니다. 다시 찍기를 눌러주세요."))} /><p className="text-xs leading-5 text-fg-subtle">화면을 눌러 요소를 선택하세요. 겹친 요소 중 가장 작은 요소가 선택됩니다.</p></> : !capturing && <Empty>다시 찍기를 눌러 현재 화면을 확인하세요.</Empty>}
-    {showList && <section id="screen-elements" aria-label="요소 목록" className="space-y-2"><Input type="search" aria-label="요소 검색" placeholder="id, 텍스트, 클래스 검색" value={filter} onChange={event => setFilter(event.target.value)} />
-      <ul aria-label="화면 요소" className="max-h-64 space-y-1 overflow-y-auto">{filtered.map(node => <li key={node.key}><button type="button" aria-pressed={selected?.key === node.key} onClick={() => { setSelected(node); setFeedback(""); }} className={cx("w-full min-w-0 rounded-lg border p-2 text-left text-xs focus-visible:outline-2 focus-visible:outline-accent max-md:min-h-11", selected?.key === node.key ? "border-accent bg-accent-soft text-accent-soft-fg" : "border-border bg-surface-2 hover:border-border-strong")}><span className="block truncate font-mono">{node.attributes["resource-id"] || node.attributes.text || node.attributes.accessibilityText}</span><span className="mt-1 block truncate text-[11px] text-fg-subtle">{node.attributes.class ?? "요소"} · {node.attributes.text || node.attributes.accessibilityText || "텍스트 없음"}</span></button></li>)}</ul>{!filtered.length && <p className="text-xs text-fg-subtle">{snapshot ? "일치하는 요소가 없습니다." : "화면을 찍으면 요소가 표시됩니다."}</p>}
+    {capturing && <p role="status" className="text-xs text-fg-muted">{t("m_291af8423f")}</p>}
+    {snapshot ? <><SnapshotImage key={snapshot.commandId} src={`${API}/device-commands/${encodeURIComponent(snapshot.commandId)}/files/screen.png`} nodes={nodes} selected={selected} onSelect={node => { setSelected(node); setFeedback(""); }} onList={() => setShowList(true)} onError={() => setError(new Error(t("m_bd3b4ebbc0")))} /><p className="text-xs leading-5 text-fg-subtle">{t("m_c8137d0349")}</p></> : !capturing && <Empty>{t("m_34f81d8590")}</Empty>}
+    {showList && <section id="screen-elements" aria-label={t("m_38d3de4301")} className="space-y-2"><Input type="search" aria-label={t("m_2ea2482997")} placeholder={t("m_b3d1081ed6")} value={filter} onChange={event => setFilter(event.target.value)} />
+      <ul aria-label={t("m_7b1cab3d43")} className="max-h-64 space-y-1 overflow-y-auto">{filtered.map(node => <li key={node.key}><button type="button" aria-pressed={selected?.key === node.key} onClick={() => { setSelected(node); setFeedback(""); }} className={cx("w-full min-w-0 rounded-lg border p-2 text-left text-xs focus-visible:outline-2 focus-visible:outline-accent max-md:min-h-11", selected?.key === node.key ? "border-accent bg-accent-soft text-accent-soft-fg" : "border-border bg-surface-2 hover:border-border-strong")}><span className="block truncate font-mono">{node.attributes["resource-id"] || node.attributes.text || node.attributes.accessibilityText}</span><span className="mt-1 block truncate text-[11px] text-fg-subtle">{node.attributes.class ?? t("m_a2314fdb82")} · {node.attributes.text || node.attributes.accessibilityText || t("m_1922271063")}</span></button></li>)}</ul>{!filtered.length && <p className="text-xs text-fg-subtle">{snapshot ? t("m_daf7d0ede2") : t("m_8dbf30bd43")}</p>}
     </section>}
-    {selected && <section aria-label="선택한 요소"><Card className="min-w-0 space-y-3 p-3"><h3 className="text-sm font-semibold">선택한 요소</h3><dl className="space-y-2 text-xs"><div><dt className="text-fg-subtle">클래스</dt><dd className="mt-1 break-all font-mono">{selected.attributes.class ?? "정보 없음"}</dd></div><div><dt className="text-fg-subtle">영역</dt><dd className="mt-1 break-all font-mono">{selected.attributes.bounds ?? "정보 없음"}</dd></div><div><dt className="text-fg-subtle">클릭</dt><dd className="mt-1">{selected.attributes.clickable === "true" ? "클릭 가능" : "클릭 불가"}</dd></div></dl>
-      <h4 className="border-t border-border pt-3 text-xs font-semibold">셀렉터 후보</h4><ul aria-label="셀렉터 후보" className="space-y-3">{candidates.map(candidate => <li key={candidate.kind} className="min-w-0 space-y-2"><code className="block break-all rounded bg-surface-2 p-2 text-[11px]">{selectorText(candidate)}</code><p className="text-[11px] text-fg-muted">{candidate.note}</p><div className="flex flex-wrap gap-1.5"><Button size="sm" icon={<Copy />} onClick={() => { void copy(candidate); }}>복사</Button><Button size="sm" disabled={!canInsert} onClick={() => { void insert("tapOn", candidate); }}>tapOn 삽입</Button><Button size="sm" disabled={!canInsert} onClick={() => { void insert("assertVisible", candidate); }}>assertVisible 삽입</Button></div></li>)}</ul>{!candidates.length && <p className="text-xs text-fg-subtle">사용할 수 있는 셀렉터가 없습니다. 요소 목록에서 다른 요소를 선택하세요.</p>}{!api.activePath || !/\.ya?ml$/i.test(api.activePath) ? <p className="text-xs text-fg-subtle">명령을 삽입하려면 YAML 파일을 여세요.</p> : null}
+    {selected && <section aria-label={t("m_cc2ea8e123")}><Card className="min-w-0 space-y-3 p-3"><h3 className="text-sm font-semibold">{t("m_cc2ea8e123")}</h3><dl className="space-y-2 text-xs"><div><dt className="text-fg-subtle">{t("m_876d4d87b2")}</dt><dd className="mt-1 break-all font-mono">{selected.attributes.class ?? t("m_534fb589c8")}</dd></div><div><dt className="text-fg-subtle">{t("m_b1f8cae0b1")}</dt><dd className="mt-1 break-all font-mono">{selected.attributes.bounds ?? t("m_534fb589c8")}</dd></div><div><dt className="text-fg-subtle">{t("m_6e3b1fc9f9")}</dt><dd className="mt-1">{selected.attributes.clickable === "true" ? t("m_c8d3ac86fb") : t("m_36cfb51376")}</dd></div></dl>
+      <h4 className="border-t border-border pt-3 text-xs font-semibold">{t("m_369c22d55d")}</h4><ul aria-label={t("m_369c22d55d")} className="space-y-3">{candidates.map(candidate => <li key={candidate.kind} className="min-w-0 space-y-2"><code className="block break-all rounded bg-surface-2 p-2 text-[11px]">{selectorText(candidate)}</code><p className="text-[11px] text-fg-muted">{candidate.note}</p><div className="flex flex-wrap gap-1.5"><Button size="sm" icon={<Copy />} onClick={() => { void copy(candidate); }}>{t("m_a55b1ecb20")}</Button><Button size="sm" disabled={!canInsert} onClick={() => { void insert("tapOn", candidate); }}>{t("m_d899700e5b")}</Button><Button size="sm" disabled={!canInsert} onClick={() => { void insert("assertVisible", candidate); }}>{t("m_0a9aec6ad2")}</Button></div></li>)}</ul>{!candidates.length && <p className="text-xs text-fg-subtle">{t("m_ac3112f5bb")}</p>}{!api.activePath || !/\.ya?ml$/i.test(api.activePath) ? <p className="text-xs text-fg-subtle">{t("m_ff37e9322a")}</p> : null}
     </Card></section>}
     <p role="status" className="text-xs text-passed-fg" aria-live="polite">{feedback}</p>
   </div>;

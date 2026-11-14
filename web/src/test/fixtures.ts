@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import type { AiJob, AppBuild, Device, DeviceCommand, RunDetail, RunSummary, Task, TaskSteps, Workspace } from "../api/types";
 
 // Factories for API objects. Override only the fields a test cares about.
@@ -58,9 +59,9 @@ export function workspace(overrides: Partial<Workspace> = {}): Workspace {
 export function aiJob(overrides: Partial<AiJob> = {}): AiJob {
   return {
     id: "ai1", kind: "generate", status: "queued", workspace_id: "ws1", base_sha: "a".repeat(40), source_task_id: null,
-    prompt: "로그인 플로우 작성", options: { target_path: "flows/login.yaml", include_screen: false, auto_repair: false, reservation_id: null, app_build_id: null, app: null },
+    prompt: t("m_cd88d9b4be"), options: { target_path: "flows/login.yaml", include_screen: false, auto_repair: false, reservation_id: null, app_build_id: null, app: null },
     attempts: [], result: null, model: "gpt-6.1-sol", input_tokens: 0, output_tokens: 0, error_message: null,
-    created_by: "dashboard", author_name: "테스터", created_at: "2026-10-20T05:00:00.000000Z", finished_at: null, ...overrides,
+    created_by: "dashboard", author_name: t("m_b4d981a107"), created_at: "2026-10-20T05:00:00.000000Z", finished_at: null, ...overrides,
   };
 }
 

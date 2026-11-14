@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -16,10 +17,10 @@ import { ResultCard } from "./ai/ResultCard";
 // Older servers omit max_repairs; the documented default is three repairs.
 type PanelStatus = AiStatus & { max_repairs?: number };
 const states: Record<AiJob["status"], { label: string; tone: Tone }> = {
-  queued: { label: "대기 중", tone: "neutral" }, running: { label: "생성 중", tone: "ai" },
-  succeeded: { label: "완료", tone: "passed" }, failed: { label: "실패", tone: "failed" }, cancelled: { label: "취소됨", tone: "neutral" },
+  queued: { label: t("m_ec425b26f2"), tone: "neutral" }, running: { label: t("m_10fa67c6e8"), tone: "ai" },
+  succeeded: { label: t("m_8d8680373c"), tone: "passed" }, failed: { label: t("m_732fe33ab1"), tone: "failed" }, cancelled: { label: t("m_3aa9e7eec4"), tone: "neutral" },
 };
-const dataNotice = "flow 파일, 스크린샷, 화면 hierarchy, 실패 로그와 설명이 OpenAI로 전송됩니다. 환경 변수 값과 토큰은 보내지 않으며, AI 결과는 자동으로 커밋되지 않습니다.";
+const dataNotice = t("m_af333149a6");
 
 export function AiPanel() {
   const status = useAiStatus();
@@ -41,7 +42,7 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
   const hasReservation = api.reservation?.status === "active";
   const hasApp = Boolean(api.appChoice.app_build_id || api.appChoice.app);
   const currentDevice = devices.data?.find(d => d.serial === api.reservation?.device_serial);
-  const deviceName = hasReservation ? `${currentDevice?.model ?? "예약 기기"} · ${api.reservation!.device_serial}` : "예약 기기";
+  const deviceName = hasReservation ? t("m_78edd11d8a", [currentDevice?.model ?? t("m_3929e69887"), api.reservation!.device_serial]) : t("m_3929e69887");
   const maxRepairs = Number.isInteger(status.max_repairs) && status.max_repairs! >= 0 ? status.max_repairs! : 3;
   useEffect(() => { setScreen(false); setRepair(false); }, [api.reservation?.id, hasReservation]);
   useEffect(() => { if (!hasApp) setRepair(false); }, [hasApp]);
@@ -66,7 +67,7 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
   const canFix = Boolean(api.activePath && api.drafts[api.activePath]?.status !== "deleted" && !/\.(png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/i.test(api.activePath));
   const targetPath = mode === "current" ? api.activePath ?? "" : target ?? suggestedPath(prompt);
   let pathError = "";
-  try { validPath(targetPath); } catch { pathError = "워크스페이스 안의 올바른 경로를 입력하세요."; }
+  try { validPath(targetPath); } catch { pathError = t("m_56f77e5793"); }
   const canSubmit = canWrite && Boolean(api.baseSha && prompt.trim() && !pathError && (mode !== "current" || canFix)) && !submit.isPending && !running;
   const generate = (event: FormEvent) => {
     event.preventDefault(); if (!canSubmit) return;
@@ -76,31 +77,31 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
       ...app, author_name: settings.authorName });
   };
   const tokens = ((status.month_input_tokens + status.month_output_tokens) / 1000).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
-  const resetJob = (applied?: boolean) => { setJob(null); setNotice(applied ? "선택한 파일을 에디터에 반영했습니다." : "AI 제안을 버렸습니다."); };
+  const resetJob = (applied?: boolean) => { setJob(null); setNotice(applied ? t("m_fc45d9b139") : t("m_424cea13b9")); };
   return <div className="min-w-0 space-y-5 p-4 text-fg">
-    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{status.model}</span> · 이번 달 {tokens}K 토큰</p>
-      <Menu label="지난 작업" icon={<ChevronDown />} items={recent.data?.length ? recent.data.map(item => ({ label: <span className="block max-w-60 truncate" title={item.prompt}>{states[item.status].label} · {item.prompt || item.options.target_path || item.id.slice(0, 8)}</span>, disabled: submit.isPending, onClick: () => { submit.reset(); cancel.reset(); setJob(item.id); } })) : [{ label: recent.isLoading ? "불러오는 중…" : "지난 작업이 없습니다", disabled: true, onClick: () => {} }]} />
+    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{status.model}</span> {t("m_47093b9caa")} {tokens}{t("m_997b0fc4f2")}</p>
+      <Menu label={t("m_f2d8b5d8b5")} icon={<ChevronDown />} items={recent.data?.length ? recent.data.map(item => ({ label: <span className="block max-w-60 truncate" title={item.prompt}>{states[item.status].label} · {item.prompt || item.options.target_path || item.id.slice(0, 8)}</span>, disabled: submit.isPending, onClick: () => { submit.reset(); cancel.reset(); setJob(item.id); } })) : [{ label: recent.isLoading ? t("m_c78656b445") : t("m_34504dd1e0"), disabled: true, onClick: () => {} }]} />
     </header>
     {recent.error && <ErrorBox error={recent.error} />}
     <form onSubmit={generate} className="min-w-0 space-y-4">
-      <Segmented label="AI 생성 모드" value={mode} onChange={setMode} options={[{ value: "new", label: "새 flow 만들기" }, { value: "current", label: "현재 파일 고치기", disabled: !canFix }]} className="w-full [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs" />
-      <Field label="대상 경로" hint={pathError || (mode === "current" ? "현재 파일의 변경안을 만듭니다." : "워크스페이스 기준의 새 flow 경로")}><Input aria-label="대상 경로" value={targetPath} readOnly={mode === "current"} onChange={event => setTarget(event.target.value)} aria-invalid={Boolean(pathError)} className="font-mono text-xs" /></Field>
-      <Field label="설명"><Textarea required value={prompt} onChange={event => setPrompt(event.target.value)} placeholder="어떤 동작을 테스트할까요? 단계와 확인할 내용을 적어 주세요." className="min-h-32 font-sans" /></Field>
+      <Segmented label={t("m_9fe10b6e15")} value={mode} onChange={setMode} options={[{ value: "new", label: t("m_5fe8f840a0") }, { value: "current", label: t("m_33b168b6e0"), disabled: !canFix }]} className="w-full [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs" />
+      <Field label={t("m_172d663639")} hint={pathError || (mode === "current" ? t("m_2fb63fddea") : t("m_d365e93c3c"))}><Input aria-label={t("m_172d663639")} value={targetPath} readOnly={mode === "current"} onChange={event => setTarget(event.target.value)} aria-invalid={Boolean(pathError)} className="font-mono text-xs" /></Field>
+      <Field label={t("m_841964364c")}><Textarea required value={prompt} onChange={event => setPrompt(event.target.value)} placeholder={t("m_48fd719227")} className="min-h-32 font-sans" /></Field>
       <div className="space-y-1">
-        <Checkbox label={<span className="min-w-0 break-words text-xs">현재 화면 포함{hasReservation ? ` · ${deviceName}` : " · 기기 예약 필요"}</span>} disabled={!hasReservation || !canWrite} checked={screen && hasReservation} onChange={event => setScreen(event.target.checked)} />
-        <div><Checkbox label={<span className="text-xs">자동 보정</span>} disabled={!hasReservation || !hasApp || !canWrite} checked={repair && hasReservation && hasApp} onChange={event => setRepair(event.target.checked)} /><p className="ml-6 text-[11px] leading-5 text-fg-subtle">예약 기기에서 실행해 통과할 때까지 최대 {maxRepairs}회{!hasReservation || !hasApp ? " · 기기 예약과 앱 선택 필요" : ""}</p></div>
+        <Checkbox label={<span className="min-w-0 break-words text-xs">{t("m_7074c53853")}{hasReservation ? ` · ${deviceName}` : t("m_b29a878e7c")}</span>} disabled={!hasReservation || !canWrite} checked={screen && hasReservation} onChange={event => setScreen(event.target.checked)} />
+        <div><Checkbox label={<span className="text-xs">{t("m_d57c1e8f32")}</span>} disabled={!hasReservation || !hasApp || !canWrite} checked={repair && hasReservation && hasApp} onChange={event => setRepair(event.target.checked)} /><p className="ml-6 text-[11px] leading-5 text-fg-subtle">{t("m_686ae45f55")} {maxRepairs}{t("m_2fc05c02be")}{!hasReservation || !hasApp ? t("m_7906ad3680") : ""}</p></div>
       </div>
-      {!canWrite && <p className="text-xs text-warning-fg">쓰기 작업에는 설정의 API 토큰이 필요합니다.</p>}
-      <Button type="submit" variant="ai" icon={<Sparkles />} disabled={!canSubmit} className="w-full">{submit.isPending ? "요청 중…" : "생성"}</Button>
+      {!canWrite && <p className="text-xs text-warning-fg">{t("m_8813d1f103")}</p>}
+      <Button type="submit" variant="ai" icon={<Sparkles />} disabled={!canSubmit} className="w-full">{submit.isPending ? t("m_5449e1a686") : t("m_d1a2d3a223")}</Button>
       {submit.error && <ErrorBox error={submit.error} />}
     </form>
-    {id && <section aria-label="AI 작업" className="space-y-4 border-t border-border pt-4">
-      {jobQuery.isLoading && <Loading label="AI 작업을 불러오는 중…" />}
+    {id && <section aria-label={t("m_d92068b48a")} className="space-y-4 border-t border-border pt-4">
+      {jobQuery.isLoading && <Loading label={t("m_dbea57088b")} />}
       {jobQuery.error && <ErrorBox error={jobQuery.error} />}
-      {foreign && <ErrorBox error={new Error("다른 워크스페이스의 AI 작업입니다. 해당 워크스페이스에서 열어 주세요.")} />}
+      {foreign && <ErrorBox error={new Error(t("m_6a6814a788"))} />}
       {job && <>
-        <div className="flex items-center justify-between gap-2"><Badge tone={states[job.status].tone} aria-live="polite"><StatusDot tone={states[job.status].tone} />{cancelling ? "취소 중…" : states[job.status].label}</Badge><span className="font-mono text-[11px] text-fg-subtle">{job.id.slice(0, 8)}</span>{running && <Button type="button" aria-label="취소" size="sm" disabled={!canWrite || cancelling || cancel.isPending} onClick={() => cancel.mutate(job.id)}>{cancelling ? "취소 중…" : "취소"}</Button>}</div>
-        <AttemptList attempts={job.attempts} maxRepairs={maxRepairs} device={job.options.reservation_id === api.reservation?.id ? deviceName : "예약 기기"} />
+        <div className="flex items-center justify-between gap-2"><Badge tone={states[job.status].tone} aria-live="polite"><StatusDot tone={states[job.status].tone} />{cancelling ? t("m_70ce557797") : states[job.status].label}</Badge><span className="font-mono text-[11px] text-fg-subtle">{job.id.slice(0, 8)}</span>{running && <Button type="button" aria-label={t("m_19b2d19bc1")} size="sm" disabled={!canWrite || cancelling || cancel.isPending} onClick={() => cancel.mutate(job.id)}>{cancelling ? t("m_70ce557797") : t("m_19b2d19bc1")}</Button>}</div>
+        <AttemptList attempts={job.attempts} maxRepairs={maxRepairs} device={job.options.reservation_id === api.reservation?.id ? deviceName : t("m_3929e69887")} />
         {job.error_message && <ErrorBox error={new Error(job.error_message)} />}
         {cancel.error && <ErrorBox error={cancel.error} />}
         {job.result && job.status === "succeeded" && <ResultCard key={job.id} job={job} canWrite={canWrite} onDismiss={resetJob} />}

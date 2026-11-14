@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { ArrowLeft, Circle, Maximize2, Minimize2, Square } from "lucide-react";
 import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCanWrite } from "../Layout";
@@ -84,8 +85,8 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
     return () => node.removeEventListener("wheel", wheel);
   }, [stream.canControl, stream.size, stream.send]);
 
-  if (stream.phase === "unsupported") return <p role="status" className="p-4 text-sm leading-6 text-fg-muted">이 브라우저는 실시간 화면을 지원하지 않습니다 (Chrome/Edge 최신 버전 권장)</p>;
-  return <section ref={section} aria-label={`${serial} 실시간 화면`} className={cx("min-w-0 text-fg", enlarged ? "fixed inset-0 z-[60] flex h-dvh flex-col gap-3 overflow-y-auto overscroll-contain bg-surface p-3 sm:p-4" : cx("space-y-3", compact ? "p-3" : "p-4"))}
+  if (stream.phase === "unsupported") return <p role="status" className="p-4 text-sm leading-6 text-fg-muted">{t("m_2bfeb65162")}</p>;
+  return <section ref={section} aria-label={t("m_ad71f982e6", [serial])} className={cx("min-w-0 text-fg", enlarged ? "fixed inset-0 z-[60] flex h-dvh flex-col gap-3 overflow-y-auto overscroll-contain bg-surface p-3 sm:p-4" : cx("space-y-3", compact ? "p-3" : "p-4"))}
     onKeyDown={event => {
       if (!enlarged || event.key !== "Tab" || !event.currentTarget.contains(event.target as Node)) return;
       const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')];
@@ -93,32 +94,32 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="shrink-0 rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">테스트 실행 중 · 조작하면 결과가 달라질 수 있음</p>}
+    {stream.status?.running_task_id && stream.canControl && <p role="alert" className="shrink-0 rounded-lg border border-warning/25 bg-warning-bg p-3 text-xs leading-5 text-warning-fg">{t("m_2aa093186e")}</p>}
     <div ref={screenBox} style={{ height: height.size }} className="relative min-w-0 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-2">
-      <canvas ref={canvas} aria-label="실시간 기기 화면" className={cx("block h-[calc(100%-20px)] w-full object-contain", stream.canControl ? "touch-none cursor-crosshair" : "touch-auto")}
+      <canvas ref={canvas} aria-label={t("m_995c125bcf")} className={cx("block h-[calc(100%-20px)] w-full object-contain", stream.canControl ? "touch-none cursor-crosshair" : "touch-auto")}
         onPointerDown={event => touch(event, "down")} onPointerMove={event => touch(event, "move")} onPointerUp={event => touch(event, "up")}
         onPointerCancel={cancelTouch} onLostPointerCapture={cancelTouch} onContextMenu={event => { if (stream.canControl) event.preventDefault(); }} />
-      {!stream.size && <p role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-fg-muted">{stream.phase === "ended" ? "화면 연결 종료" : stream.phase === "reconnecting" ? "다시 연결하는 중…" : "실시간 화면에 연결하는 중…"}</p>}
-      <div {...height.handleProps} aria-label="화면 크기 조절" title="드래그 또는 위아래 방향키로 조절 · 두 번 누르면 맞춤"
+      {!stream.size && <p role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-fg-muted">{stream.phase === "ended" ? t("m_34c1db761b") : stream.phase === "reconnecting" ? t("m_894ceba2cd") : t("m_47831dd182")}</p>}
+      <div {...height.handleProps} aria-label={t("m_a498b62c02")} title={t("m_a44fa7f327")}
         className="absolute inset-x-0 bottom-0 flex h-5 touch-none cursor-row-resize items-center justify-center border-t border-border bg-surface text-fg-muted outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent">
         <span aria-hidden="true" className="h-1 w-10 rounded-full bg-current" />
       </div>
     </div>
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-fg-muted" aria-live="polite">
-      <span className="inline-flex items-center gap-1.5"><StatusDot tone={stream.phase === "connected" ? "passed" : "neutral"} />{stream.phase === "connected" ? "연결됨" : stream.phase === "ended" ? "연결 종료" : "연결 중"}</span>
-      <span>시청자 {stream.status?.viewers ?? 0}명</span><span className="break-all">조작자 {stream.status?.controller ?? "없음"}</span>
-      {stream.status?.recording && <span className="inline-flex items-center gap-1.5 text-failed-fg"><StatusDot tone="failed" />녹화 중</span>}
-      {!stream.canControl && <span>보기 전용</span>}
+      <span className="inline-flex items-center gap-1.5"><StatusDot tone={stream.phase === "connected" ? "passed" : "neutral"} />{stream.phase === "connected" ? t("m_ca3372f3bc") : stream.phase === "ended" ? t("m_6eaa84e039") : t("m_1ed5386f93")}</span>
+      <span>{t("m_b058262fca")} {stream.status?.viewers ?? 0}{t("m_5a62fd50d2")}</span><span className="break-all">{t("m_faa27e9eec")} {stream.status?.controller ?? t("m_d58fa73adc")}</span>
+      {stream.status?.recording && <span className="inline-flex items-center gap-1.5 text-failed-fg"><StatusDot tone="failed" />{t("m_44457015d2")}</span>}
+      {!stream.canControl && <span>{t("m_005c11b79a")}</span>}
     </div>
     {stream.message && <p role="status" className="shrink-0 break-words text-xs text-warning-fg">{stream.message}</p>}
-    <div className="flex shrink-0 flex-wrap items-center gap-2" aria-label="기기 조작">
-      <IconButton ref={toggle} aria-label={enlarged ? "작게 보기" : "크게 보기"} title={enlarged ? "작게 보기" : "크게 보기"} aria-pressed={enlarged} onClick={() => { setEnlarged(!enlarged); toggle.current?.focus(); }}>{enlarged ? <Minimize2 /> : <Maximize2 />}</IconButton>
-      <Button size="sm" onClick={height.reset}>맞춤</Button>
-      <IconButton aria-label="뒤로" title="뒤로" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "BACK" })}><ArrowLeft /></IconButton>
-      <IconButton aria-label="홈" title="홈" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "HOME" })}><Circle /></IconButton>
-      <IconButton aria-label="최근 앱" title="최근 앱" disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "APP_SWITCH" })}><Square /></IconButton>
+    <div className="flex shrink-0 flex-wrap items-center gap-2" aria-label={t("m_2d28e885a9")}>
+      <IconButton ref={toggle} aria-label={enlarged ? t("m_dc6f39669d") : t("m_b98c80ee2b")} title={enlarged ? t("m_dc6f39669d") : t("m_b98c80ee2b")} aria-pressed={enlarged} onClick={() => { setEnlarged(!enlarged); toggle.current?.focus(); }}>{enlarged ? <Minimize2 /> : <Maximize2 />}</IconButton>
+      <Button size="sm" onClick={height.reset}>{t("m_a210552e15")}</Button>
+      <IconButton aria-label={t("m_8411beea5e")} title={t("m_8411beea5e")} disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "BACK" })}><ArrowLeft /></IconButton>
+      <IconButton aria-label={t("m_13a46f96e1")} title={t("m_13a46f96e1")} disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "HOME" })}><Circle /></IconButton>
+      <IconButton aria-label={t("m_c769699cf4")} title={t("m_c769699cf4")} disabled={!stream.canControl} onClick={() => stream.send({ type: "key", key: "APP_SWITCH" })}><Square /></IconButton>
       <form className="min-w-0 flex-1 basis-36" onSubmit={event => { event.preventDefault(); if (text && stream.send({ type: "text", text })) setText(""); }}>
-        <Input aria-label="기기에 텍스트 입력" placeholder="텍스트 입력 후 Enter" maxLength={300} disabled={!stream.canControl} value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
+        <Input aria-label={t("m_0be2416eb3")} placeholder={t("m_ba772dae5a")} maxLength={300} disabled={!stream.canControl} value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
       </form>
     </div>
     <div className={cx("min-w-0 shrink-0", enlarged && "max-h-[min(20dvh,160px)] overflow-y-auto overscroll-contain")}><RecordingControls key={serial} serial={serial} enlarged={enlarged} canControl={stream.canControl && canWrite && control !== "never"} workspace={workspace} appPackage={appPackage} onComplete={onRecordingComplete} /></div>
