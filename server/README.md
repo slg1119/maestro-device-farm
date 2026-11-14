@@ -1,5 +1,8 @@
 # Server
 
+New to terminals? Start with the [native beginner guide](../docs/guides/getting-started-native.md). From a cloned repository, open Terminal on macOS or a terminal app on Linux, change into `server/`, paste each command, and press Enter. The agent is the process that drives Android devices through adb; a JUnit report is XML test output used by CI tools.
+
+
 The `farm` package contains the FastAPI control plane, SQLite models, scheduler, Android agent, Maestro runner, and two command-line entry points. The API and agent share one data directory. Start with the [root guide](../README.md) for a complete installation, or [Docker Compose](../docs/docker.md) if you do not need a native development environment.
 
 ## Install and run
@@ -49,3 +52,7 @@ uv run ruff check .
 ```
 
 `farm retention run` applies the configured retention policy; review its dry-run before running it on important data. The agent also schedules retention after startup and periodically. On macOS, [host setup](../docs/host-setup.md) covers the launchd templates. The [example CI workflow](../ops/github-actions/device-farm.yml) shows a run submission.
+
+## Recap and next step
+
+The API serves the dashboard and schedules work; a separate agent performs Android execution using the same data directory. **Next:** [Write a flow](../docs/guides/your-first-flow.md) or [read the CLI reference](../docs/cli.md).

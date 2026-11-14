@@ -1,5 +1,8 @@
 # Configuration reference
 
+A configuration value changes how the API or agent starts. Open Terminal on macOS, PowerShell on Windows, or your terminal app on Linux. A process **environment variable** is a name/value setting the program reads at startup. In Compose, copy `.env.example` to `.env` and edit only the setting you need; on a native host, set the value in the environment used to launch each process. Never paste a real credential into an issue, screenshot, or committed file.
+
+
 The server uses `pydantic-settings` with the `FARM_` prefix. Set values in the process environment before starting `farm api` or `farm agent`; changes require a restart. Paths expand `~`. Compose loads optional `.env` at runtime. Keep credentials in your local environment or secret manager, never in a flow, screenshot, Git commit, or Docker image.
 
 | Variable | Default | What it controls |
@@ -44,3 +47,10 @@ The server uses `pydantic-settings` with the `FARM_` prefix. Set values in the p
 Other `FARM_` values are **client or packaging inputs**, not `Settings` fields: `FARM_URL`, `FARM_TOKEN`, and `FARM_USER` are `farmctl` defaults; `FARM_API_URL` changes Vite's development proxy; `FARM_HOST_PORT` selects the Compose host port; `FARM_WORKSPACE` is used by the example CI workflow. They are documented in `.env.example`.
 
 For a shared or exposed server, set `FARM_REQUIRE_TOKEN=true`, provide a trusted network boundary, and pass a token through the client settings or `farmctl --token`. The default tokenless mode is meant for a trusted local network.
+
+## Check a setting
+
+1. Change one value and restart the affected API or agent process. **You should see:** `GET /api/v1/healthz` still returns `"status":"ok"`. **If it looks different:** Restore the previous value, check its spelling and type in the table, then restart again.
+2. For Compose, run `docker compose ps` from the repository folder. **You should see:** `api` healthy. **If it looks different:** Inspect `docker compose logs --tail=100 api`.
+
+**Recap:** Server settings use the `FARM_` prefix and take effect on restart. **Next:** [Docker operations](docker.md) or [native setup](guides/getting-started-native.md).
