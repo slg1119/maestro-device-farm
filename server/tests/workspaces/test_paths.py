@@ -35,6 +35,6 @@ def test_repo_path_and_strip_root():
 
 def test_name_repo_branch_patterns():
     assert NAME_RE.match("example-app") and not NAME_RE.match("APP App") and not NAME_RE.match("-x")
-    assert REPO_RE.match("example-org/example-app") and not REPO_RE.match("example-org") and not REPO_RE.match("a/b/c")
+    assert REPO_RE.match("example-org/example-app") and not REPO_RE.match("example") and not REPO_RE.match("a/b/c")
     assert BRANCH_RE.match("main") and BRANCH_RE.match("release/1.2")
     assert not any(BRANCH_RE.match(b) for b in ("-x", "a..b", "a b", "a/", "a.", "a//b"))
