@@ -44,3 +44,7 @@ filterwarnings = [
 
 [tool.ruff]
 line-length = 110
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI evaluates Depends/File defaults when registering routes.
+"src/farm/api/**/*.py" = ["B008"]

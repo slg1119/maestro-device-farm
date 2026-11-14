@@ -1,4 +1,3 @@
-import io
 import stat
 import zipfile
 

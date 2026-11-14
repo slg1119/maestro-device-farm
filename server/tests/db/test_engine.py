@@ -22,7 +22,7 @@ def test_concurrent_writers_are_serialized(db):
                 s.execute(select(1))  # starts BEGIN IMMEDIATE and holds the write lock
                 time.sleep(0.05)
                 s.add(ApiToken(name=f"t{i}", token_hash=f"h{i}"))
-        except Exception as exc:  # collected so the assertion shows the real error
+        except Exception as exc:  # noqa: BLE001 - collected so the assertion shows the real error
             errors.append(exc)
 
     threads = [threading.Thread(target=writer, args=(i,)) for i in range(5)]
