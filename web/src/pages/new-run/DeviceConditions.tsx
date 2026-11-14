@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import type { Device } from "../../api/types";
 import { DeviceStateBadge } from "../../components/StatusBadge";
 import { Button, Empty, Field, Input, Segmented, StatusDot, cx } from "../../components/ui";
@@ -17,7 +18,7 @@ function DeviceRow({ device, selected, unavailable = false, onChange }: {
       <span className="text-xs text-fg-subtle">{device.model}</span>
     </span>
     {unavailable ? <span className="shrink-0"><DeviceStateBadge state={device.disabled ? "disabled" : device.reservation ? "reserved" : device.state} /></span>
-      : <span className="shrink-0" role="img" aria-label={device.state === "busy" ? "실행 중" : "사용 가능"}>
+      : <span className="shrink-0" role="img" aria-label={device.state === "busy" ? t("m_0d01d3e76a") : t("m_d4bbb3d8e2")}>
         <StatusDot tone={device.state === "busy" ? "running" : "passed"} />
       </span>}
   </label>;
@@ -40,26 +41,26 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
   const selectedTags = splitList(form.tags);
 
   return <>
-    <Segmented<DeviceMode> label="기기 선택 방식" value={mode} onChange={onModeChange}
+    <Segmented<DeviceMode> label={t("m_0508483902")} value={mode} onChange={onModeChange}
       className="w-full items-stretch [&>button]:min-w-0 [&>button]:flex-1 [&>button]:break-keep [&>button]:px-2"
       options={[
-        { value: "all", label: "사용 가능한 기기 전체" },
-        { value: "manual", label: "직접 고르기" },
-        { value: "conditions", label: "조건으로 고르기" },
+        { value: "all", label: t("m_7a876c6e37") },
+        { value: "manual", label: t("m_39e025b0ea") },
+        { value: "conditions", label: t("m_73adadd296") },
       ]} />
     {mode === "manual" && <div className="space-y-2">
       <div className="flex gap-1">
-        <Button variant="ghost" size="sm" onClick={() => update({ serials: available.map(device => device.serial) })}>모두 선택</Button>
-        <Button variant="ghost" size="sm" onClick={() => update({ serials: [] })}>선택 해제</Button>
+        <Button variant="ghost" size="sm" onClick={() => update({ serials: available.map(device => device.serial) })}>{t("m_c764a797f2")}</Button>
+        <Button variant="ghost" size="sm" onClick={() => update({ serials: [] })}>{t("m_bf3e2aa4ca")}</Button>
       </div>
       {available.length ? <div className="grid min-w-0 grid-cols-1 gap-x-3 sm:grid-cols-2">
         {available.map(device => <DeviceRow key={device.serial} device={device} selected={form.serials.includes(device.serial)}
           onChange={() => update({ serials: form.serials.includes(device.serial)
             ? form.serials.filter(serial => serial !== device.serial) : [...form.serials, device.serial] })} />)}
-      </div> : <Empty>사용 가능한 기기가 없습니다.</Empty>}
+      </div> : <Empty>{t("m_4f3f72e98a")}</Empty>}
       {!!unavailable.length && <details>
         <summary className="w-fit cursor-pointer py-2 text-xs text-fg-subtle focus-visible:outline-2 focus-visible:outline-accent">
-          사용할 수 없는 기기 {unavailable.length}대
+          {t("m_c402a63ac4")} {unavailable.length}{t("m_8cbb379d24")}
         </summary>
         <div className="grid min-w-0 grid-cols-1 gap-x-3 sm:grid-cols-2">
           {unavailable.map(device => <DeviceRow key={device.serial} device={device} selected={false} unavailable onChange={() => {}} />)}
@@ -68,38 +69,38 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
     </div>}
     {mode === "conditions" && <div className="space-y-3">
       <fieldset className="min-w-0 space-y-2">
-        <legend className="mb-1 text-xs font-medium text-fg-muted">기기 태그</legend>
-        <p className="text-xs text-fg-subtle">선택한 태그가 모두 있는 기기를 고릅니다.</p>
+        <legend className="mb-1 text-xs font-medium text-fg-muted">{t("m_3e75bcb911")}</legend>
+        <p className="text-xs text-fg-subtle">{t("m_30f635e152")}</p>
         {tags.length ? <div className="flex flex-wrap gap-2">
           {tags.map(tag => <Button key={tag} size="sm" aria-pressed={selectedTags.includes(tag)}
             className="max-w-full rounded-full! break-all aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-fg aria-pressed:hover:bg-accent-soft"
             onClick={() => update({ tags: (selectedTags.includes(tag)
               ? selectedTags.filter(value => value !== tag) : [...selectedTags, tag]).join(",") })}>{tag}</Button>)}
-        </div> : <p className="text-xs text-fg-subtle">등록된 기기 태그가 없습니다.</p>}
+        </div> : <p className="text-xs text-fg-subtle">{t("m_3f77db6070")}</p>}
       </fieldset>
       <details>
-        <summary className="w-fit cursor-pointer py-2 text-xs text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">모델·안드로이드 버전</summary>
+        <summary className="w-fit cursor-pointer py-2 text-xs text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">{t("m_20aa251b1a")}</summary>
         <div className="mt-2 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="모델" hint="쉼표로 구분">
-              <Input aria-label="모델" value={form.models} onChange={event => update({ models: event.target.value })} placeholder="Pixel 7" />
+            <Field label={t("m_3317f8c6d7")} hint={t("m_073153ae73")}>
+              <Input aria-label={t("m_3317f8c6d7")} value={form.models} onChange={event => update({ models: event.target.value })} placeholder={t("e_a17044b8f1")} />
             </Field>
           </div>
-          <Field label="안드로이드 API 레벨 (이상)" hint="예: 30 = 안드로이드 11">
-            <Input aria-label="안드로이드 API 레벨 (이상)" type="number" min={0} step={1} value={form.minSdk} onChange={event => update({ minSdk: event.target.value })} />
+          <Field label={t("m_42a0dce703")} hint={t("m_4c4032f35c")}>
+            <Input aria-label={t("m_42a0dce703")} type="number" min={0} step={1} value={form.minSdk} onChange={event => update({ minSdk: event.target.value })} />
           </Field>
-          <Field label="안드로이드 API 레벨 (이하)" hint="예: 30 = 안드로이드 11">
-            <Input aria-label="안드로이드 API 레벨 (이하)" type="number" min={0} step={1} value={form.maxSdk} onChange={event => update({ maxSdk: event.target.value })} />
+          <Field label={t("m_c42f4ba9fc")} hint={t("m_4c4032f35c")}>
+            <Input aria-label={t("m_c42f4ba9fc")} type="number" min={0} step={1} value={form.maxSdk} onChange={event => update({ maxSdk: event.target.value })} />
           </Field>
         </div>
       </details>
     </div>}
     <p role="status" aria-live="polite" aria-atomic="true"
       className={cx("break-all text-xs leading-5", matches.length ? "text-fg-muted" : "text-warning-fg")}>
-      <span className="font-medium">실행할 기기 {matches.length}대</span>
-      {!!matches.length && <> · {matches.slice(0, 5).map(device => device.serial).join(", ")}{matches.length > 5 && ` 외 ${matches.length - 5}대`}</>}
-      {sdkExcluded > 0 && <> · 앱이 지원하지 않는 안드로이드 버전이라 {sdkExcluded}대 제외</>}
-      {!matches.length && <> · 실행할 수 있는 기기가 없습니다. 기기 상태와 선택 조건을 확인하세요.</>}
+      <span className="font-medium">{t("m_9bd4a9d512")} {matches.length}{t("m_8cbb379d24")}</span>
+      {!!matches.length && <> · {matches.slice(0, 5).map(device => device.serial).join(", ")}{matches.length > 5 && t("m_7ce9b61fdc", [matches.length - 5])}</>}
+      {sdkExcluded > 0 && <> {t("m_735d71f783")} {sdkExcluded}{t("m_39b315fdf3")}</>}
+      {!matches.length && <> {t("m_8a7a9cb26d")}</>}
     </p>
   </>;
 }

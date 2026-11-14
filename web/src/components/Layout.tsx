@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useState } from "react";
 import { Outlet } from "react-router";
@@ -49,9 +50,9 @@ export function TokenNotice() {
   if (canWrite) return null;
   return (
     <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-warning/25 bg-warning-bg px-3 py-2 text-sm text-warning-fg">
-      <span>쓰기 작업에는 API 토큰이 필요합니다.</span>
+      <span>{t("m_dc53ce1daa")}</span>
       <Button size="sm" onClick={openSettings}>
-        토큰 입력
+        {t("m_be0d6c0ead")}
       </Button>
     </div>
   );

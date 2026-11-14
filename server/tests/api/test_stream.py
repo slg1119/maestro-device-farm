@@ -69,14 +69,14 @@ def test_ticket_hash_expiry_author_and_writer(client, db, device):
     from farm.db.models import StreamTicket
 
     before = now()
-    result = issue(client, json={"author_name": "운영자"}, headers={"X-Farm-User": "writer"})
+    result = issue(client, json={"author_name": "Operator"}, headers={"X-Farm-User": "writer"})
     after = now()
     assert result["path"] == f'/api/v1/devices/d1/stream?ticket={result["ticket"]}'
     with db.session() as s:
         row = s.get(StreamTicket, hashlib.sha256(result["ticket"].encode()).hexdigest())
         assert row is not None
         assert row.ticket_hash != result["ticket"]
-        assert row.actor == "writer" and row.author_name == "운영자"
+        assert row.actor == "writer" and row.author_name == "Operator"
         assert row.device_serial == "d1" and row.used_at is None
         assert before <= row.created_at <= after
         assert shift(before, 60) <= row.expires_at <= shift(after, 60)
@@ -93,7 +93,7 @@ def test_ticket_requires_writer_and_existing_device(client, secured_client, devi
 def test_proxy_passes_binary_text_and_author_and_closes_agent(client, app, db, device):
     from farm.db.models import StreamTicket
 
-    ticket = issue(client, json={"author_name": "한글 & 이름"})
+    ticket = issue(client, json={"author_name": "Zoë & Jamie"})
     with fake_agent(app) as (paths, closed, binary, status):
         with client.websocket_connect(ticket["path"]) as ws:
             assert ws.receive_bytes() == binary
@@ -104,7 +104,7 @@ def test_proxy_passes_binary_text_and_author_and_closes_agent(client, app, db, d
             assert ws.receive_text() == '{"type":"key","key":"HOME"}'
             path = urlsplit(paths.get(timeout=2))
             assert path.path == "/devices/d1/stream"
-            assert parse_qs(path.query) == {"control": ["1"], "actor": ["한글 & 이름"]}
+            assert parse_qs(path.query) == {"control": ["1"], "actor": ["Zoë & Jamie"]}
         assert closed.wait(2), "browser disconnect must close the agent socket"
     with db.session() as s:
         assert s.get(StreamTicket, hashlib.sha256(ticket["ticket"].encode()).hexdigest()).used_at

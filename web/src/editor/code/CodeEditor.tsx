@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import MonacoEditor, { type OnMount } from "@monaco-editor/react";
 // Monaco 0.57's default export includes suggestions/hover but omits code-action UI.
 import "monaco-editor/editor/contrib/codeAction/browser/codeActionContributions";
@@ -53,7 +54,7 @@ export function CodeEditor() {
         if (!invalid || !replacement) return [];
         const location = commandLocation(model.getLinesContent(), invalid, marker.startLineNumber);
         if (!location) return [];
-        return [{ title: `${replacement}(으)로 바꾸기`, kind: "quickfix", diagnostics: [marker], edit: { edits: [{ resource: model.uri, versionId: model.getVersionId(), textEdit: { range: new monaco.Range(location.line, location.column, location.line, location.column + invalid.length), text: replacement } }] } }];
+        return [{ title: t("m_6f0e945798", [replacement]), kind: "quickfix", diagnostics: [marker], edit: { edits: [{ resource: model.uri, versionId: model.getVersionId(), textEdit: { range: new monaco.Range(location.line, location.column, location.line, location.column + invalid.length), text: replacement } }] } }];
       }), dispose() {} };
     } });
     return () => { completion.dispose(); hover.dispose(); quickFix.dispose(); };
@@ -75,17 +76,17 @@ export function CodeEditor() {
     editor.addCommand(library.KeyMod.CtrlCmd | library.KeyCode.KeyS, () => {});
     library.editor.setModelMarkers(editor.getModel()!, "farm-validation", issueMarkers(path ? api.issues[path] ?? [] : []));
   };
-  if (!path) return <Empty>왼쪽에서 파일을 선택하거나 새 파일을 만드세요.</Empty>;
-  if (draft?.status === "deleted") return <Empty>삭제 예정인 파일입니다.</Empty>;
+  if (!path) return <Empty>{t("m_b866e4bc01")}</Empty>;
+  if (draft?.status === "deleted") return <Empty>{t("m_ad40f6bb18")}</Empty>;
   if (error) return <ErrorBox error={error} />;
   if (binary) {
     const mime = /\.jpe?g$/i.test(path) ? "image/jpeg" : /\.png$/i.test(path) ? "image/png" : /\.gif$/i.test(path) ? "image/gif" : "image/webp";
     const src = draft?.encoding === "base64" ? `data:${mime};base64,${draft.content}` : `${API}/workspaces/${encodeURIComponent(api.workspace.id)}/files/${encodedPath(path)}${query({ ref: api.baseSha })}`;
-    return <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">{isImage(path) ? <img src={src} alt={path} className="max-h-full max-w-full object-contain" /> : <Empty>미디어 파일 · {path}</Empty>}</div>;
+    return <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">{isImage(path) ? <img src={src} alt={path} className="max-h-full max-w-full object-contain" /> : <Empty>{t("m_02d20bb969")} {path}</Empty>}</div>;
   }
-  if (!monaco || content?.path !== path || content.sha !== api.baseSha) return <Loading label="편집기를 불러오는 중…" />;
+  if (!monaco || content?.path !== path || content.sha !== api.baseSha) return <Loading label={t("m_8934fcf01e")} />;
   return <MonacoEditor height="100%" keepCurrentModel path={`inmemory://ws/${encodedPath(path)}`} language={languageFor(path)} theme={`farm-${resolved}`}
-    beforeMount={library => library.editor.setTheme(`farm-${resolved}`)} loading={<Loading label="편집기를 불러오는 중…" />}
+    beforeMount={library => library.editor.setTheme(`farm-${resolved}`)} loading={<Loading label={t("m_8934fcf01e")} />}
     value={draft?.content ?? content.text} onMount={onMount} onChange={value => { if (value !== undefined) latest.current.api.setContent(path, value); }}
-    options={{ ariaLabel: "코드 편집기", automaticLayout: true, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 13, tabSize: 2, insertSpaces: true, scrollBeyondLastLine: false, wordWrap: "on", padding: { top: 16 }, fixedOverflowWidgets: true }} />;
+    options={{ ariaLabel: t("m_aa44501c41"), automaticLayout: true, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 13, tabSize: 2, insertSpaces: true, scrollBeyondLastLine: false, wordWrap: "on", padding: { top: 16 }, fixedOverflowWidgets: true }} />;
 }

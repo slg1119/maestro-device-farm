@@ -1,3 +1,4 @@
+import { t } from "../../../lib/i18n";
 import type { DiffOnMount } from "@monaco-editor/react";
 import { useEffect, useState } from "react";
 import { ErrorBox, Loading } from "../../../components/ui";
@@ -26,11 +27,11 @@ export function ProposalEditor({ path, content, original }: { path: string; cont
     return () => { alive = false; };
   }, []);
   if (error) return <ErrorBox error={error} />;
-  if (!editors) return <Loading label="미리보기를 불러오는 중…" />;
+  if (!editors) return <Loading label={t("m_2c2dcc6654")} />;
   const { default: MonacoEditor, DiffEditor } = editors;
   const language = /\.json$/i.test(path) ? "json" : /\.js$/i.test(path) ? "javascript" : "yaml";
-  const options = { readOnly: true, domReadOnly: true, readOnlyMessage: { value: "AI 제안은 읽기 전용입니다. 반영 후 에디터에서 수정하세요." }, automaticLayout: true, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 12, tabSize: 2, wordWrap: "on" as const, scrollBeyondLastLine: false };
+  const options = { readOnly: true, domReadOnly: true, readOnlyMessage: { value: t("m_f1955b0be1") }, automaticLayout: true, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 12, tabSize: 2, wordWrap: "on" as const, scrollBeyondLastLine: false };
   return original === undefined
-    ? <MonacoEditor height="260px" language={language} theme={`farm-${resolved}`} value={content} options={{ ...options, ariaLabel: "AI 제안 코드" }} />
-    : <DiffEditor height="min(55vh, 500px)" language={language} theme={`farm-${resolved}`} original={original} modified={content} keepCurrentOriginalModel keepCurrentModifiedModel onMount={releaseDiffModels} options={{ ...options, originalEditable: false, renderSideBySide: false, ariaLabel: `${path} 변경 비교` }} />;
+    ? <MonacoEditor height="260px" language={language} theme={`farm-${resolved}`} value={content} options={{ ...options, ariaLabel: t("m_cde1dcf3bd") }} />
+    : <DiffEditor height="min(55vh, 500px)" language={language} theme={`farm-${resolved}`} original={original} modified={content} keepCurrentOriginalModel keepCurrentModifiedModel onMount={releaseDiffModels} options={{ ...options, originalEditable: false, renderSideBySide: false, ariaLabel: t("m_7ecb8c52ee", [path]) }} />;
 }

@@ -172,7 +172,7 @@ def test_ai_failure_parsers_only_receive_redacted_legacy_commands(settings, db, 
 
 @pytest.mark.parametrize("ensure_ascii", [True, False])
 async def test_worker_redacts_escaped_values_and_keeps_json_xml_valid(db, settings, env_task, ensure_ascii):
-    secret = '비밀"\\password\n&<value>'
+    secret = 'secret🔑"\\password\n&<value>'
     with db.session() as s:
         s.get(Run, env_task.id).env = {"APP_PASSWORD": secret}
 
@@ -192,7 +192,7 @@ async def test_worker_redacts_escaped_values_and_keeps_json_xml_valid(db, settin
 
 @pytest.mark.parametrize("ensure_ascii", [True, False])
 def test_legacy_reads_redact_escaped_values(client, db, legacy_task, ensure_ascii):
-    secret = '비밀"\\password\n&<value>'
+    secret = 'secret🔑"\\password\n&<value>'
     with db.session() as s:
         s.get(Run, legacy_task.run_id).env = {"APP_PASSWORD": secret}
     root = Path(legacy_task.artifacts_dir)

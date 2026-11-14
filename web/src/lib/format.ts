@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 /** Server timestamps look like 2026-10-20T05:31:00.123456Z; Date parses the first three fraction digits. */
 export function parseTs(ts: string): Date {
   return new Date(ts.replace(/(\.\d{3})\d+Z$/, "$1Z"));
@@ -11,10 +12,10 @@ export function formatTime(ts: string | null | undefined): string {
 export function timeAgo(ts: string | null | undefined, now: Date = new Date()): string {
   if (!ts) return "-";
   const sec = Math.max(0, Math.round((now.getTime() - parseTs(ts).getTime()) / 1000));
-  if (sec < 60) return `${sec}초 전`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}분 전`;
-  if (sec < 86400) return `${Math.floor(sec / 3600)}시간 전`;
-  return `${Math.floor(sec / 86400)}일 전`;
+  if (sec < 60) return t("m_d4decd2f8c", [sec]);
+  if (sec < 3600) return t("m_8991774866", [Math.floor(sec / 60)]);
+  if (sec < 86400) return t("m_672ec9854d", [Math.floor(sec / 3600)]);
+  return t("m_d8c0836a7e", [Math.floor(sec / 86400)]);
 }
 
 export function formatDuration(ms: number): string {
@@ -30,8 +31,8 @@ export function formatDurationKo(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const sec = seconds % 60;
-  return [hours ? `${hours}시간` : "", minutes ? `${minutes}분` : "", sec ? `${sec}초` : ""]
-    .filter(Boolean).join(" ") || "0초";
+  return [hours ? t("m_5df5e40898", [hours]) : "", minutes ? t("m_af7fcb67e9", [minutes]) : "", sec ? t("m_ed2dcdb1c5", [sec]) : ""]
+    .filter(Boolean).join(" ") || t("m_1713026f34");
 }
 
 /** Wall-clock time between two timestamps; `end` defaults to now for running items. */

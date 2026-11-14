@@ -334,7 +334,7 @@ class StreamManager:
             _clear(viewer)
             viewer.closed = True
             viewer.queue.put_nowait(json.dumps({'type': 'ended', 'reason': reason,
-                                                'message': '기기 화면 연결이 종료되었습니다.'}))
+                                                'message': 'Device screen connection closed.'}))
         current = asyncio.current_task()
         tasks = [task for task in (state.producer, state.ticker, state.linger)
                  if task is not None and task is not current]

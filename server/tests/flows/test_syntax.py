@@ -36,4 +36,4 @@ def test_decimal_coordinates_report_editor_markers_on_value_lines(fakebin):
                                  max_bytes=4096, checker=MaestroSyntaxChecker())
     assert [(i.path, i.line, i.column) for i in issues] == [
         ("flows/points.yaml", 3, 18), ("flows/points.yaml", 5, 12), ("flows/points.yaml", 6, 10)]
-    assert all(i.message == 'Maestro는 정수 퍼센트 좌표만 지원합니다 (예: "94%,97%")' for i in issues)
+    assert all(i.message == 'Maestro supports only integer percentage coordinates (for example, "94%,97%").' for i in issues)

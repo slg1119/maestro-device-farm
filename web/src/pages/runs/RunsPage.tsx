@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -12,21 +13,21 @@ import { useTicker } from "../../lib/useTicker";
 
 const PAGE_SIZE = 50;
 const STATUS: Record<RunStatus, string> = {
-  queued: "대기", running: "실행 중", passed: "통과", failed: "실패", error: "오류", cancelled: "취소",
+  queued: t("m_df72a8753d"), running: t("m_0d01d3e76a"), passed: t("m_66409b6272"), failed: t("m_732fe33ab1"), error: t("m_3efa8afd60"), cancelled: t("m_19b2d19bc1"),
 };
 const STATUS_CHIPS = ["", "running", "failed", "error", "passed"] as const;
-const ORIGIN: Record<RunOrigin, string> = { ci: "CI", dashboard: "대시보드", editor: "에디터", ai: "AI" };
+const ORIGIN: Record<RunOrigin, string> = { ci: "CI", dashboard: t("m_2859873b5b"), editor: t("m_4e9bc12abe"), ai: "AI" };
 const linkStyle = "rounded text-accent underline decoration-border-strong underline-offset-4 hover:decoration-accent focus-visible:outline-2 focus-visible:outline-accent max-md:inline-flex max-md:min-h-11 max-md:items-center";
 
 function Results({ counts }: { counts: RunCounts }) {
   const details = [
-    { value: counts.failed, label: "실패", className: "text-failed-fg" },
-    { value: counts.error, label: "오류", className: "text-warning-fg" },
-    { value: counts.running, label: "실행 중", className: "text-running-fg" },
-    { value: counts.queued, label: "대기", className: "text-fg-muted" },
-    { value: counts.cancelled, label: "취소", className: "text-fg-muted" },
+    { value: counts.failed, label: t("m_732fe33ab1"), className: "text-failed-fg" },
+    { value: counts.error, label: t("m_3efa8afd60"), className: "text-warning-fg" },
+    { value: counts.running, label: t("m_0d01d3e76a"), className: "text-running-fg" },
+    { value: counts.queued, label: t("m_df72a8753d"), className: "text-fg-muted" },
+    { value: counts.cancelled, label: t("m_19b2d19bc1"), className: "text-fg-muted" },
   ].filter(({ value }) => value > 0);
-  const label = [`${counts.passed}/${counts.total} 통과`, ...details.map(({ value, label }) => `${label} ${value}`)].join(" · ");
+  const label = [t("m_6b45ae1506", [counts.passed, counts.total]), ...details.map(({ value, label }) => `${label} ${value}`)].join(" · ");
   return <div className="min-w-52 max-w-64 space-y-2">
     <ProgressBar label={label} total={counts.total} segments={[
       { value: counts.passed, tone: "passed" },
@@ -36,7 +37,7 @@ function Results({ counts }: { counts: RunCounts }) {
       { value: counts.queued + counts.cancelled, tone: "neutral" },
     ]} />
     <div className="flex flex-wrap gap-x-1 text-xs text-fg-muted">
-      <span>{counts.passed}/{counts.total} 통과</span>
+      <span>{counts.passed}/{counts.total} {t("m_66409b6272")}</span>
       {details.map(({ value, label, className }) => <span key={label}>· <span className={className}>{label} {value}</span></span>)}
     </div>
   </div>;
@@ -48,8 +49,8 @@ function Trigger({ run }: { run: RunSummary }) {
     {run.origin === "ci" && <>
       {run.ci_meta.branch && <span className="block break-all font-mono text-xs text-fg-muted">{run.ci_meta.branch}</span>}
       {(run.ci_meta.pr_url || run.ci_meta.workflow_url) && <div className="flex flex-wrap gap-x-3 text-xs">
-        {run.ci_meta.pr_url && <a href={run.ci_meta.pr_url} target="_blank" rel="noopener noreferrer" className={linkStyle}>PR</a>}
-        {run.ci_meta.workflow_url && <a href={run.ci_meta.workflow_url} target="_blank" rel="noopener noreferrer" className={linkStyle}>워크플로</a>}
+        {run.ci_meta.pr_url && <a href={run.ci_meta.pr_url} target="_blank" rel="noopener noreferrer" className={linkStyle}>{t("e_55af20415e")}</a>}
+        {run.ci_meta.workflow_url && <a href={run.ci_meta.workflow_url} target="_blank" rel="noopener noreferrer" className={linkStyle}>{t("m_8423200a37")}</a>}
       </div>}
     </>}
     <span className="block break-all text-xs text-fg-subtle">{run.created_by}</span>
@@ -114,31 +115,31 @@ export function RunsPage() {
   const chipStatuses: readonly string[] = status === "queued" || status === "cancelled" ? [...STATUS_CHIPS, status] : STATUS_CHIPS;
   const statusOptions = chipStatuses.map((value) => ({
     value,
-    label: <>{value ? STATUS[value as RunStatus] : "전체"} <span className="ml-1 font-mono text-xs">{runs.data?.filter((run) => !value || run.status === value).length ?? 0}</span></>,
+    label: <>{value ? STATUS[value as RunStatus] : t("m_934dd25ec5")} <span className="ml-1 font-mono text-xs">{runs.data?.filter((run) => !value || run.status === value).length ?? 0}</span></>,
   }));
 
   return <div className="min-w-0 text-fg">
-    <PageHeader title="실행" description="실행 기록과 결과를 확인하세요. 수치는 현재 페이지 기준입니다."
-      actions={<Button variant="primary" icon={<Plus size={16} strokeWidth={1.8} />} onClick={() => navigate("/runs/new")}>새 실행</Button>} />
+    <PageHeader title={t("m_74a23ff796")} description={t("m_13ea8c2e60")}
+      actions={<Button variant="primary" icon={<Plus size={16} strokeWidth={1.8} />} onClick={() => navigate("/runs/new")}>{t("m_fbdfd04fb8")}</Button>} />
     <TokenNotice />
     <div className="mb-5 space-y-4">
-      <Segmented label="상태" options={statusOptions} value={status} onChange={(value) => changeFilter("status", value)} />
+      <Segmented label={t("m_2926977ba7")} options={statusOptions} value={status} onChange={(value) => changeFilter("status", value)} />
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_12rem_14rem]">
-        <Field label="실행 검색">
+        <Field label={t("m_cf425f948f")}>
           <div className="relative">
             <Search aria-hidden="true" size={16} strokeWidth={1.8} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-subtle" />
-            <Input type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="ID, 브랜치, 커밋, 워크스페이스, 작성자 검색" className="pl-9" />
+            <Input type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder={t("m_1c135a5eed")} className="pl-9" />
           </div>
         </Field>
-        <Field label="출처">
+        <Field label={t("m_2151edbebc")}>
           <Select value={origin} onChange={(event) => changeFilter("origin", event.target.value)}>
-            <option value="">전체</option>
+            <option value="">{t("m_934dd25ec5")}</option>
             {Object.entries(ORIGIN).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
         </Field>
-        <Field label="워크스페이스">
+        <Field label={t("m_3291059946")}>
           <Select value={workspace} onChange={(event) => changeFilter("workspace", event.target.value)}>
-            <option value="">전체</option>
+            <option value="">{t("m_934dd25ec5")}</option>
             {workspace && !workspaces.data?.some((item) => item.name === workspace) && <option value={workspace}>{workspace}</option>}
             {workspaces.data?.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
           </Select>
@@ -148,13 +149,13 @@ export function RunsPage() {
 
     <div className="space-y-4">
       <ErrorBox error={workspaces.error} />
-      {runs.isPending ? <Loading /> : runs.isError ? <ErrorBox error={runs.error} /> : !runs.data.length ? <Empty>실행 기록이 없습니다.</Empty>
-        : !visibleRuns?.length ? <Empty>검색 결과가 없습니다.</Empty> : <Card>
-          <div className="overflow-x-auto rounded-[10px] focus-visible:outline-2 focus-visible:outline-accent" role="region" aria-label="실행 목록" tabIndex={0}>
+      {runs.isPending ? <Loading /> : runs.isError ? <ErrorBox error={runs.error} /> : !runs.data.length ? <Empty>{t("m_db63687712")}</Empty>
+        : !visibleRuns?.length ? <Empty>{t("m_300d3cac5f")}</Empty> : <Card>
+          <div className="overflow-x-auto rounded-[10px] focus-visible:outline-2 focus-visible:outline-accent" role="region" aria-label={t("m_b609b643d9")} tabIndex={0}>
             <table className="w-full min-w-[68rem] text-left text-sm">
-              <caption className="sr-only">실행 기록</caption>
+              <caption className="sr-only">{t("m_145ffde6a0")}</caption>
               <thead className="border-b border-border bg-surface-2 text-xs text-fg-subtle">
-                <tr>{["상태", "Run", "Flow 소스 · 앱", "트리거", "결과", "소요", "시작"].map((label) =>
+                <tr>{[t("m_2926977ba7"), "Run", t("m_2bce87f648"), t("m_861b3833e3"), t("m_71d855acd9"), t("m_468105f78b"), t("m_e89cc866ba")].map((label) =>
                   <th key={label} scope="col" className="whitespace-nowrap px-4 py-3 font-semibold">{label}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -166,7 +167,7 @@ export function RunsPage() {
                   </td>
                   <td className="px-4 py-4">
                     <span className="block min-w-44 max-w-64 break-words text-fg">
-                      {run.flow_source === "upload" ? "업로드" : `${workspaceNames.get(run.workspace_id ?? "") ?? run.workspace_id ?? "-"} @ ${shortSha(run.commit_sha)}${run.flow_source === "draft" ? " (초안)" : ""}`}
+                      {run.flow_source === "upload" ? t("m_51672ccd18") : t("m_401dcf9c0d", [workspaceNames.get(run.workspace_id ?? "") ?? run.workspace_id ?? "-", shortSha(run.commit_sha), run.flow_source === "draft" ? t("m_330b6eea20") : ""])}
                     </span>
                     <span className="mt-1 block max-w-64 break-all font-mono text-xs text-fg-subtle">{run.app.package_name} {run.app.version_name}</span>
                   </td>
@@ -181,9 +182,9 @@ export function RunsPage() {
             </table>
           </div>
         </Card>}
-      {(before || lastRun) && <nav aria-label="실행 목록 페이지" className="flex flex-wrap justify-center gap-2">
-        {before && <Button onClick={() => changePage()}>처음으로</Button>}
-        {lastRun && !runs.isError && <Button onClick={() => changePage(lastRun.id)}>이전 run 더 보기</Button>}
+      {(before || lastRun) && <nav aria-label={t("m_d7e9381bcb")} className="flex flex-wrap justify-center gap-2">
+        {before && <Button onClick={() => changePage()}>{t("m_5f8e0688e4")}</Button>}
+        {lastRun && !runs.isError && <Button onClick={() => changePage(lastRun.id)}>{t("m_8e2b5c3a6e")}</Button>}
       </nav>}
     </div>
   </div>;

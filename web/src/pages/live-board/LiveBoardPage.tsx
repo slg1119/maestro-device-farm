@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -18,8 +19,8 @@ function readTileSize() {
   } catch { return DEFAULT_SIZE; }
 }
 const FILTERS = [
-  { value: "all", label: "전체" }, { value: "available", label: "사용 가능" },
-  { value: "busy", label: "실행 중" }, { value: "disabled", label: "비활성" },
+  { value: "all", label: t("m_934dd25ec5") }, { value: "available", label: t("m_d4bbb3d8e2") },
+  { value: "busy", label: t("m_0d01d3e76a") }, { value: "disabled", label: t("m_fae2014b52") },
 ] as const;
 type Filter = typeof FILTERS[number]["value"];
 function matchesState(device: Device, filter: Filter) {
@@ -50,48 +51,48 @@ export function LiveBoardPage() {
   const opened = connected.find((device) => device.serial === selected);
 
   return <>
-    <PageHeader title="라이브 보드" description="연결된 기기의 화면을 한눈에 확인하세요. 타일을 누르면 크게 보고 조작할 수 있습니다."
-      actions={<Button icon={paused ? <Play /> : <Pause />} aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? "모두 재생" : "모두 일시정지"}</Button>} />
+    <PageHeader title={t("m_7ba2177d50")} description={t("m_4b330cc1b6")}
+      actions={<Button icon={paused ? <Play /> : <Pause />} aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? t("m_bca5ad6952") : t("m_cd190cedf1")}</Button>} />
     <Card className="mb-5 space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-fg-muted">연결된 기기 {connected.length}대 · 보기 전용</p>
+        <p className="text-xs text-fg-muted">{t("m_72f3fcd3f3")} {connected.length}{t("m_9a2f9e5f55")}</p>
         <label className="flex w-full items-center gap-3 text-xs text-fg-muted sm:w-auto">
-          <span className="shrink-0">타일 크기</span>
-          <input type="range" aria-label="타일 크기" aria-valuetext={`${tileSize} 픽셀`} min={MIN_SIZE} max={MAX_SIZE} step={10} value={tileSize} className="min-h-8 min-w-0 flex-1 accent-accent sm:w-40"
+          <span className="shrink-0">{t("m_356a0bad18")}</span>
+          <input type="range" aria-label={t("m_356a0bad18")} aria-valuetext={t("m_0ab06b19c0", [tileSize])} min={MIN_SIZE} max={MAX_SIZE} step={10} value={tileSize} className="min-h-8 min-w-0 flex-1 accent-accent sm:w-40"
             onChange={(event) => {
               const value = Number(event.target.value); setTileSize(value);
               try { localStorage.setItem(TILE_SIZE_KEY, String(value)); } catch { /* Keep the session preference. */ }
             }} />
-          <output className="w-12 shrink-0 text-right font-mono">{tileSize}px</output>
+          <output className="w-12 shrink-0 text-right font-mono">{tileSize}{t("e_07a65dd648")}</output>
         </label>
       </div>
-      <div role="group" aria-label="기기 상태 필터" className="flex flex-wrap gap-2">
+      <div role="group" aria-label={t("m_793a2ba251")} className="flex flex-wrap gap-2">
         {FILTERS.map(({ value, label }) => <Button key={value} size="sm" variant={filter === value ? "primary" : "secondary"} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}
       </div>
-      {(tags.length > 0 || tag) && <div role="group" aria-label="태그 필터" className="flex flex-wrap gap-2">
-        <Button size="sm" variant={!tag ? "primary" : "secondary"} aria-pressed={!tag} onClick={() => setTag("")}>모든 태그</Button>
+      {(tags.length > 0 || tag) && <div role="group" aria-label={t("m_de0e38a53f")} className="flex flex-wrap gap-2">
+        <Button size="sm" variant={!tag ? "primary" : "secondary"} aria-pressed={!tag} onClick={() => setTag("")}>{t("m_e88a36f55b")}</Button>
         {[...new Set([...tags, ...(tag ? [tag] : [])])].map((value) => <Button key={value} size="sm" className="max-w-full whitespace-normal break-all" variant={tag === value ? "primary" : "secondary"} aria-pressed={tag === value} onClick={() => setTag(value)}>{value}</Button>)}
       </div>}
-      <p className="text-xs leading-5 text-fg-subtle">화면 밖의 타일과 숨겨진 브라우저 탭은 자동으로 일시정지합니다. 확대 중인 기기의 타일도 잠시 멈춥니다.</p>
+      <p className="text-xs leading-5 text-fg-subtle">{t("m_fb5aae7628")}</p>
     </Card>
-    {isPending ? <Loading label="기기 목록을 불러오는 중…" /> : error ? <div className="space-y-3">
-      <ErrorBox error="기기 목록을 불러오지 못했습니다. 잠시 후 다시 시도하세요." />
-      <Button onClick={() => void refetch()}>다시 시도</Button>
+    {isPending ? <Loading label={t("m_8e3ec999b8")} /> : error ? <div className="space-y-3">
+      <ErrorBox error={t("m_382d89e727")} />
+      <Button onClick={() => void refetch()}>{t("m_0c767cecf6")}</Button>
     </div> : <>
-      {!devices.length ? <Empty>연결된 기기가 없습니다. farm-agent가 실행 중인지 확인하세요.</Empty>
-        : !connected.length ? <Empty>연결된 기기가 없습니다. 오프라인 기기는 연결되면 여기에 표시됩니다.</Empty>
-        : !filtered.length ? <Empty>조건에 맞는 기기가 없습니다.</Empty> : null}
-      <section aria-label="기기 라이브 그리드" className="grid items-start gap-4"
+      {!devices.length ? <Empty>{t("m_a8e9093964")}</Empty>
+        : !connected.length ? <Empty>{t("m_478a98e254")}</Empty>
+        : !filtered.length ? <Empty>{t("m_4833bb9e9c")}</Empty> : null}
+      <section aria-label={t("m_8a9f908488")} className="grid items-start gap-4"
         style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(${tileSize}px, 100%), 1fr))` }}>
         {filtered.map((device) => <LiveTile key={device.serial} device={device} paused={paused || !tabVisible || opened?.serial === device.serial}
-          pauseReason={opened?.serial === device.serial ? "확대 화면에서 재생 중" : !tabVisible ? "브라우저 탭이 숨겨져 일시정지됨" : "일시정지됨"}
+          pauseReason={opened?.serial === device.serial ? t("m_8257fa0b4f") : !tabVisible ? t("m_a9bf9ff64e") : t("m_2c992a873f")}
           onOpen={() => setSelected(device.serial)} />)}
       </section>
       {offline.length > 0 && <details className="mt-6 rounded-lg border border-border bg-surface-2 p-3 text-xs text-fg-subtle">
-        <summary className="cursor-pointer">오프라인 {offline.length}대 · 화면 연결 안 함</summary>
+        <summary className="cursor-pointer">{t("m_7e422cfc63")} {offline.length}{t("m_958674fa48")}</summary>
         <ul className="mt-3 space-y-2">{offline.map((device) => <li key={device.serial} className="flex flex-wrap gap-x-3 gap-y-1"><span className="break-words">{device.model}</span><span className="break-all font-mono">{device.serial}</span></li>)}</ul>
       </details>}
     </>}
-    {opened && <Drawer title={`${opened.model} 라이브`} resizable storageKey={LIVE_DRAWER_STORAGE_KEY} onClose={() => setSelected(null)}><LiveView serial={opened.serial} /></Drawer>}
+    {opened && <Drawer title={t("m_bdd0003871", [opened.model])} resizable storageKey={LIVE_DRAWER_STORAGE_KEY} onClose={() => setSelected(null)}><LiveView serial={opened.serial} /></Drawer>}
   </>;
 }

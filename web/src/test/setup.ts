@@ -3,6 +3,7 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 import { resetSettingsCache } from "../lib/settings";
+import { LANGUAGE_KEY, setLanguage } from "../lib/i18n";
 
 class FakeEventSource {
   static readonly CLOSED = 2;
@@ -14,11 +15,15 @@ class FakeEventSource {
   close() {}
 }
 
+window.localStorage.setItem(LANGUAGE_KEY, "ko");
+setLanguage("ko");
 vi.stubGlobal("EventSource", FakeEventSource);
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  window.localStorage.setItem(LANGUAGE_KEY, "ko");
+  setLanguage("ko");
   resetSettingsCache();
   vi.unstubAllGlobals();
   vi.stubGlobal("EventSource", FakeEventSource);

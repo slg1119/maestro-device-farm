@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -23,13 +24,13 @@ export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
   return (
     <details className="min-w-0 border-t border-border pt-3" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="min-h-9 cursor-pointer rounded-lg py-2 text-sm max-md:min-h-11 font-medium text-fg-muted focus-visible:outline-2 focus-visible:outline-accent">
-        파일과 최근 커밋
+        {t("m_95e4c568d1")}
       </summary>
       {open && <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-2">
         <section className="min-w-0">
-          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">파일</h3>
+          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">{t("m_68b8eecb19")}</h3>
           {tree.isPending ? <Loading /> : tree.isError ? <ErrorBox error={tree.error} /> : tree.data.files.length === 0 ? (
-            <Empty>파일이 없습니다.</Empty>
+            <Empty>{t("m_e219cd73b4")}</Empty>
           ) : (
             <ul className="max-h-72 space-y-2 overflow-y-auto text-xs font-mono">
               {tree.data.files.map((file) => (
@@ -42,9 +43,9 @@ export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
           )}
         </section>
         <section className="min-w-0">
-          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">최근 커밋</h3>
+          <h3 className="mb-2 text-xs font-semibold text-fg-subtle">{t("m_1f0b2249f0")}</h3>
           {history.isPending ? <Loading /> : history.isError ? <ErrorBox error={history.error} /> : history.data.commits.length === 0 ? (
-            <Empty>최근 커밋이 없습니다.</Empty>
+            <Empty>{t("m_6a8c5a0b57")}</Empty>
           ) : (
             <ul className="space-y-3 text-sm">
               {history.data.commits.map((commit) => (

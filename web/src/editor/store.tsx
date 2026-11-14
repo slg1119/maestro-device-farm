@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import { apiFetch, apiJson, query } from "../api/client";
@@ -35,12 +36,12 @@ interface Runtime {
 }
 const EditorContext = createContext<EditorApi | null>(null);
 const RuntimeContext = createContext<Runtime | null>(null);
-export function useEditor(): EditorApi { const value = useContext(EditorContext); if (!value) throw new Error("EditorProvider가 필요합니다"); return value; }
+export function useEditor(): EditorApi { const value = useContext(EditorContext); if (!value) throw new Error(t("m_4da921ea2d")); return value; }
 export function useEditorRuntime(): Runtime { return useContext(RuntimeContext)!; }
 export const encodedPath = (path: string) => path.split("/").map(encodeURIComponent).join("/");
 export function validPath(path: string): string {
   const value = path.trim();
-  if (!value || value.startsWith("/") || /[\\\x00-\x1f]/.test(value) || value.split("/").some(p => !p || p === "." || p === ".." || p === ".git")) throw new Error("워크스페이스 안의 올바른 파일 경로를 입력하세요.");
+  if (!value || value.startsWith("/") || /[\\\x00-\x1f]/.test(value) || value.split("/").some(p => !p || p === "." || p === ".." || p === ".git")) throw new Error(t("m_23a901e0eb"));
   return value;
 }
 const draftKey = (id: string, sha: string) => `farm.drafts.${id}.${sha}`;
@@ -94,7 +95,7 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
   const closeFile = (path: string) => { setOpenPaths(paths => { const remaining = paths.filter(p => p !== path); setActivePath(active => active === path ? remaining.at(-1) ?? null : active); return remaining; }); };
   const readFile = async (path: string): Promise<string> => {
     const d = draftRef.current[path];
-    if (d?.status === "deleted") throw new Error("삭제된 파일입니다.");
+    if (d?.status === "deleted") throw new Error(t("m_066d76cfb1"));
     if (d?.content !== undefined) return d.content;
     const source = d?.movedFrom ?? path;
     return client.fetchQuery({ queryKey: keys.workspaceFile(workspace.id, baseSha, source), staleTime: Infinity,
@@ -110,7 +111,7 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
     update({ ...draftRef.current, [path]: { ...prior, status: originalRef.current.has(path) ? "modified" : "added", content, encoding: "utf-8" } });
   };
   const createFile = (path: string, content = "") => {
-    validPath(path); if (files.some(f => f.path === path && draftRef.current[path]?.status !== "deleted")) throw new Error("같은 경로의 파일이 있습니다.");
+    validPath(path); if (files.some(f => f.path === path && draftRef.current[path]?.status !== "deleted")) throw new Error(t("m_4bf9c306d8"));
     setContent(path, content); openFile(path);
   };
   const importDraft = (path: string, text: string) => {
@@ -130,7 +131,7 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
   };
   const renameFile = (from: string, to: string) => {
     validPath(to); if (from === to) return;
-    if (files.some(f => f.path === to && draftRef.current[to]?.status !== "deleted")) throw new Error("같은 경로의 파일이 있습니다.");
+    if (files.some(f => f.path === to && draftRef.current[to]?.status !== "deleted")) throw new Error(t("m_4bf9c306d8"));
     const source = draftRef.current[from]; const next = { ...draftRef.current };
     next[to] = { ...source, status: originalRef.current.has(to) ? "modified" : "added", movedFrom: source?.movedFrom ?? (originalRef.current.has(from) ? from : undefined) };
     if (next[to]?.movedFrom === to) {
@@ -155,9 +156,9 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
     update(next); setIssues(all => ({ ...all, [path]: [] }));
   };
   const uploadMedia = async (path: string, file: File) => {
-    validPath(path); if (file.size > 10 * 1024 * 1024) throw new Error("미디어는 10 MB 이하여야 합니다.");
-    if (!/\.(png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/i.test(path)) throw new Error("지원하는 이미지, 동영상, 오디오 파일을 선택하세요.");
-    const content = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error("파일을 읽지 못했습니다.")); reader.onload = () => resolve(String(reader.result).split(",")[1] ?? ""); reader.readAsDataURL(file); });
+    validPath(path); if (file.size > 10 * 1024 * 1024) throw new Error(t("m_c9657a237e"));
+    if (!/\.(png|jpe?g|gif|webp|mp4|mov|mp3|wav)$/i.test(path)) throw new Error(t("m_8d580aac8e"));
+    const content = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error(t("m_6f386ce18f"))); reader.onload = () => resolve(String(reader.result).split(",")[1] ?? ""); reader.readAsDataURL(file); });
     applyChanges([{ op: "put", path, content, encoding: "base64" }]); openFile(path);
   };
   const validate = async (entries: Record<string, DraftEntry>) => {
@@ -179,7 +180,7 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
     }, 600);
     return () => clearTimeout(timer);
   }, [drafts]);
-  const persist = () => { try { if (Object.keys(draftRef.current).length) localStorage.setItem(activeStorageKey.current, JSON.stringify(draftRef.current)); else localStorage.removeItem(activeStorageKey.current); } catch { setError(new Error("임시 변경을 브라우저에 저장하지 못했습니다.")); } };
+  const persist = () => { try { if (Object.keys(draftRef.current).length) localStorage.setItem(activeStorageKey.current, JSON.stringify(draftRef.current)); else localStorage.removeItem(activeStorageKey.current); } catch { setError(new Error(t("m_2e17247094"))); } };
   const persistRef = useRef(persist); persistRef.current = persist;
   useEffect(() => {
     const timer = setTimeout(() => persistRef.current(), 250);
@@ -210,9 +211,9 @@ export function EditorProvider({ workspace, baseSha: initialBase, children }: { 
   const rememberReservation = (value: Reservation | null) => { reservationRef.current = value; setReservation(value); try { if (value) sessionStorage.setItem(sessionKey, JSON.stringify(value)); else sessionStorage.removeItem(sessionKey); } catch { /* Session storage may be blocked. */ } };
   const release = async () => { const current = reservationRef.current; if (!current) return; await apiJson(`/reservations/${encodeURIComponent(current.id)}`, { method: "DELETE" }); rememberReservation(null); void client.invalidateQueries({ queryKey: keys.devices }); };
   const reserve = async (serial: string) => {
-    if (!canWrite) throw new Error("쓰기 작업에는 API 토큰이 필요합니다.");
+    if (!canWrite) throw new Error(t("m_dc53ce1daa"));
     if (reserving.current) return; reserving.current = true;
-    try { await release(); const value = await apiJson<Reservation>(`/devices/${encodeURIComponent(serial)}/reservations`, { method: "POST", json: { holder_name: getSettings().authorName || "에디터" } }); if (!mounted.current) { await apiFetch(`/reservations/${encodeURIComponent(value.id)}`, { method: "DELETE", keepalive: true }); return; } rememberReservation(value); void client.invalidateQueries({ queryKey: keys.devices }); }
+    try { await release(); const value = await apiJson<Reservation>(`/devices/${encodeURIComponent(serial)}/reservations`, { method: "POST", json: { holder_name: getSettings().authorName || t("m_4e9bc12abe") } }); if (!mounted.current) { await apiFetch(`/reservations/${encodeURIComponent(value.id)}`, { method: "DELETE", keepalive: true }); return; } rememberReservation(value); void client.invalidateQueries({ queryKey: keys.devices }); }
     finally { reserving.current = false; }
   };
   const rememberRef = useRef(rememberReservation); rememberRef.current = rememberReservation;

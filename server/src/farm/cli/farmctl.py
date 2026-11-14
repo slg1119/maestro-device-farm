@@ -130,7 +130,7 @@ class SseParser:
         if line.startswith(":"):
             return None
         field, _, value = line.partition(":")
-        value = value[1:] if value.startswith(" ") else value
+        value = value.removeprefix(" ")
         if field == "id":
             self.event_id = value
         elif field == "event":

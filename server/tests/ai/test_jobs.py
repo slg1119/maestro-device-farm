@@ -13,14 +13,14 @@ from tests.gitfixtures import FLOW
 
 
 def answer(content=FLOW, path="login.yaml"):
-    data = {"files": [{"path": path, "content": content}], "summary": "로그인 flow", "assumptions": []}
+    data = {"files": [{"path": path, "content": content}], "summary": "Sign-in flow", "assumptions": []}
     return AiResponse(data=data, input_tokens=12, output_tokens=7, model="fake-model", raw=json.dumps(data))
 
 
 def generate(db, settings, ws, **extra):
     return create_job(db, settings, Writer("tester"), {
         "kind": "generate", "workspace": ws.name, "base_sha": ws.head_sha,
-        "prompt": "로그인 테스트 작성", "target_path": "login.yaml", **extra,
+        "prompt": "Write a sign-in test", "target_path": "login.yaml", **extra,
     })
 
 
@@ -191,7 +191,7 @@ def test_fix_rejects_uploaded_run(workspace, db, failed_task):
 
 def test_raw_response_redacts_json_escaped_credentials(workspace, db):
     settings, ws, _ = workspace
-    secret = "private-키\nvalue"
+    secret = "private-🔑\nvalue"
     settings = settings.model_copy(update={"openai_api_key": SecretStr(secret)})
     response = answer()
     data = {**response.data, "summary": secret}

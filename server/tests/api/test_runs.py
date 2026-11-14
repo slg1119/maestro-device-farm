@@ -65,13 +65,13 @@ def test_submit_requires_token_when_enabled(secured_client, device):
 
 
 def test_submit_without_token_records_the_named_user(client, db, device):
-    named = _post(client, {"X-Farm-User": "%ED%99%8D%EA%B8%B8%EB%8F%99%20Kim"}, {"mode": "split"})
+    named = _post(client, {"X-Farm-User": "Zo%C3%AB%20Kim"}, {"mode": "split"})
     anonymous = _post(client, {}, {"mode": "split"})
     assert named.status_code == anonymous.status_code == 201
     with db.session() as s:
-        assert s.get(Run, named.json()["id"]).created_by == "홍길동 Kim"
+        assert s.get(Run, named.json()["id"]).created_by == "Zoë Kim"
         assert s.get(Run, anonymous.json()["id"]).created_by == "anonymous"
-        assert s.get(AppBuild, s.get(Run, named.json()["id"]).app_build_id).uploaded_by == "홍길동 Kim"
+        assert s.get(AppBuild, s.get(Run, named.json()["id"]).app_build_id).uploaded_by == "Zoë Kim"
 
 
 @pytest.mark.parametrize(("options", "kwargs", "expected"), [

@@ -1,3 +1,4 @@
+import { localizeServerText, t } from "../../lib/i18n";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { createStreamTicket } from "../../api/queries";
 import { parseStreamMessage, StreamDecoder, type StreamConfig, type StreamStatus } from "./decoder";
@@ -43,7 +44,7 @@ export function useLiveStream({ serial, control, canWrite, canvas }: Options) {
         connection.current = { ws: socket, allowed: false }; socket.binaryType = "arraybuffer";
         const failDecode = () => {
           if (!active || ws !== socket) return;
-          setMessage("화면을 해독하지 못했습니다. 다시 연결합니다.");
+          setMessage(t("m_dbe4118006"));
           socket.close(); reconnect();
         };
         decoder = new StreamDecoder(canvas.current!, failDecode);
@@ -61,14 +62,14 @@ export function useLiveStream({ serial, control, canWrite, canvas }: Options) {
             else if (parsed.type === "frame") decoder?.decode(parsed);
             else if (parsed.type === "status") { connection.current.allowed = wanted && parsed.control; setStatus(parsed); }
             else {
-              terminal = GONE.has(parsed.reason); setMessage(parsed.message || "실시간 화면 연결이 종료됐습니다.");
+              terminal = GONE.has(parsed.reason); setMessage(parsed.message ? localizeServerText(parsed.message) : t("m_822ba63463"));
               reset(); setPhase(terminal ? "ended" : "reconnecting"); socket.close(); if (!terminal) reconnect();
             }
           } catch { failDecode(); }
         };
         socket.onclose = () => { if (active && ws === socket && !terminal) reconnect(); };
         socket.onerror = () => { if (active && ws === socket) { socket.close(); reconnect(); } };
-      } catch { if (active) { setMessage("실시간 화면에 연결하지 못했습니다. 다시 연결합니다."); reconnect(); } }
+      } catch { if (active) { setMessage(t("m_eafd2c9fb7")); reconnect(); } }
     };
     setPhase("connecting"); setMessage(""); reset(); void connect();
     return () => {

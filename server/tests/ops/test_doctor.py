@@ -183,13 +183,13 @@ def test_ok_lines_keep_state_but_only_warn_and_fail_show_remediation(db, setting
     ready(db, settings)
     checks = run_doctor(db, settings)
     by_name = {c.name: str(c) for c in checks}
-    assert by_name["device fake-device"] == "OK device fake-device: 상태 idle"
-    assert "heartbeat" in by_name["agent test-agent"] and "확인하세요" not in by_name["agent test-agent"]
-    assert "GiB" in by_name["disk"] and "확인하세요" not in by_name["disk"]
+    assert by_name["device fake-device"] == "OK device fake-device: state idle"
+    assert "heartbeat" in by_name["agent test-agent"] and "check" not in by_name["agent test-agent"]
+    assert "GiB" in by_name["disk"] and "check" not in by_name["disk"]
     with db.session() as s:
         s.get(Device, "fake-device").state = "offline"
         s.get(AgentStatus, "test-agent").last_heartbeat_at = shift(now(), -120)
     usage = doctor.shutil.disk_usage(settings.data_dir)
     monkeypatch.setattr(doctor.shutil, "disk_usage", lambda path: usage._replace(free=10))
     by_name = {c.name: str(c) for c in run_doctor(db, settings)}
-    assert all("확인하세요" in by_name[name] for name in ("device fake-device", "agent test-agent", "disk"))
+    assert all("check" in by_name[name] for name in ("device fake-device", "agent test-agent", "disk"))

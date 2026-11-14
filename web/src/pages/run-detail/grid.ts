@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n";
 import type { CaseResult, RunDetail, TaskStatus } from "../../api/types";
 
 export interface MatrixCell {
@@ -18,7 +19,7 @@ export function buildMatrix(run: RunDetail) {
     results.set(result.task_id, taskResults);
   }
   return {
-    flows: flows.length ? flows : ["(결과 대기)"],
+    flows: flows.length ? flows : [t("m_51ff9c9a94")],
     columns: tasks.map((task) => ({ taskId: task.id, serial: task.device_serial })),
     cell(flow: string, taskId: string): MatrixCell {
       const result = results.get(taskId)?.get(flow);

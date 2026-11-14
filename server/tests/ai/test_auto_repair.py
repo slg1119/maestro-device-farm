@@ -59,9 +59,9 @@ def agent(db, settings, *, outcomes=(), inspect=None, on_task=None):
                     else:
                         (folder / "screen.png").write_bytes(b"screen-image")
                         (folder / "hierarchy.json").write_text(json.dumps({"attributes": {}, "children": [
-                            {"attributes": {"text": "로그인", "bounds": "[0,0][10,10]", "noise": "DROP"},
-                             "children": [{"attributes": {"resource-id": "login", "hintText": "이메일",
-                                                           "accessibilityText": "버튼", "bounds": "bounds"}}]},
+                            {"attributes": {"text": "Sign in", "bounds": "[0,0][10,10]", "noise": "DROP"},
+                             "children": [{"attributes": {"resource-id": "login", "hintText": "Email",
+                                                           "accessibilityText": "Button", "bounds": "bounds"}}]},
                             *[{"attributes": {"text": f"node-{n}", "bounds": "bounds"}} for n in range(405)],
                         ]}))
                         with db.session() as s:
@@ -79,7 +79,7 @@ def agent(db, settings, *, outcomes=(), inspect=None, on_task=None):
                         (flow_dir / "screenshots/failed.png").write_bytes(b"failed-step-image")
                         (flow_dir / "screen-hierarchy").mkdir()
                         (flow_dir / "screen-hierarchy/failed.json").write_text(json.dumps({
-                            "attributes": {"resource-id": "failure:continue", "text": "실패 화면 계속",
+                            "attributes": {"resource-id": "failure:continue", "text": "Continue on failure screen",
                                            "noise": "DO_NOT_INCLUDE"},
                             "children": [{"attributes": {"text": f"failure-node-{i}"}} for i in range(405)],
                         }))
@@ -140,9 +140,9 @@ def test_screen_attaches_image_and_bounded_hierarchy(workspace, db, reserved, au
     request = fake.requests[0]
     assert any(isinstance(p, ImagePart) and p.data == b"screen-image" for p in request.parts)
     text = request.parts[0].text
-    assert 'text="로그인"' in text and 'bounds="[0,0][10,10]"' in text
+    assert 'text="Sign in"' in text and 'bounds="[0,0][10,10]"' in text
     assert '\n  - resource-id="login"' in text
-    assert 'hintText="이메일"' in text and 'accessibilityText="버튼"' in text
+    assert 'hintText="Email"' in text and 'accessibilityText="Button"' in text
     assert "DROP" not in text and "node-397" in text and "node-398" not in text
     with db.session() as s:
         assert len(list(s.scalars(select(DeviceCommand)))) == 1
@@ -169,7 +169,7 @@ def test_auto_repair_passes_second_run_with_snapshot_and_failed_step(workspace, 
     assert "the flow failed on the device" in text
     assert "Expected repaired selector" in text and "device failure log" in text
     assert "## Screen hierarchy at failure (max 400 nodes)" in text
-    assert 'resource-id="failure:continue"' in text and 'text="실패 화면 계속"' in text
+    assert 'resource-id="failure:continue"' in text and 'text="Continue on failure screen"' in text
     assert "DO_NOT_INCLUDE" not in text and "failure-node-398" in text and "failure-node-399" not in text
     assert any(isinstance(p, ImagePart) and p.data == b"failed-step-image" for p in fake.requests[1].parts)
     assert not any(isinstance(p, ImagePart) and p.data == b"wrong-latest-image" for p in fake.requests[1].parts)
@@ -200,7 +200,7 @@ def test_exhausted_run_repairs_keep_last_valid_answer(workspace, db, reserved, s
         saved = execute(db, settings, fake, job)
     assert saved.status == "succeeded" and len(seen) == 2
     assert saved.result["passed_run_id"] is None and saved.error_message is None
-    assert "자동 보정 1회 후에도 실행이 통과하지 않았습니다" in saved.result["summary"]
+    assert "Auto-repair limit reached (1); the run did not pass." in saved.result["summary"]
     assert saved.result["files"] == answer(FLOW + "- back\n").data["files"]
 
 
@@ -213,7 +213,7 @@ def test_validation_and_device_failures_share_retry_budget(workspace, db, reserv
     with agent(db, settings, outcomes=["failed"]) as seen:
         saved = execute(db, settings, fake, job)
     assert saved.status == "succeeded" and len(seen) == 1 and len(fake.requests) == 2
-    assert "자동 보정 1회" in saved.result["summary"]
+    assert "Auto-repair limit reached (1)" in saved.result["summary"]
 
 
 def test_invalid_final_repair_preserves_last_valid_answer(workspace, db, reserved):
@@ -226,7 +226,7 @@ def test_invalid_final_repair_preserves_last_valid_answer(workspace, db, reserve
         saved = execute(db, settings, fake, job)
     assert saved.status == "succeeded" and len(seen) == 1
     assert saved.result["files"] == answer().data["files"]
-    assert "자동 보정 1회" in saved.result["summary"]
+    assert "Auto-repair limit reached (1)" in saved.result["summary"]
 
 
 def test_non_flow_target_runs_workspace_and_builds_error_context(workspace, db, reserved):

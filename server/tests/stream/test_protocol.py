@@ -39,7 +39,7 @@ def test_key_exact_down_and_up(key, code):
 
 
 def test_utf8_text_preserves_300_characters_by_chunking_at_scrcpy_300_byte_limit():
-    text = '가' * 300
+    text = '€' * 300
     chunks = encode_control({'type': 'text', 'text': text}, (720, 1280))
     assert len(chunks) == 3
     assert b''.join(chunk[5:] for chunk in chunks).decode() == text

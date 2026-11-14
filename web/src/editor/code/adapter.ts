@@ -1,8 +1,9 @@
 import type { Issue } from "../../api/types";
+import { localizeServerText } from "../../lib/i18n";
 import type { EditorAdapter } from "../store";
 import type { editor } from "monaco-editor";
 export function issueMarkers(issues: Issue[]): editor.IMarkerData[] {
-  return issues.map(issue => ({ severity: 8, message: issue.message, startLineNumber: Math.max(1, issue.line ?? 1), endLineNumber: Math.max(1, issue.line ?? 1), startColumn: Math.max(1, issue.column ?? 1), endColumn: Math.max(2, (issue.column ?? 1) + 1), source: issue.message.startsWith("YAML") ? "YAML" : "check-syntax" }));
+  return issues.map(issue => ({ severity: 8, message: localizeServerText(issue.message), startLineNumber: Math.max(1, issue.line ?? 1), endLineNumber: Math.max(1, issue.line ?? 1), startColumn: Math.max(1, issue.column ?? 1), endColumn: Math.max(2, (issue.column ?? 1) + 1), source: issue.message.startsWith("YAML") ? "YAML" : "check-syntax" }));
 }
 export function commandLocation(lines: string[], command: string, preferredLine: number): { line: number; column: number } | null {
   const matchAt = (line: number) => {

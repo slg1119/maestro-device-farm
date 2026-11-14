@@ -1,3 +1,4 @@
+import { t } from "../../../lib/i18n";
 import { useEffect, useState } from "react";
 import { Badge, cx, Empty, ErrorBox, Loading } from "../../../components/ui";
 import { useTheme } from "../../../lib/theme";
@@ -10,7 +11,7 @@ export function FileChoice({ file, selected, onClick, counts = false }: { file: 
     <Badge tone={statusTone[file.status]}>{statusLetter[file.status]}</Badge>
     <span className="min-w-0 flex-1 break-all font-mono">{file.fromPath ? `${file.fromPath} → ` : ""}{file.path}</span>
     {count && <span className="shrink-0 whitespace-nowrap font-mono"><span className="text-passed-fg">+{count.added}</span> <span className="text-failed-fg">−{count.removed}</span></span>}
-    {file.binary && <span className="text-fg-subtle">미디어</span>}
+    {file.binary && <span className="text-fg-subtle">{t("m_69ad2e357f")}</span>}
   </button>;
 }
 
@@ -28,9 +29,9 @@ export function DiffView({ file, fromLabel, toLabel }: { file: FileDiff; fromLab
       }).catch(e => { if (alive) setError(e); });
     return () => { alive = false; };
   }, []);
-  return <section aria-label={`${file.path} 변경 내용`} className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+  return <section aria-label={t("m_229508b3ad", [file.path])} className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
     <div className="flex flex-wrap justify-between gap-1 border-b border-border bg-surface-2 px-3 py-2 font-mono text-[11px] text-fg-muted"><span className="break-all">{fromLabel}</span><span aria-hidden="true">→</span><span className="break-all">{toLabel}</span></div>
-    {file.binary ? <Empty>미디어 파일은 텍스트 비교를 지원하지 않습니다.</Empty> : error ? <ErrorBox error={error} /> : !DiffEditor ? <Loading label="비교 편집기를 불러오는 중…" /> : <div className="h-80 min-w-0 md:h-[420px]">
+    {file.binary ? <Empty>{t("m_92dd2693fa")}</Empty> : error ? <ErrorBox error={error} /> : !DiffEditor ? <Loading label={t("m_4d68997695")} /> : <div className="h-80 min-w-0 md:h-[420px]">
       <DiffEditor key={`${file.path}:${fromLabel}:${toLabel}`} height="100%" original={file.original} modified={file.modified} keepCurrentOriginalModel keepCurrentModifiedModel
         onMount={editor => {
           // The wrapper disposes models before the widget; Monaco 0.57 requires the reverse order.
@@ -38,7 +39,7 @@ export function DiffView({ file, fromLabel, toLabel }: { file: FileDiff; fromLab
           editor.onDidDispose(() => queueMicrotask(() => { models?.original.dispose(); models?.modified.dispose(); }));
         }}
         language={/\.ya?ml$/i.test(file.path) ? "yaml" : /\.json$/i.test(file.path) ? "json" : /\.[cm]?js$/i.test(file.path) ? "javascript" : "plaintext"} theme={`farm-${resolved}`}
-        options={{ readOnly: true, originalEditable: false, automaticLayout: true, renderSideBySide: false, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 12, scrollBeyondLastLine: false, wordWrap: "on", diffWordWrap: "on", ariaLabel: `${file.path} 읽기 전용 변경 비교` }} />
+        options={{ readOnly: true, originalEditable: false, automaticLayout: true, renderSideBySide: false, minimap: { enabled: false }, fontFamily: "JetBrains Mono", fontSize: 12, scrollBeyondLastLine: false, wordWrap: "on", diffWordWrap: "on", ariaLabel: t("m_f53a781558", [file.path]) }} />
     </div>}
   </section>;
 }

@@ -10,7 +10,7 @@ def test_workspace_context_follows_relative_subflows_and_trims_unrelated(tmp_pat
     (root / "flows" / "sub").mkdir(parents=True)
     (root / "config.yaml").write_text("flows:\n  - flows/*.yaml\n")
     target = "appId: example\n---\n- runFlow: sub/login.yaml\n- runFlow:\n    file: sub/login.yaml\n"
-    helper = "appId: example\n---\n- runFlow: ../shared.yaml\n- inputText: 한국어\n"
+    helper = "appId: example\n---\n- runFlow: ../shared.yaml\n- inputText: résumé\n"
     shared = "appId: example\n---\n- back\n- runFlow: sub/login.yaml\n"
     (root / "flows/main.yaml").write_text(target)
     (root / "flows/sub/login.yaml").write_text(helper)

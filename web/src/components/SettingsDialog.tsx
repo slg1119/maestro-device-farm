@@ -1,9 +1,10 @@
+import { t } from "../lib/i18n";
 import { type FormEvent, useState } from "react";
 
 import { saveSettings, useSettings } from "../lib/settings";
 import { Button, Field, Input, Modal } from "./ui";
 
-/** Token and commit author, stored in this browser only (spec §13.5 공통). */
+/** Token and commit author, stored in this browser only (shared settings). */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const settings = useSettings();
   const [draft, setDraft] = useState(settings);
@@ -15,27 +16,27 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="설정" onClose={onClose} size="md">
+    <Modal title={t("m_c14a567ea9")} onClose={onClose} size="md">
       <form onSubmit={submit} className="space-y-4">
-        <Field label="API 토큰 (선택)" hint="서버가 FARM_REQUIRE_TOKEN=true로 실행될 때만 필요합니다. `farm token create <이름>`으로 발급합니다.">
+        <Field label={t("m_1a5563f0e1")} hint={t("m_2657dcb72b")}>
           <Input
             type="password"
             autoComplete="off"
             value={draft.token}
             onChange={(e) => setDraft({ ...draft, token: e.target.value })}
-            placeholder="farm_..."
+            placeholder={t("e_82ed8cf5a3")}
           />
         </Field>
-        <Field label="작성자 이름" hint="실행과 업로드의 생성자, 워크스페이스 커밋의 Co-authored-by로 기록됩니다.">
+        <Field label={t("m_50330401d1")} hint={t("m_e87fe22aa8")}>
           <Input value={draft.authorName} onChange={(e) => setDraft({ ...draft, authorName: e.target.value })} />
         </Field>
-        <Field label="작성자 이메일">
+        <Field label={t("m_3c9efd9f29")}>
           <Input type="email" value={draft.authorEmail} onChange={(e) => setDraft({ ...draft, authorEmail: e.target.value })} />
         </Field>
         <div className="flex justify-end gap-2">
-          <Button onClick={onClose}>취소</Button>
+          <Button onClick={onClose}>{t("m_19b2d19bc1")}</Button>
           <Button type="submit" variant="primary">
-            저장
+            {t("m_1f1712acff")}
           </Button>
         </div>
       </form>

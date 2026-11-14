@@ -122,7 +122,7 @@ class DeviceWorker:
         try:
             await self.inspector.inspect(self.serial, out_dir)
             ok, error = True, None
-        except Exception as exc:  # inspection failures are reported on the command
+        except Exception as exc:  # noqa: BLE001 - inspection failures are reported on the command
             log.warning("inspect %s on %s failed: %s", command_id, self.serial, exc)
             ok, error = False, str(exc)
         await asyncio.to_thread(self._finish_command, command_id, ok, str(out_dir) if ok else None, error)

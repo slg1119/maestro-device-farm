@@ -37,7 +37,7 @@ def payload(row):
 def get_recording(session, recording_id):
     row = session.get(Recording, recording_id)
     if row is None:
-        raise ApiError(404, "recording_not_found", "녹화를 찾을 수 없습니다")
+        raise ApiError(404, "recording_not_found", "Recording not found.")
     return row
 
 
@@ -47,12 +47,12 @@ def start(serial: str, body: StartRecording, request: Request, writer: Annotated
         with get_db(request).session() as session:
             device = session.get(Device, serial)
             if device is None:
-                raise ApiError(404, "device_not_found", "기기를 찾을 수 없습니다")
+                raise ApiError(404, "device_not_found", "Device not found.")
             if effective_state(device, last_heartbeat(session)) in {"offline", "unauthorized"}:
-                raise ApiError(409, "device_unavailable", "연결된 기기에서 녹화를 시작해 주세요")
+                raise ApiError(409, "device_unavailable", "Start recording on a connected device.")
             if session.scalar(select(Recording.id).where(
                 Recording.device_serial == serial, Recording.status.in_(["active", "stopping"]))):
-                raise ApiError(409, "recording_active", "이미 진행 중인 녹화가 있습니다")
+                raise ApiError(409, "recording_active", "A recording is already in progress.")
             try:
                 workspace = find_workspace(session, body.workspace) if body.workspace else None
             except WorkspaceError as exc:
@@ -67,7 +67,7 @@ def start(serial: str, body: StartRecording, request: Request, writer: Annotated
             recording_updated(session, row)
             return payload(row)
     except IntegrityError as exc:
-        raise ApiError(409, "recording_active", "이미 진행 중인 녹화가 있습니다") from exc
+        raise ApiError(409, "recording_active", "A recording is already in progress.") from exc
 
 
 @router.get("/recordings/{recording_id}")
@@ -93,7 +93,7 @@ def stop(recording_id: str, body: StopRecording, request: Request, writer: Annot
     with get_db(request).session() as session:
         row = get_recording(session, recording_id)
         if row.status == "cancelled":
-            raise ApiError(409, "recording_cancelled", "취소된 녹화입니다")
+            raise ApiError(409, "recording_cancelled", "This recording was cancelled.")
         finalize_recording(session, row)
         if runner and not row.ai_job_id:
             from farm.ai.jobs import create_record_job
@@ -112,7 +112,7 @@ def cancel(recording_id: str, request: Request, writer: Annotated[Writer, Depend
     with get_db(request).session() as session:
         row = get_recording(session, recording_id)
         if row.status == "done":
-            raise ApiError(409, "recording_finished", "완료된 녹화입니다")
+            raise ApiError(409, "recording_finished", "This recording has finished.")
         if row.status != "cancelled":
             row.status, row.finished_at = "cancelled", now()
             recording_updated(session, row)

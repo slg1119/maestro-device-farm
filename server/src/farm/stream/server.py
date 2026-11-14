@@ -64,7 +64,7 @@ class StreamServer:
             await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         except ValueError:
             await websocket.send(json.dumps({'type': 'ended', 'reason': 'device_unavailable',
-                                             'message': '기기에 연결할 수 없습니다.'}))
+                                             'message': 'Cannot connect to device.'}))
         except ConnectionClosed:
             pass
         finally:

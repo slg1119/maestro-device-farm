@@ -23,7 +23,7 @@ from tests.fakes import FakeSyntaxChecker
 from tests.gitfixtures import FLOW
 
 CODEX = str(Path(__file__).parents[1] / "fakebin" / "codex")
-DATA = {"files": [{"path": "login.yaml", "content": FLOW}], "summary": "완료", "assumptions": []}
+DATA = {"files": [{"path": "login.yaml", "content": FLOW}], "summary": "Done", "assumptions": []}
 
 
 def entries(fakebin):
@@ -89,7 +89,7 @@ def test_exec_argv_prompt_usage_temp_cleanup_and_private_env(codex_settings, fak
     monkeypatch.setenv("FARM_RUN_PASSWORD", "also-private")
     settings = codex_settings.model_copy(update={"codex_model": model})
     client = build_ai_client(settings)
-    request = AiRequest("system rules", [TextPart("첫 문장"), *[ImagePart(b, "image/png") for b in images],
+    request = AiRequest("system rules", [TextPart("First sentence"), *[ImagePart(b, "image/png") for b in images],
                                          TextPart("second text")])
     response = client.complete(request, RESULT_SCHEMA)
     login, call = entries(fakebin)
@@ -101,14 +101,14 @@ def test_exec_argv_prompt_usage_temp_cleanup_and_private_env(codex_settings, fak
     for i in range(len(images)):
         expected += ["-i", str(root / f"image-{i}.png")]
     assert call["argv"] == [*expected, "-"]
-    assert call["stdin"] == "system rules\n\n첫 문장\n\nsecond text"
+    assert call["stdin"] == "system rules\n\nFirst sentence\n\nsecond text"
     assert call["schema"] == RESULT_SCHEMA
     assert call["images"] == {str(root / f"image-{i}.png"): b.hex() for i, b in enumerate(images)}
     assert login["farm_env"] == call["farm_env"] == {}
     assert not root.exists()
     assert response.data == DATA and json.loads(response.raw) == DATA
     assert (response.input_tokens, response.output_tokens, response.model) == (
-        123, 45, model or "codex (기본 모델)")
+        123, 45, model or "codex (default model)")
 
 
 @pytest.mark.parametrize("mode", ["fail", "garbage", "hang"])
@@ -151,7 +151,7 @@ def test_api_generate_with_fake_codex(workspace, db, codex_settings, fakebin, mo
         monkeypatch.setenv("FAKE_CODEX_LOGIN", "1")
         assert api.get("/api/v1/ai/status").json()["enabled"] is True
         submitted = api.post("/api/v1/ai/jobs", json={"kind": "generate", "workspace": ws.name,
-            "base_sha": ws.head_sha, "target_path": "login.yaml", "prompt": "로그인 테스트"})
+            "base_sha": ws.head_sha, "target_path": "login.yaml", "prompt": "Sign-in test"})
         assert submitted.status_code == 201
         assert submitted.json()["model"] == "test-model"
         app.state.ai_runner.pool.shutdown(wait=True)

@@ -1,5 +1,5 @@
-# .github/workflows/ 에 복사하세요. vars.FARM_WORKSPACE는 팜에 등록된 워크스페이스 이름입니다.
-# Android 프로젝트의 app 모듈/빌드 변형에 맞게 Gradle 작업과 APK 경로를 조정하세요.
+# Copy to .github/workflows/. Set vars.FARM_WORKSPACE to the registered workspace name.
+# Adjust the Gradle task and APK path for your Android app module and build variant.
 name: Device farm
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-      - name: APK 빌드
+      - name: Build APK
         run: ./gradlew :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
@@ -41,11 +41,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: device-farm-apk
-      - name: 팜 테스트
+      - name: Run farm tests
         run: |
           mv app-debug.apk app.apk
           farmctl --server http://localhost:8700 run --workspace "$FARM_WORKSPACE" --ref "$GITHUB_SHA" --apk app.apk --mode split --wait --junit farm-junit.xml
-      - name: JUnit 게시
+      - name: Publish JUnit
         if: always()
         uses: mikepenz/action-junit-report@v5
         with:
