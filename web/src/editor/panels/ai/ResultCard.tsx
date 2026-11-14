@@ -1,4 +1,4 @@
-import { t } from "../../../lib/i18n";
+import { localizeServerText, t } from "../../../lib/i18n";
 import { Check, FileCode2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
@@ -47,7 +47,7 @@ export function ResultCard({ job, canWrite, onDismiss }: { job: AiJob; canWrite:
   return <div className="min-w-0 space-y-4">
     <Card className="space-y-4 border-ai/25 p-3">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-ai-fg"><FileCode2 aria-hidden="true" className="size-4" />{t("m_6064e3cded")}</h3>
-      <p className="whitespace-pre-wrap break-words text-sm text-fg">{job.result!.summary}</p>
+      <p className="whitespace-pre-wrap break-words text-sm text-fg">{localizeServerText(job.result!.summary)}</p>
       {job.result!.assumptions.length > 0 && <div><h4 className="mb-1 text-xs font-semibold text-fg-muted">{t("m_21eae41263")}</h4><ul className="list-disc space-y-1 pl-4 text-xs text-fg-muted">{job.result!.assumptions.map((item, i) => <li key={i} className="break-words">{item}</li>)}</ul></div>}
       <fieldset className="min-w-0 space-y-2"><legend className="mb-2 text-xs font-semibold text-fg-muted">{t("m_7160eb797b")}</legend>
         {files.map(file => {

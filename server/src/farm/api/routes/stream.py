@@ -38,7 +38,7 @@ def create_ticket(serial: str, db: Annotated[Database, Depends(get_db)],
     expires_at = shift(created_at, 60)
     with db.session() as session:
         if session.get(Device, serial) is None:
-            raise ApiError(404, "device_not_found", "디바이스를 찾을 수 없습니다")
+            raise ApiError(404, "device_not_found", "Live-screen device not found.")
         session.add(StreamTicket(
             ticket_hash=hashlib.sha256(ticket.encode()).hexdigest(), device_serial=serial,
             actor=writer.name, author_name=(body.author_name or "").strip() if body else "",
@@ -109,7 +109,7 @@ async def stream_device(browser: WebSocket, serial: str, ticket: str | None = No
                 await asyncio.gather(*pipes, return_exceptions=True)
     except (OSError, TimeoutError, InvalidHandshake):
         await browser.send_json({"type": "ended", "reason": "agent_unavailable",
-                                 "message": "에이전트의 실시간 화면에 연결할 수 없습니다"})
+                                 "message": "Cannot connect to the agent live screen."})
         close_code = 1011
     except ConnectionClosed as exc:
         close_code = exc.rcvd.code if exc.rcvd else 1011

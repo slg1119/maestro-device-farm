@@ -151,7 +151,7 @@ def maestro_adb(fakebin, monkeypatch, tmp_path):
     return fakebin, hierarchy
 
 
-@pytest.mark.parametrize("x,selector", [(20, {"id": "app:id/login"}), (60, {"text": "설정"})])
+@pytest.mark.parametrize("x,selector", [(20, {"id": "app:id/login"}), (60, {"text": "Settings"})])
 async def test_leftover_maestro_release_retries_dump_and_records_selector(db, maestro_adb, caplog, x, selector):
     fakebin, _ = maestro_adb
     caplog.set_level(logging.INFO, logger="farm.stream.recorder")
@@ -179,7 +179,7 @@ async def test_leftover_maestro_release_retries_dump_and_records_selector(db, ma
             assert s.get(Recording, row.id).steps == [{"kind": "tap", "selector": selector, "ts": shift(ts, .1)}]
         assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 1
         assert any(r.levelno == logging.INFO and "Maestro" in r.message for r in caplog.records)
-        assert "로그인" not in caplog.text and "<hierarchy" not in caplog.text
+        assert "Sign in" not in caplog.text and "<hierarchy" not in caplog.text
     finally:
         await recorder.stop()
 
@@ -251,7 +251,7 @@ async def test_unusable_dump_falls_back_warns_once_and_releases_once_per_recordi
                 s.flush()
         assert len([call for call in calls if call[3:5] == ["shell", "am"]]) == 4
         assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 2
-        assert "<hierarchy" not in caplog.text and "로그인" not in caplog.text
+        assert "<hierarchy" not in caplog.text and "Sign in" not in caplog.text
     finally:
         await recorder.stop()
 

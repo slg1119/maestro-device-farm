@@ -34,7 +34,7 @@ async def test_unknown_device_and_view_only_control(db, settings):
             await ws.send(json.dumps({'type': 'key', 'key': 'HOME'}))
             await asyncio.sleep(.02)
             assert sessions[0].writes == []
-        async with connect(f'ws://127.0.0.1:{server.port}/devices/d1/stream?control=1&actor=%ED%85%8C%EC%8A%A4%ED%84%B0') as ws:
+        async with connect(f'ws://127.0.0.1:{server.port}/devices/d1/stream?control=1&actor=Zo%C3%AB%20Tester') as ws:
             assert json.loads(await ws.recv())['control'] is True
             await ws.send('invalid json')
             await ws.send(json.dumps({'type': 'key', 'key': 'HOME'}))
@@ -42,7 +42,7 @@ async def test_unknown_device_and_view_only_control(db, settings):
                 while True:
                     status = json.loads(await ws.recv())
                     if status.get('controller'):
-                        assert status['controller'] == '테스터'
+                        assert status['controller'] == 'Zoë Tester'
                         break
             assert len(sessions[0].writes) == 2
             await manager.device_disconnected('d1')

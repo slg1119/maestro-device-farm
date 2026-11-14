@@ -33,3 +33,29 @@ export function t(key: string, values: readonly unknown[] = []): string {
     return value === undefined || value === null ? match : String(value);
   });
 }
+
+/** Known API and agent messages keep the Korean UI's original wording. */
+const serverMessages: Record<string, string> = {
+  "A workspace is required to refine a recording with AI.": "server.recordingNeedsWorkspace",
+  "Sync the workspace first.": "server.workspaceNotSynced",
+  "Recording not found.": "server.recordingNotFound",
+  "Device not found.": "server.deviceNotFound",
+  "Live-screen device not found.": "server.liveDeviceNotFound",
+  "Start recording on a connected device.": "server.recordingDeviceUnavailable",
+  "A recording is already in progress.": "server.recordingActive",
+  "This recording was cancelled.": "server.recordingCancelled",
+  "This recording has finished.": "server.recordingFinished",
+  "Cannot connect to the agent live screen.": "server.agentStreamUnavailable",
+  "Device screen connection closed.": "server.deviceScreenClosed",
+  "Cannot connect to device.": "server.deviceConnectionFailed",
+  'Maestro supports only integer percentage coordinates (for example, "94%,97%").': "server.integerCoordinates",
+  "codex (default model)": "server.codexDefaultModel",
+};
+
+export function localizeServerText(message: string): string {
+  if (getLanguage() !== "ko") return message;
+  const key = serverMessages[message];
+  if (key) return t(key);
+  return message.replace(/Auto-repair limit reached \((\d+)\); the run did not pass\./g,
+    (_, attempts: string) => t("server.autoRepairLimit", [attempts]));
+}

@@ -50,10 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
     ws_sub.add_parser("list", help="list workspaces")
     ws_sub.add_parser("remove", help="unregister a workspace (the repo is untouched)").add_argument("name")
     sub.add_parser("api", help="run farm-api (applies migrations first)")
-    sub.add_parser("doctor", help="호스트와 팜 상태 점검")
-    retention = sub.add_parser("retention", help="보관 기간이 지난 데이터 정리")
-    retention_run = retention.add_subparsers(dest="retention_cmd", required=True).add_parser("run", help="지금 정리")
-    retention_run.add_argument("--dry-run", action="store_true", help="파일과 DB를 변경하지 않고 정리 예정 내역 표시")
+    sub.add_parser("doctor", help="Check host and farm status")
+    retention = sub.add_parser("retention", help="Remove expired data")
+    retention_run = retention.add_subparsers(dest="retention_cmd", required=True).add_parser("run", help="Run cleanup now")
+    retention_run.add_argument("--dry-run", action="store_true", help="Preview cleanup without changing files or the database")
     agent = sub.add_parser("agent", help="run farm-agent")
     agent.add_argument("--fake", type=int, default=0, metavar="N",
                        help="simulate N devices with the fake runner instead of adb/maestro")
@@ -182,7 +182,7 @@ def _cmd_doctor(_args: argparse.Namespace, settings: Settings) -> int:
     try:
         db = Database(settings.database_path)
     except OSError:
-        print("FAIL DB: 데이터 경로 생성 실패 · FARM_DATA_DIR와 디렉터리 권한을 확인하세요")
+        print("FAIL DB: cannot create data directory · check FARM_DATA_DIR and directory permissions")
         return 1
     try:
         checks = run_doctor(db, settings)
@@ -202,10 +202,10 @@ def _cmd_retention(args: argparse.Namespace, settings: Settings) -> int:
     try:
         paths = []
         report = run_retention(db, settings, dry_run=args.dry_run, removal_paths=paths if args.dry_run else None)
-        print(("보관 정리 미리보기: " if args.dry_run else "보관 정리 완료: ") +
+        print(("Retention preview: " if args.dry_run else "Retention complete: ") +
               " ".join(f"{key}={value}" for key, value in asdict(report).items()))
         for path in paths:
-            print("삭제 예정: " + " ".join(str(path).splitlines()))
+            print("Would delete: " + " ".join(str(path).splitlines()))
         return 0
     finally:
         db.dispose()

@@ -25,7 +25,7 @@ def ai_setup(settings, db, remotes):
     fake = FakeAiClient([AiResponse(data, 10, 5, "fake", json.dumps(data))])
     app = create_app(settings, db=db, syntax_checker=FakeSyntaxChecker(), ai_client=fake)
     body = {"kind": "generate", "workspace": ws.name, "base_sha": ws.head_sha,
-            "prompt": "로그인 flow", "target_path": "login.yaml"}
+            "prompt": "Sign-in flow", "target_path": "login.yaml"}
     try:
         yield app, ws, fake, body
     finally:
@@ -50,12 +50,12 @@ def test_ai_job_create_get_list_and_totals_with_and_without_lifespan(ai_setup, d
     app, ws, fake, body = ai_setup
     client = TestClient(app)
     with client if lifespan else nullcontext(client):
-        response = client.post("/api/v1/ai/jobs", json={**body, "author_name": "작성자"},
+        response = client.post("/api/v1/ai/jobs", json={**body, "author_name": "Zoë"},
                                headers={"X-Farm-User": "operator"})
         assert response.status_code == 201
         created = response.json()
         assert created["status"] == "queued"
-        assert created["created_by"] == "operator" and created["author_name"] == "작성자"
+        assert created["created_by"] == "operator" and created["author_name"] == "Zoë"
         assert created["options"] == {"target_path": "login.yaml", "include_screen": False, "auto_repair": False,
                                       "reservation_id": None, "app_build_id": None, "app": None}
         app.state.ai_runner.stop()

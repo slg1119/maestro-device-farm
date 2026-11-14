@@ -246,9 +246,9 @@ def test_retention_cli_dry_run_caps_paths_at_50_and_keeps_data(db, settings, mon
     monkeypatch.setenv("FARM_DATA_DIR", str(settings.data_dir))
     assert main(["retention", "run", "--dry-run"]) == 0
     lines = capsys.readouterr().out.splitlines()
-    assert "runs=30" in lines[0] and "미리보기" in lines[0]
+    assert "runs=30" in lines[0] and "preview" in lines[0]
     assert len(lines[1:]) == 50
-    assert all(line.startswith("삭제 예정: ") for line in lines[1:])
+    assert all(line.startswith("Would delete: ") for line in lines[1:])
     assert apk.exists() and all(settings.path("runs", f"old-{i}", "test.txt").exists() for i in range(30))
     with db.session() as s:
         assert all(not s.get(Run, f"old-{i}").artifacts_purged for i in range(30))

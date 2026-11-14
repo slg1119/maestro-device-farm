@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { localizeServerText, t } from "../../lib/i18n";
 import { type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 import { ApiError } from "../../api/client";
@@ -63,6 +63,7 @@ export function Loading({ label = t("m_c78656b445") }: { label?: string }) { ret
 export function Empty({ children }: { children: ReactNode }) { return <div className="py-8 text-center text-sm text-fg-muted">{children}</div>; }
 export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null;
-  const message = error instanceof ApiError ? `${error.message} (${error.code})` : error instanceof Error ? error.message : String(error);
+  const message = error instanceof ApiError ? `${localizeServerText(error.message)} (${error.code})`
+    : localizeServerText(error instanceof Error ? error.message : String(error));
   return <div role="alert" className="rounded-lg border border-failed/25 bg-failed-bg px-3 py-2 text-sm text-failed-fg">{message}</div>;
 }

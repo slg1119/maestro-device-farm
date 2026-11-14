@@ -6,9 +6,9 @@ from farm.recording.yaml import steps_to_yaml
 
 def test_yaml_golden_and_fake_maestro_check_syntax(fakebin):
     steps = [{"kind": "launch"}, {"kind": "tap", "selector": {"id": "app:id/login"}},
-             {"kind": "tap", "selector": {"text": "로그인: 확인"}}, {"kind": "tap", "point": "50%,25%"},
+             {"kind": "tap", "selector": {"text": "Sign in: confirm"}}, {"kind": "tap", "point": "50%,25%"},
              {"kind": "swipe", "from": "50%,80%", "to": "50%,20%"},
-             {"kind": "input", "text": 'yes: "ok"\n다음'}, {"kind": "back"},
+             {"kind": "input", "text": 'yes: "ok"\nnext'}, {"kind": "back"},
              *({"kind": "key", "key": key} for key in ["HOME", "APP_SWITCH", "ENTER", "DEL",
                                                         "VOLUME_UP", "VOLUME_DOWN", "POWER"])]
     text = steps_to_yaml(steps, "com.example.app")
@@ -18,13 +18,13 @@ def test_yaml_golden_and_fake_maestro_check_syntax(fakebin):
 - tapOn:
     id: app:id/login
 - tapOn:
-    text: '로그인: 확인'
+    text: 'Sign in: confirm'
 - tapOn:
     point: 50%,25%
 - swipe:
     start: 50%,80%
     end: 50%,20%
-- inputText: "yes: \\"ok\\"\\n다음"
+- inputText: "yes: \\"ok\\"\\nnext"
 - back
 - pressKey: Home
 - pressKey: Recent Apps
@@ -34,7 +34,7 @@ def test_yaml_golden_and_fake_maestro_check_syntax(fakebin):
 - pressKey: Volume Down
 - pressKey: Power
 '''
-    assert list(yaml.safe_load_all(text))[1][5] == {"inputText": 'yes: "ok"\n다음'}
+    assert list(yaml.safe_load_all(text))[1][5] == {"inputText": 'yes: "ok"\nnext'}
     assert MaestroSyntaxChecker().check(text) == []
     assert fakebin.calls("maestro")[0][:1] == ["check-syntax"]
 

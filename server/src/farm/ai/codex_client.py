@@ -14,7 +14,7 @@ class CodexCliClient:
 
     def __init__(self, codex_bin: str = "codex", model: str | None = None, timeout: float = 300, *, secrets=()):
         self.codex_bin, self.configured_model, self.timeout = codex_bin, model, timeout
-        self.model = model or "codex (기본 모델)"
+        self.model = model or "codex (default model)"
         self.secrets = tuple(secrets)
 
     def _error(self, reason: str, stderr: str) -> AiProviderError:

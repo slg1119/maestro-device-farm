@@ -74,7 +74,7 @@ def percentage_point_issues(content: str) -> list[SyntaxIssue]:
                         and isinstance(value, yaml.ScalarNode)
                         and re.fullmatch(r"\s*-?\d+(?:\.\d+)?%\s*,\s*-?\d+(?:\.\d+)?%\s*", value.value)
                         and "." in value.value):
-                    issues.append(SyntaxIssue('Maestro는 정수 퍼센트 좌표만 지원합니다 (예: "94%,97%")',
+                    issues.append(SyntaxIssue('Maestro supports only integer percentage coordinates (for example, "94%,97%").',
                                               value.start_mark.line + 1, value.start_mark.column + 1))
                 visit(value)
         elif isinstance(node, yaml.SequenceNode):

@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { localizeServerText, t } from "../../lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCheck, GitCommitHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -68,7 +68,7 @@ function CommitForm({ onSuccess }: { onSuccess(message: string): void }) {
         <Badge tone={valid ? "passed" : issues.length ? "failed" : "neutral"}><CheckCheck className="size-3.5" />{validation.isFetching ? t("m_d4d7dbfbec") : valid ? t("m_78d6ac595a", [puts.length, puts.length]) : validation.isError ? t("m_ded9ac50c8") : !validation.data ? t("m_291f34d0b1") : t("m_78d6ac595a", [Math.max(0, passed), puts.length])}</Badge></header>
       <ErrorBox error={validation.error} /><ErrorBox error={error} />
       {savedSha && <div className="space-y-2 text-sm text-warning-fg"><p>{t("m_df565f03e0")}{savedSha.slice(0, 7)}{t("m_8354c5bf55")}</p><Button disabled={busy} onClick={() => { setBusy(true); void finish(savedSha).catch(setError).finally(() => setBusy(false)); }}>{t("m_11c742fd1a")}</Button></div>}
-      {[...issues, ...serverIssues].map((issue, i) => <button key={`${issue.path}:${i}`} type="button" onClick={() => jump(issue)} className="block min-h-11 w-full break-all rounded-lg bg-failed-bg px-3 py-2 text-left text-xs text-failed-fg focus-visible:outline-accent">{issue.path}:{issue.line ?? 1}:{issue.column ?? 1} · {issue.message}</button>)}
+      {[...issues, ...serverIssues].map((issue, i) => <button key={`${issue.path}:${i}`} type="button" onClick={() => jump(issue)} className="block min-h-11 w-full break-all rounded-lg bg-failed-bg px-3 py-2 text-left text-xs text-failed-fg focus-visible:outline-accent">{issue.path}:{issue.line ?? 1}:{issue.column ?? 1} · {localizeServerText(issue.message)}</button>)}
       {conflict && <section aria-label={t("m_1a40e2e5d2")} className="space-y-2 rounded-lg border border-warning/25 bg-warning-bg p-3 text-sm text-warning-fg"><p>{t("m_58d6d2a225")}</p>{paths.map(path => <div key={path} className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 break-all font-mono text-xs">{path}</span><Button size="sm" disabled={busy} onClick={() => setRemotePath(path)}>{t("m_9d057d8bec")}</Button></div>)}<Button disabled={!canWrite || !remoteHead || busy} onClick={() => { void reapply(); }}>{t("m_1b0b8e10be")}</Button></section>}
       {preview.isLoading ? <Loading /> : preview.error ? <ErrorBox error={preview.error} /> : !files.length ? <Empty>{t("m_1e8ee042de")}</Empty> : <div className="grid min-w-0 gap-3 md:grid-cols-[240px_minmax(0,1fr)]">
         <div aria-label={t("m_d9e4f71277")} className="max-h-44 space-y-1 overflow-y-auto md:max-h-[460px]">{files.map(file => <FileChoice key={file.path} file={file} selected={!remotePath && file.path === active?.path} counts onClick={() => { setSelected(file.path); setRemotePath(null); }} />)}</div>

@@ -30,14 +30,14 @@ def test_rerun_response_writer_and_copy_outside_transaction(client, db, settings
 
     monkeypatch.setattr("farm.api.routes.runs.shutil.copytree", copy)
     response = client.post(f"/api/v1/runs/{source[0].id}/rerun", json={"failed_only": False},
-                           headers={"X-Farm-User": "%EC%9A%B4%EC%98%81%EC%9E%90"})
+                           headers={"X-Farm-User": "Zo%C3%AB%20Operator"})
     assert response.status_code == 201
     body = response.json()
     assert body == {"id": body["id"], "url": f"{settings.public_url}/runs/{body['id']}"}
     assert len(copies) == 1
     with db.session() as s:
         new = s.get(Run, body["id"])
-        assert new.created_by == "운영자"
+        assert new.created_by == "Zoë Operator"
         assert Path(new.flows_dir, "login.yaml").read_text() == Path(source[0].flows_dir, "login.yaml").read_text()
 
 

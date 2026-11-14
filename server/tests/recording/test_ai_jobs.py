@@ -39,9 +39,9 @@ def test_stop_ai_polish_returns_one_validated_flow_and_reuses_job_on_retry(setti
         row = client.post("/api/v1/devices/fake-1/recordings", json={
             "include_launch_app": True, "workspace": "example"}).json()
         target = f"flows/recorded-{row['id']}.yaml"
-        flow = "appId: com.example.app\nname: 로그인 확인\n---\n- launchApp\n- assertVisible: 로그인\n"
+        flow = "appId: com.example.app\nname: Sign-in verification\n---\n- launchApp\n- assertVisible: Sign in\n"
         for path in ["flows/wrong.yaml", target]:
-            data = {"files": [{"path": path, "content": flow}], "summary": "녹화 다듬기", "assumptions": []}
+            data = {"files": [{"path": path, "content": flow}], "summary": "Refine recording", "assumptions": []}
             fake.responses.append(AiResponse(data, 12, 7, "record-fake", json.dumps(data)))
         stopped = client.post(f"/api/v1/recordings/{row['id']}/stop", json={"ai_polish": True})
         assert stopped.status_code == 200 and stopped.json()["status"] == "done"

@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { localizeServerText, t } from "../../lib/i18n";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { createStreamTicket } from "../../api/queries";
 import { parseStreamMessage, StreamDecoder, type StreamConfig, type StreamStatus } from "./decoder";
@@ -62,7 +62,7 @@ export function useLiveStream({ serial, control, canWrite, canvas }: Options) {
             else if (parsed.type === "frame") decoder?.decode(parsed);
             else if (parsed.type === "status") { connection.current.allowed = wanted && parsed.control; setStatus(parsed); }
             else {
-              terminal = GONE.has(parsed.reason); setMessage(parsed.message || t("m_822ba63463"));
+              terminal = GONE.has(parsed.reason); setMessage(parsed.message ? localizeServerText(parsed.message) : t("m_822ba63463"));
               reset(); setPhase(terminal ? "ended" : "reconnecting"); socket.close(); if (!terminal) reconnect();
             }
           } catch { failDecode(); }

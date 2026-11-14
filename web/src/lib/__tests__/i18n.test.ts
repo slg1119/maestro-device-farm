@@ -40,4 +40,16 @@ describe("dashboard language", () => {
       if (descriptor) Object.defineProperty(window, "localStorage", descriptor);
     }
   });
+
+  test("shows API and stream messages in the selected language", async () => {
+    vi.resetModules();
+    const { localizeServerText, setLanguage } = await import("../i18n");
+    setLanguage("ko");
+    expect(localizeServerText("Recording not found.")).toBe("녹화를 찾을 수 없습니다");
+    expect(localizeServerText("Cannot connect to the agent live screen.")).toBe("에이전트의 실시간 화면에 연결할 수 없습니다");
+    expect(localizeServerText("Auto-repair limit reached (2); the run did not pass."))
+      .toBe("자동 보정 2회 후에도 실행이 통과하지 않았습니다");
+    setLanguage("en");
+    expect(localizeServerText("Recording not found.")).toBe("Recording not found.");
+  });
 });

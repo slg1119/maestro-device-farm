@@ -67,15 +67,15 @@ def create_record_job(session, settings, writer, recording, model=None) -> AiJob
     """Create the polish job in the same transaction that finishes the recording."""
     ws = session.get(Workspace, recording.workspace_id) if recording.workspace_id else None
     if ws is None:
-        raise ApiError(400, "recording_needs_workspace", "AI로 다듬으려면 워크스페이스가 필요합니다")
+        raise ApiError(400, "recording_needs_workspace", "A workspace is required to refine a recording with AI.")
     if not ws.head_sha:
-        raise ApiError(409, "workspace_not_synced", "워크스페이스를 먼저 동기화해 주세요")
+        raise ApiError(409, "workspace_not_synced", "Sync the workspace first.")
     target = f"flows/recorded-{recording.id}.yaml"
     options = {"target_path": target, "include_screen": False, "auto_repair": False, "reservation_id": None,
                "app_build_id": None, "app": None, "draft_changes": [], "recording_id": recording.id,
                "steps": recording.steps, "yaml": recording.yaml}
     job = AiJob(kind="record", workspace_id=ws.id, base_sha=ws.head_sha,
-                prompt="녹화한 조작을 재사용할 수 있는 Maestro 흐름으로 다듬어 주세요.",
+                prompt="Refine the recorded actions into a reusable Maestro flow.",
                 options=redact(settings, options), model=model or settings.openai_model,
                 created_by=redact(settings, writer.name), author_name=redact(settings, writer.name))
     session.add(job)
@@ -390,7 +390,7 @@ class AiJobRunner:
                                                     "issues": [i.model_dump() for i in issues]}), secrets)
                 self._checkpoint(job.id)
                 if job.options["auto_repair"] and last_answer:
-                    note = f"자동 보정 {self.settings.ai_max_repairs}회 후에도 실행이 통과하지 않았습니다"
+                    note = f"Auto-repair limit reached ({self.settings.ai_max_repairs}); the run did not pass."
                     result = {**last_answer, "summary": last_answer["summary"] + "\n\n" + note}
                     self._finish(job.id, "succeeded", result=result)
                 else:

@@ -786,5 +786,20 @@
   "e_025f87132d": "flow:",
   "e_d05842b62b": "owner/name",
   "e_907a8e1392": "example-org/example-app",
-  "e_a003f1da17": "com.example.app"
+  "e_a003f1da17": "com.example.app",
+  "server.recordingNeedsWorkspace": "A workspace is required to refine a recording with AI.",
+  "server.workspaceNotSynced": "Sync the workspace first.",
+  "server.recordingNotFound": "Recording not found.",
+  "server.deviceNotFound": "Device not found.",
+  "server.liveDeviceNotFound": "Live-screen device not found.",
+  "server.recordingDeviceUnavailable": "Start recording on a connected device.",
+  "server.recordingActive": "A recording is already in progress.",
+  "server.recordingCancelled": "This recording was cancelled.",
+  "server.recordingFinished": "This recording has finished.",
+  "server.agentStreamUnavailable": "Cannot connect to the agent live screen.",
+  "server.deviceScreenClosed": "Device screen connection closed.",
+  "server.deviceConnectionFailed": "Cannot connect to device.",
+  "server.integerCoordinates": "Maestro supports only integer percentage coordinates (for example, \"94%,97%\").",
+  "server.codexDefaultModel": "codex (default model)",
+  "server.autoRepairLimit": "Auto-repair limit reached ({0}); the run did not pass."
 }

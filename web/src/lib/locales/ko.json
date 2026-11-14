@@ -786,5 +786,20 @@
   "e_025f87132d": "flow:",
   "e_d05842b62b": "owner/name",
   "e_907a8e1392": "example-org/example-app",
-  "e_a003f1da17": "com.example.app"
+  "e_a003f1da17": "com.example.app",
+  "server.recordingNeedsWorkspace": "AI로 다듬으려면 워크스페이스가 필요합니다",
+  "server.workspaceNotSynced": "워크스페이스를 먼저 동기화해 주세요",
+  "server.recordingNotFound": "녹화를 찾을 수 없습니다",
+  "server.deviceNotFound": "기기를 찾을 수 없습니다",
+  "server.liveDeviceNotFound": "디바이스를 찾을 수 없습니다",
+  "server.recordingDeviceUnavailable": "연결된 기기에서 녹화를 시작해 주세요",
+  "server.recordingActive": "이미 진행 중인 녹화가 있습니다",
+  "server.recordingCancelled": "취소된 녹화입니다",
+  "server.recordingFinished": "완료된 녹화입니다",
+  "server.agentStreamUnavailable": "에이전트의 실시간 화면에 연결할 수 없습니다",
+  "server.deviceScreenClosed": "기기 화면 연결이 종료되었습니다.",
+  "server.deviceConnectionFailed": "기기에 연결할 수 없습니다.",
+  "server.integerCoordinates": "Maestro는 정수 퍼센트 좌표만 지원합니다 (예: \"94%,97%\")",
+  "server.codexDefaultModel": "codex (기본 모델)",
+  "server.autoRepairLimit": "자동 보정 {0}회 후에도 실행이 통과하지 않았습니다"
 }

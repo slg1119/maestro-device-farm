@@ -1,4 +1,4 @@
-import { t } from "../../../lib/i18n";
+import { localizeServerText, t } from "../../../lib/i18n";
 import { Check, CircleX, Clock, LoaderCircle, Play, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import type { AiAttempt } from "../../../api/types";
@@ -33,7 +33,7 @@ export function AttemptList({ attempts, maxRepairs, device }: { attempts: AiAtte
         <span className={cx("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full", tones[tone])}><Icon aria-hidden="true" className="size-3.5" strokeWidth={1.8} /></span>
         <div className="min-w-0 flex-1 text-xs"><p className="break-words font-medium text-fg">{title}</p>
           {attempt.kind === "generate" && <p className="mt-1 text-fg-subtle">{t("m_f390b3311c")} {attempt.input_tokens.toLocaleString("ko-KR")} {t("m_d5250a7682")} {attempt.output_tokens.toLocaleString("ko-KR")} {t("m_243f5b79dd")}</p>}
-          {issue && <p className="mt-1 break-words text-failed-fg">{issue.path}{issue.line ? `:${issue.line}` : ""} · {issue.message}</p>}
+          {issue && <p className="mt-1 break-words text-failed-fg">{issue.path}{issue.line ? `:${issue.line}` : ""} · {localizeServerText(issue.message)}</p>}
           {attempt.detail && !runState && <p className="mt-1 whitespace-pre-wrap break-words text-fg-muted">{attempt.detail}</p>}
           {attempt.run_id && <Link className="mt-1 inline-flex min-h-8 items-center text-accent underline underline-offset-2 max-md:min-h-11" to={`/runs/${encodeURIComponent(attempt.run_id)}`}>{t("m_8a1d3a25d4")} {attempt.run_id.slice(0, 8)}</Link>}
         </div>

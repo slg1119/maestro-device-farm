@@ -91,9 +91,9 @@ def test_submit_without_token_uses_user_name(client, db, project, monkeypatch):
     with db.session() as s:
         add_device(s, "d1")
     flows, apk = project
-    assert farmctl.dispatch(_args("--user", "배포 봇", "run", "--flows", str(flows), "--apk", str(apk)), client) == 0
+    assert farmctl.dispatch(_args("--user", "Deployment Bot", "run", "--flows", str(flows), "--apk", str(apk)), client) == 0
     with db.session() as s:
-        assert s.scalars(select(Run)).one().created_by == "배포 봇"
+        assert s.scalars(select(Run)).one().created_by == "Deployment Bot"
 
 
 def test_missing_token_is_rejected_when_the_farm_requires_one(secured_client, project, monkeypatch, capsys):

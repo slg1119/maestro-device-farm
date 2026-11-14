@@ -33,16 +33,16 @@ class Check:
 
 def _version(name: str, *args: str) -> Check:
     if not shutil.which(name):
-        return Check("FAIL", name, "실행 파일 없음 · 설치 후 PATH를 확인하세요")
+        return Check("FAIL", name, "Executable not found · install it and check PATH")
     try:
         result = subprocess.run([name, *args], capture_output=True, text=True, errors="replace",
                                 timeout=10, check=False)
         if result.returncode == 0:
             lines = (result.stdout + "\n" + result.stderr).strip().splitlines()
-            return Check("OK", name, lines[0] if lines else "실행 가능")
+            return Check("OK", name, lines[0] if lines else "Executable available")
     except (OSError, subprocess.SubprocessError):
         pass
-    return Check("FAIL", name, "버전 확인 실패 · PATH와 실행 권한을 확인하세요")
+    return Check("FAIL", name, "Version check failed · check PATH and execute permissions")
 
 
 def _ai(settings: Settings) -> Check:
@@ -56,25 +56,25 @@ def _ai(settings: Settings) -> Check:
             if client is not None:
                 provider = getattr(client, "provider", None) or (
                     "codex" if type(client).__name__ == "CodexCliClient" else "openai")
-                return Check("OK", "AI", f"{provider} 사용 가능")
+                return Check("OK", "AI", f"{provider} available")
         except Exception:  # noqa: BLE001 - provider failure must not hide the remaining host checks
-            return Check("WARN", "AI", "제공자 확인 실패 · CLI 로그인 또는 키 설정을 확인하세요")
+            return Check("WARN", "AI", "Provider check failed · check CLI login or API key configuration")
         finally:
             if client is not None and callable(getattr(client, "close", None)):
                 with contextlib.suppress(Exception):  # cleanup must not prevent the rest of the diagnostics
                     client.close()
     else:  # A1 may not have landed yet.
         if settings.openai_api_key:
-            return Check("OK", "AI", "OpenAI 키 설정됨 · 키 유효성은 요청 시 확인")
+            return Check("OK", "AI", "OpenAI key configured · validity is checked on request")
         codex = getattr(settings, "codex_bin", "codex")
         if shutil.which(codex):
             try:
                 result = subprocess.run([codex, "login", "status"], capture_output=True, timeout=10, check=False)
                 if result.returncode == 0:
-                    return Check("OK", "AI", "Codex CLI 로그인됨")
+                    return Check("OK", "AI", "Codex CLI authenticated")
             except (OSError, subprocess.SubprocessError):
                 pass
-    return Check("WARN", "AI", "비활성 · codex login 또는 FARM_OPENAI_API_KEY를 설정하세요")
+    return Check("WARN", "AI", "Disabled · run codex login or set FARM_OPENAI_API_KEY")
 
 
 def run_doctor(db: Database, settings: Settings, *,
@@ -87,8 +87,8 @@ def run_doctor(db: Database, settings: Settings, *,
         found_jar = jar.is_file() and jar.stat().st_size > 0
     except OSError:
         found_jar = False
-    checks.append(Check("OK" if found_jar else "WARN", "scrcpy", f"서버 {version} · {jar}" + (
-        "" if found_jar else " · jar 파일을 배치하세요")))
+    checks.append(Check("OK" if found_jar else "WARN", "scrcpy", f"server {version} · {jar}" + (
+        "" if found_jar else " · place the JAR file")))
 
     workspaces, devices, agents = [], [], []
     try:
@@ -96,15 +96,15 @@ def run_doctor(db: Database, settings: Settings, *,
             current = set(MigrationContext.configure(connection).get_current_heads())
         heads = set(ScriptDirectory.from_config(alembic_config(db.path)).get_heads())
         if current == heads:
-            checks.append(Check("OK", "DB", f"연결됨 · migrations head ({', '.join(sorted(heads))})"))
+            checks.append(Check("OK", "DB", f"Connected · migrations head ({', '.join(sorted(heads))})"))
         else:
-            checks.append(Check("FAIL", "DB", "마이그레이션 필요 · uv run farm db upgrade"))
+            checks.append(Check("FAIL", "DB", "Migration required · run uv run farm db upgrade"))
         with db.session() as s:
             workspaces = list(s.scalars(select(Workspace).order_by(Workspace.name)))
             devices = list(s.scalars(select(Device).order_by(Device.serial)))
             agents = list(s.scalars(select(AgentStatus).order_by(AgentStatus.id)))
     except (OSError, SQLAlchemyError, CommandError):
-        checks.append(Check("FAIL", "DB", "조회 실패 · FARM_DATA_DIR, DB 권한과 마이그레이션을 확인하세요"))
+        checks.append(Check("FAIL", "DB", "Query failed · check FARM_DATA_DIR, database permissions, and migrations"))
 
     if settings.github_token:
         try:
@@ -113,11 +113,11 @@ def run_doctor(db: Database, settings: Settings, *,
                     "Authorization": f"Bearer {settings.github_token.get_secret_value()}",
                     "Accept": "application/vnd.github+json"})
             checks.append(Check("OK" if response.status_code == 200 else "FAIL", "GitHub token",
-                                "유효함" if response.status_code == 200 else "인증 실패 · PAT 권한과 만료를 확인하세요"))
+                                "Valid" if response.status_code == 200 else "Authentication failed · check PAT permissions and expiration"))
         except httpx.HTTPError:
-            checks.append(Check("FAIL", "GitHub token", "연결 실패 · 네트워크와 PAT 설정을 확인하세요"))
+            checks.append(Check("FAIL", "GitHub token", "Connection failed · check network and PAT configuration"))
     else:
-        checks.append(Check("WARN", "GitHub token", "미설정 · SSH 원격 사용 시 필요 없음"))
+        checks.append(Check("WARN", "GitHub token", "Not configured · not needed for an SSH remote"))
     for workspace in workspaces:
         try:
             repo = open_repo(settings, workspace.repo)
@@ -134,34 +134,34 @@ def run_doctor(db: Database, settings: Settings, *,
         except (OSError, subprocess.SubprocessError, ValueError, KeyError):
             reachable = False
         checks.append(Check("OK" if reachable else "FAIL", f"workspace {workspace.name}",
-                            "원격 브랜치 접근 가능" if reachable else "원격 접근 실패 · SSH/PAT, 저장소와 브랜치를 확인하세요"))
+                            "Remote branch reachable" if reachable else "Remote access failed · check SSH/PAT, repository, and branch"))
 
     checks.append(_ai(settings))
     if not devices:
-        checks.append(Check("WARN", "devices", "등록된 기기 없음 · USB 디버깅과 farm agent를 확인하세요"))
+        checks.append(Check("WARN", "devices", "No registered devices · check USB debugging and farm agent"))
     for device in devices:
         warning = device.state in {"offline", "unhealthy", "unauthorized"}
-        checks.append(Check("WARN" if warning else "OK", f"device {device.serial}", f"상태 {device.state}" +
-                            (" · USB 연결과 기기 사용 가능 상태를 확인하세요" if warning else "")))
+        checks.append(Check("WARN" if warning else "OK", f"device {device.serial}", f"state {device.state}" +
+                            (" · check USB connection and device availability" if warning else "")))
     if not agents:
-        checks.append(Check("WARN", "agent heartbeat", "기록 없음 · uv run farm agent를 실행하세요"))
+        checks.append(Check("WARN", "agent heartbeat", "No heartbeat recorded · run uv run farm agent"))
     for agent in agents:
         try:
             age = max(0.0, age_seconds(agent.last_heartbeat_at))
             checks.append(Check("OK" if age <= 30 else "WARN", f"agent {agent.id}",
-                                f"heartbeat {age:.0f}초 전" + (" · agent 로그를 확인하세요" if age > 30 else "")))
+                                f"heartbeat {age:.0f}s ago" + (" · check the agent logs" if age > 30 else "")))
         except (ValueError, TypeError):
-            checks.append(Check("WARN", f"agent {agent.id}", "heartbeat 시간 형식 오류 · agent를 확인하세요"))
+            checks.append(Check("WARN", f"agent {agent.id}", "Invalid heartbeat timestamp · check the agent"))
     try:
         path = settings.data_dir
         while not path.exists() and path != path.parent:
             path = path.parent
         usage = shutil.disk_usage(path)
         checks.append(Check("WARN" if usage.free < 1024 ** 3 else "OK", "disk",
-                            f"{settings.data_dir} · 여유 {usage.free / 1024 ** 3:.1f} GiB" +
-                            (" · 보관 설정을 확인하세요" if usage.free < 1024 ** 3 else "")))
+                            f"{settings.data_dir} · {usage.free / 1024 ** 3:.1f} GiB free" +
+                            (" · check retention settings" if usage.free < 1024 ** 3 else "")))
     except OSError:
-        checks.append(Check("FAIL", "disk", "여유 공간 조회 실패 · 데이터 경로 권한을 확인하세요"))
+        checks.append(Check("FAIL", "disk", "Free-space check failed · check data directory permissions"))
 
     secrets = [value.get_secret_value() for value in (settings.github_token, settings.openai_api_key) if value]
     if settings.github_token:

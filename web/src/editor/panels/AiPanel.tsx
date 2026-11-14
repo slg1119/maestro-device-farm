@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { localizeServerText, t } from "../../lib/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -79,7 +79,7 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
   const tokens = ((status.month_input_tokens + status.month_output_tokens) / 1000).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
   const resetJob = (applied?: boolean) => { setJob(null); setNotice(applied ? t("m_fc45d9b139") : t("m_424cea13b9")); };
   return <div className="min-w-0 space-y-5 p-4 text-fg">
-    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{status.model}</span> {t("m_47093b9caa")} {tokens}{t("m_997b0fc4f2")}</p>
+    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{localizeServerText(status.model)}</span> {t("m_47093b9caa")} {tokens}{t("m_997b0fc4f2")}</p>
       <Menu label={t("m_f2d8b5d8b5")} icon={<ChevronDown />} items={recent.data?.length ? recent.data.map(item => ({ label: <span className="block max-w-60 truncate" title={item.prompt}>{states[item.status].label} · {item.prompt || item.options.target_path || item.id.slice(0, 8)}</span>, disabled: submit.isPending, onClick: () => { submit.reset(); cancel.reset(); setJob(item.id); } })) : [{ label: recent.isLoading ? t("m_c78656b445") : t("m_34504dd1e0"), disabled: true, onClick: () => {} }]} />
     </header>
     {recent.error && <ErrorBox error={recent.error} />}
