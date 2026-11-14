@@ -1,54 +1,111 @@
 # Your first Maestro flow
 
-A flow is a YAML file with an app package and a list of UI actions. The repository includes `examples/flows/` for Android Settings. Those examples are useful for editing and tag selection; the farm still requires a compatible APK build for a real run. UI text in Android Settings varies with OS version and locale.
+**What you'll have at the end:** one `.yaml` Maestro flow for your Android app, saved in a Git workspace and visible in the browser editor.
 
-## 1. Open the example flow
+## Copy-paste quick path
 
-From the dashboard, select **Editor**, choose the `settings-flows` demo workspace, and open `smoke.yaml`. In your own installation, first register a Git workspace as in step 3. You should see the file tree on the left and YAML in the center.
-
-![The flow file marked in the real editor](../assets/editor-flow.png)
-
-## 2. Read the YAML line by line
+Copy this text into `.maestro/my-flow.yaml` in a Git repository you control, then replace the package and screen text with your app's values:
 
 ```yaml
-appId: com.android.settings
+appId: com.example.app
 tags:
   - smoke
-  - settings
 ---
 - launchApp
-- assertVisible: "Settings"
+- assertVisible: "Welcome"
 ```
 
-- `appId` is the Android package Maestro launches.
-- `tags` labels this file for selection; `smoke` and `settings` are separate tags.
-- `---` separates flow metadata from commands.
-- `launchApp` starts the selected app.
-- `assertVisible` waits for visible UI text and fails if it is not found.
+Register that repository at `http://localhost:8700/workspaces`.
 
-Save a new flow as `my-flow.yaml`. For your own app, change `appId` to your APK's actual package and replace the assertion with text visible in that app.
+## Before you begin
 
-![YAML content in the running demo editor](../assets/flow-editor.png)
+Complete a [Docker](getting-started-docker.md) or [native](getting-started-native.md) setup. You need an APK for an app you can test and a Git repository you can edit. A **flow** is a Maestro test file. **YAML** is plain text with indentation-sensitive settings and actions. A **tag** is a label such as `smoke`. A **workspace** connects a Git repository, branch, and optional folder to the farm. The `appId` must match your APK's package name.
 
-## 3. Put flows in a Git workspace
+## Create the file
 
-Create a Git repository such as `your-account/example-app`, commit your `.yaml` files, then register it from `server/`:
+### 1.1 Inspect the included example
 
-```sh
-uv run farm workspace add --name example-app --repo your-account/example-app --branch main --path .maestro --app-package com.example.app
-uv run farm workspace list
-```
+Open `examples/flows/smoke.yaml` from the cloned project in a plain-text editor. **You should see:** `appId`, `tags`, `---`, `launchApp`, and `assertVisible`. **If it looks different:** confirm you are in this repository's `examples/flows` folder.
 
-`--path` is relative to the Git repository root. Use `--path ''` when the flows are at the root. The add command fetches the branch and reports `workspace example-app added at <short-sha>` on success. The demo used a local, temporary Git remote with the same registration API.
+### 1.2 Open a new file
 
-![Registered workspace in the real dashboard](../assets/workspaces.png)
+In the Git repository you control, click **Add file > Create new file**. **You should see:** a filename box and a plain-text editor. **If it looks different:** use your Git host's file-create action.
 
-## 4. Find and edit the flow in the dashboard
+### 1.3 Name the file
 
-Open **Workspaces** and choose **Editor** for the workspace. Changes are kept as browser drafts until you commit them. The GIF shows switching between example flow files.
+Type `.maestro/my-flow.yaml` into the filename box. **You should see:** that path above the editor. **If it looks different:** keep the `.yaml` extension and the `.maestro/` folder.
 
-![Switching flow files in the editor](../assets/your-first-flow.gif)
+### 1.4 Enter the YAML
 
-*The GIF opens another YAML file in the same registered demo workspace.*
+Paste the quick-path YAML above into the new file. **You should see:** `appId` above `---` and two commands below it. **If it looks different:** paste into a plain-text editor, not a rich-text document.
 
-Next: [Running tests](running-tests.md). For a first real run, supply a compatible APK of your own app and a connected Android device.
+### 1.5 Set the package
+
+Replace `com.example.app` with the package shown for your uploaded APK on the **App** page. **You should see:** the first line begin with your package after `appId:`. **If it looks different:** upload the APK first and read its package from the app library.
+
+### 1.6 Set the assertion
+
+Replace `Welcome` with text visible on your app's first screen. **You should see:** `assertVisible` contain that exact text. **If it looks different:** use a stable label that appears after launch; matching is sensitive to the app's language.
+
+### 1.7 Open the Git commit form
+
+Click your Git host's **Commit changes** action. **You should see:** a commit form or confirmation. **If it looks different:** check that the filename and YAML content are filled in.
+
+### 1.8 Save the file in Git
+
+Confirm **Commit changes**. **You should see:** `.maestro/my-flow.yaml` on the repository's `main` branch. **If it looks different:** confirm the branch and that the commit finished. This Git commit is separate from the farm editor's **Commit…** action.
+
+## Register and inspect it
+
+### 2.1 Open Workspace
+
+Open `http://localhost:8700/workspaces`. **You should see:** **Workspace Management** and **Register workspace**. **If it looks different:** check that the API is running.
+
+### 2.2 Start registration
+
+Click **Register workspace**. **You should see:** fields for name, repo, branch, path, and default app package.
+
+![Workspace registration controls](../assets/workspaces.png)
+
+**Callouts:** (1) **Register workspace**; (2) **repo**; (3) **branch**; (4) **path**; (5) **Register**.
+
+**If it looks different:** check [Workspaces and Git](workspaces-and-git.md) for field meanings.
+
+### 2.3 Enter the repository
+
+In **repo**, type its `owner/repository` name. **You should see:** that value in the field. **If it looks different:** enter the short name, not the full HTTPS URL.
+
+### 2.4 Set the flow folder
+
+In **path**, type `.maestro`. **You should see:** the folder path in the field. **If it looks different:** use an empty path only when the YAML file is at the repository root.
+
+### 2.5 Register
+
+Click **Register**. **You should see:** a workspace row with its branch and a commit identifier. **If it looks different:** check repository access, branch spelling, and the location of the YAML file.
+
+### 2.6 Open the editor
+
+Click **Open editor** on that workspace. **You should see:** the **Files** tree containing `my-flow.yaml`.
+
+![New flow open in the editor](../assets/editor-flow.png)
+
+**Callouts:** (1) **Files**; (2) `my-flow.yaml`; (3) **Code**; (4) `appId:`.
+
+**If it looks different:** click **Sync** on the workspace and confirm the file was committed to the branch you registered.
+
+### 2.7 Validate
+
+Click **Validate**. **You should see:** no YAML problems for this simple flow. **If it looks different:** check spaces, quote marks, the `---` separator, and command dashes.
+
+## Recap
+
+Your first flow is in Git and visible in the editor. **Next:** [Run tests](running-tests.md) with a compatible APK and Android device.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `my-flow.yaml` is absent | File was not committed to the registered branch/path | Check `.maestro` and click **Sync** |
+| YAML validation fails | Indentation or separator is wrong | Compare with the quick-path block |
+| App cannot launch | `appId` differs from APK package | Copy the package from the **App** page |
+| Assertion fails | Text does not appear in this app language | Choose a stable, visible label |

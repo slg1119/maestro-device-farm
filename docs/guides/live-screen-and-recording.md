@@ -1,25 +1,88 @@
 # Live screen and recording
 
-Live viewing uses a WebSocket from the browser to the API, then the API to the agent's stream service. It requires a connected Android device and a running agent. The documentation demo had no real connected device, so the screenshots show the reachable controls and empty states rather than a live phone image.
+**What you'll have at the end:** a live view of a connected Android device and, if you reserve it, a reviewed draft YAML flow from recorded actions.
 
-## 1. Open the live board
+## Copy-paste quick path
 
-Click **Live board** in the sidebar. Use the status filters and tile size control to find a connected device. An offline device appears in the collapsed section and cannot show a screen.
+Open the live board:
 
-![Live board from the running demo](../assets/live-board.png)
+```text
+http://localhost:8700/live
+```
 
-## 2. Open the editor screen panel
+Select a connected device, reserve it before controlling it, then use **Start recording** and **Stop recording**.
 
-Open a workspace in **Editor**, then click the **Screen** tab. Reserve an available device before controlling it. The API issues a short-lived stream ticket for control; a view-only connection does not get the same control ability.
+## Before you begin
 
-![Screen tab marked in the real editor](../assets/editor-screen.png)
+Finish [Connect a device](connect-a-device.md), keep the agent running, and use a recent Chrome or Edge browser. A **WebSocket** carries live screen frames. A **reservation** gives one user temporary control of a device. Recording turns interactions into a draft Maestro YAML flow; inspect the YAML before committing it.
 
-## 3. Record interactions
+## View a device
 
-With a connected, reserved device, use the recording controls in the screen panel. Start recording, interact with the device, then stop. The recorder can produce a draft YAML flow for review in the editor. Check the generated actions before committing them to Git.
+### 1.1 Open the live board
 
-![Navigating live board filters in the seeded demo](../assets/live-screen-and-recording.gif)
+Open `http://localhost:8700/live`. **You should see:** **Device Live Grid** with a tile for your connected device. **If it looks different:** check the agent heartbeat and device state on **Device**.
 
-*The GIF shows live board filters. No screen stream or recording was captured because the demo used seeded devices only.*
+![Live board with a connected device tile](../assets/live-board.png)
 
-If a stream does not open, check agent heartbeat, device state, adb access and the API-to-agent stream address. In Compose, the API uses `FARM_AGENT_STREAM_HOST=agent`; natively both processes default to `127.0.0.1` and port 8701.
+**Callouts:** (1) **Device Live Grid**; (2) visible emulator serial; (3) **Available** on the tile.
+
+### 1.2 Open the device tile
+
+Click your device tile. **You should see:** a larger live screen view. **If it looks different:** the device may be offline or the browser may not support the stream; see the [troubleshooting guide](troubleshooting.md).
+
+### 1.3 Open the editor
+
+Open `http://localhost:8700/editor` in another browser tab. **You should see:** **Select workspace** or the last workspace. **If it looks different:** register a [workspace](workspaces-and-git.md) first.
+
+### 1.4 Select the workspace
+
+Choose the workspace where the recorded flow should go. **You should see:** its file tree and editor panels. **If it looks different:** sync the workspace from **Workspace**.
+
+### 1.5 Open Screen
+
+Click the **Screen** tab. **You should see:** a device picker and screen connection controls.
+
+![Editor Screen panel](../assets/editor-screen.png)
+
+**Callouts:** (1) visible text **Screen**; (2) device picker; (3) visible text **Reserve** or current reservation state.
+
+**If it looks different:** select a workspace and wait for its panels to load.
+
+## Record a flow
+
+### 2.1 Choose the device
+
+Select your available device in the **Screen** panel. **You should see:** its live screen or a view-only connection. **If it looks different:** check the agent and device state.
+
+### 2.2 Reserve it
+
+Click **Reserve**. **You should see:** a reserved or controller state. **If it looks different:** another user may hold a reservation; wait for it to end.
+
+### 2.3 Start recording
+
+Click **Start recording**. **You should see:** **Recording** and a **Stop recording** control. **If it looks different:** the reservation or stream may have ended.
+
+### 2.4 Perform one action
+
+Tap one safe control on the device screen. **You should see:** the device react and the recording step count change. **If it looks different:** confirm you are the controller, not a view-only viewer.
+
+### 2.5 Stop recording
+
+Click **Stop recording**. **You should see:** **Recording Results** and **Recording YAML**. **If it looks different:** wait for the recording to finish; check the stream connection.
+
+### 2.6 Review the YAML
+
+Open the result's YAML view. **You should see:** Maestro actions for the interaction you made. **If it looks different:** repeat a short recording with a visible tap, then inspect it before saving.
+
+## Recap
+
+You can view a device, reserve control, and turn recorded interactions into a draft. **Next:** [Edit and validate the flow](flow-editor-and-ai.md).
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| No device tile | Agent or device is offline | Check **Device** and agent heartbeat |
+| Tile will not stream | Browser, stream address, or agent issue | Use Chrome/Edge and inspect agent stream settings |
+| **Reserve** is unavailable | Another reservation or device state blocks control | Wait for availability and refresh |
+| Recording has no steps | No supported interaction was captured | Record one visible tap and review again |
