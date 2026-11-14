@@ -6,119 +6,131 @@
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
-      930,
-      850
+      1060,
+      620
     ],
     "column_fit": "spread"
   },
   "participants": [
     {
-      "id": "client",
+      "id": "dashboard",
       "type": "frontend",
-      "label": "UI / CLI",
-      "sublabel": "run request"
+      "label": "Dashboard / CLI",
+      "sublabel": "Run request"
     },
     {
       "id": "api",
       "type": "backend",
       "label": "FastAPI",
-      "sublabel": "run routes"
+      "sublabel": "Run routes"
     },
     {
-      "id": "store",
+      "id": "sqlite",
       "type": "database",
-      "label": "Scheduler + DB",
-      "sublabel": "tasks and state"
+      "label": "SQLite",
+      "sublabel": "Run and task state"
     },
     {
       "id": "agent",
       "type": "backend",
-      "label": "Agent",
-      "sublabel": "device worker"
+      "label": "Device agent",
+      "sublabel": "Per-device worker"
     },
     {
-      "id": "maestro",
+      "id": "runner",
       "type": "external",
       "label": "Maestro",
-      "sublabel": "Android flow"
+      "sublabel": "Flow execution"
+    },
+    {
+      "id": "artifacts",
+      "type": "external",
+      "label": "Artifacts",
+      "sublabel": "Per-attempt files"
     }
   ],
   "messages": [
     {
-      "from": "client",
+      "id": "submit",
+      "from": "dashboard",
       "to": "api",
-      "y": 190,
-      "label": "POST /runs",
+      "y": 180,
+      "label": "POST /runs (flows or workspace ref)",
       "variant": "emphasis"
     },
     {
+      "id": "create",
       "from": "api",
-      "to": "store",
+      "to": "sqlite",
+      "y": 215,
+      "label": "Create run and split/matrix tasks"
+    },
+    {
+      "id": "claim",
+      "from": "agent",
+      "to": "sqlite",
       "y": 250,
-      "label": "select flows; create split or matrix tasks"
+      "label": "Claim eligible task; heartbeat"
     },
     {
-      "from": "agent",
-      "to": "store",
-      "y": 320,
-      "label": "claim matching task"
-    },
-    {
-      "from": "store",
+      "id": "spec",
+      "from": "sqlite",
       "to": "agent",
-      "y": 380,
-      "label": "task + device"
+      "y": 285,
+      "label": "Task, app, flow snapshot",
+      "variant": "return"
     },
     {
+      "id": "execute",
       "from": "agent",
-      "to": "maestro",
-      "y": 450,
-      "label": "execute flow with timeout",
+      "to": "runner",
+      "y": 320,
+      "label": "Execute on assigned device",
       "variant": "emphasis"
     },
     {
-      "from": "maestro",
+      "id": "files",
+      "from": "runner",
+      "to": "artifacts",
+      "y": 355,
+      "label": "JUnit, logs, screenshots"
+    },
+    {
+      "id": "outcome",
+      "from": "runner",
       "to": "agent",
-      "y": 510,
-      "label": "exit + JUnit",
+      "y": 390,
+      "label": "Exit status and parsed results",
       "variant": "return"
     },
     {
+      "id": "finish",
       "from": "agent",
-      "to": "store",
-      "y": 570,
-      "label": "save status and artifact paths"
+      "to": "sqlite",
+      "y": 425,
+      "label": "Finish or requeue with backoff"
     },
     {
-      "from": "client",
+      "id": "observe",
+      "from": "dashboard",
       "to": "api",
-      "y": 650,
-      "label": "GET /runs/{id}/junit"
+      "y": 460,
+      "label": "GET run or subscribe to SSE"
     },
     {
+      "id": "read",
       "from": "api",
-      "to": "client",
-      "y": 710,
-      "label": "merged JUnit + run detail",
-      "variant": "return"
-    }
-  ],
-  "cards": [
-    {
-      "dot": "cyan",
-      "title": "Task creation",
-      "items": [
-        "Explicit flow paths take precedence over tags",
-        "Split and matrix define task distribution"
-      ]
+      "to": "sqlite",
+      "y": 495,
+      "label": "Read run, tasks, events"
     },
     {
-      "dot": "amber",
-      "title": "Retry",
-      "items": [
-        "Failed tasks may be retried with backoff",
-        "The API exposes run status, JUnit and artifacts"
-      ]
+      "id": "response",
+      "from": "api",
+      "to": "dashboard",
+      "y": 530,
+      "label": "Status, JUnit and artifact links",
+      "variant": "return"
     }
   ]
 }

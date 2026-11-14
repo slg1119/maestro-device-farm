@@ -10,7 +10,7 @@ class JunitParseError(ValueError):
 
 def _duration_ms(value: str | None) -> int:
     try:
-        return int(round(float(value or 0) * 1000))
+        return round(float(value or 0) * 1000)
     except ValueError:
         return 0
 

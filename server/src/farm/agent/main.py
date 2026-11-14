@@ -99,7 +99,7 @@ class Agent:
         for serial in sorted(connected - self.workers.keys()):
             try:
                 await self.provider.prepare(serial)
-            except Exception as exc:  # preparation is best effort; the device can still run flows
+            except Exception as exc:  # noqa: BLE001 - preparation is best effort; the device can still run flows
                 log.warning("prepare %s failed: %s", serial, exc)
             worker = DeviceWorker(serial, self.db, self.settings, self.runner, self.inspector,
                                   idle_sleep=self.worker_idle_sleep, cancel_poll_sec=self.cancel_poll_sec)
