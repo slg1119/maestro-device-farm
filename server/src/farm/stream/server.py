@@ -18,7 +18,7 @@ class StreamServer:
         self.port = settings.agent_stream_port
 
     async def start(self) -> None:
-        self._server = await serve(self._handle, '127.0.0.1', self.settings.agent_stream_port,
+        self._server = await serve(self._handle, self.settings.agent_stream_bind_host, self.settings.agent_stream_port,
                                    max_size=8192, max_queue=16, compression=None)
         self.port = self._server.sockets[0].getsockname()[1]
 

@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    ports:
+      - "${FARM_HOST_PORT:-8700}:8700"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      FARM_DATA_DIR: /data
+      FARM_API_HOST: 0.0.0.0
+      FARM_API_PORT: 8700
+      FARM_WEB_DIST: /app/web/dist
+      FARM_AGENT_STREAM_HOST: agent
+      FARM_PUBLIC_URL: ${FARM_PUBLIC_URL:-http://localhost:8700}
+    volumes:
+      - farm-data:/data
+    restart: unless-stopped
+
+  agent:
+    profiles: ["agent"]
+    build:
+      context: .
+      target: agent
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      FARM_DATA_DIR: /data
+      FARM_PUBLIC_URL: http://api:8700
+      ADB_SERVER_SOCKET: tcp:host.docker.internal:5037
+      FARM_AGENT_STREAM_BIND_HOST: 0.0.0.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - farm-data:/data
+    restart: unless-stopped
+
+volumes:
+  farm-data:

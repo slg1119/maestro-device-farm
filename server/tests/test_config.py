@@ -16,6 +16,7 @@ def test_defaults_match_spec(monkeypatch):
     assert s.database_path == s.data_dir / "farm.db"
     assert (s.api_host, s.api_port) == ("0.0.0.0", 8700)
     assert s.public_url == "http://localhost:8700"
+    assert (s.agent_stream_host, s.agent_stream_bind_host) == ("127.0.0.1", "127.0.0.1")
     assert s.task_timeout_sec == 1800
     assert s.retry_backoff_sec == 15
     assert s.min_battery == 20

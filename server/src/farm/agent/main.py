@@ -67,8 +67,8 @@ class Agent:
             try:
                 await self.stream_server.start()
             except OSError:
-                log.error("agent stream server could not bind 127.0.0.1:%d; continuing without streaming",
-                          self.settings.agent_stream_port)
+                log.error("agent stream server could not bind %s:%d; continuing without streaming",
+                          self.settings.agent_stream_bind_host, self.settings.agent_stream_port)
         loops = [
             asyncio.create_task(self._every(self.poll_sec, self.poll_devices_once)),
             asyncio.create_task(self._every(self.sweep_sec, self.sweep_once)),

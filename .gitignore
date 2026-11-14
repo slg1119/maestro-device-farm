@@ -10,3 +10,6 @@ docs/spikes/artifacts/
 node_modules/
 web/dist/
 .playwright-mcp/
+.env
+backups/
+**/secrets.env

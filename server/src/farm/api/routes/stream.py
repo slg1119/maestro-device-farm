@@ -89,7 +89,7 @@ async def stream_device(browser: WebSocket, serial: str, ticket: str | None = No
                                  "running_task_id": None, "recording": False, "control": False})
     settings = browser.app.state.settings
     query = urlencode({"control": int(control), "actor": actor})
-    url = (f"ws://127.0.0.1:{getattr(settings, 'agent_stream_port', 8701)}"
+    url = (f"ws://{settings.agent_stream_host}:{settings.agent_stream_port}"
            f"/devices/{quote(serial, safe='')}/stream?{query}")
     close_code = 1000
     try:

@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8700
     agent_stream_port: int = 8701
+    agent_stream_host: str = "127.0.0.1"
+    agent_stream_bind_host: str = "127.0.0.1"
     stream_max_size: int = 1280
     stream_max_fps: int = 30
     scrcpy_server_path: Path = REPO_ROOT / "ops" / "scrcpy" / "scrcpy-server-v4.1"
