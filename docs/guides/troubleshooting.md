@@ -1,85 +1,134 @@
 # Troubleshooting
 
+**What you'll have at the end:** the exact failing layer identified and one corrective action to try before repeating a run.
+
+## Copy-paste quick path
+
+With the API running, paste this into a terminal:
+
+```sh
+curl http://localhost:8700/api/v1/healthz
+```
+
+**You should see:** JSON containing `"status":"ok"`. Then match the symptom in the table at the bottom of this page.
+
 ## Before you begin
 
-Keep the API terminal or Compose service running, and copy the exact error code from the UI before changing settings. **adb** is Android Debug Bridge, the tool the agent uses to see devices. The **agent** is the process that runs tests. A **flow** is a YAML test file; a **tag** is a label on that file. An **artifact** is a task output; JUnit is its XML test report. Follow the numbered case matching your symptom.
+Keep the API running and read the exact error code on the screen. **adb** (Android Debug Bridge) is the tool the agent uses to see devices. The **agent** runs Maestro tests. A **flow** is a YAML test file, a **tag** selects flows, an **artifact** is saved task output, and JUnit is the XML test report. Choose the case that matches what you see.
 
-Use the error message you actually see. The examples below are messages or codes emitted by the current API and CLI. The images show where to look in the English dashboard.
+## Case 1: All devices are Offline
 
-## 1. The dashboard opens, but all devices are offline
+### 1.1 Check the API
 
-The API deliberately reports all devices as offline when the agent heartbeat is missing or stale. Start `farm agent` on the same native data directory, or enable the Compose agent profile only after configuring host adb. Run `adb devices` on the agent host and confirm the intended device is listed as `device`.
+Open `http://localhost:8700/api/v1/healthz`. **You should see:** `"status":"ok"` and an `agent` field. **If it looks different:** restart the API first.
 
-![Device status page in the example](../assets/devices.png)
+### 1.2 Check adb on the agent host
 
-**Screenshot callouts:** (1) Device navigation; (2) device state and model; (3) battery, SDK and tags.
+In a terminal on the agent host, run:
 
-**You should see:** Overview says the agent is healthy and **Device** shows the expected device.
+```sh
+adb devices
+```
 
-**If it looks different:** If the agent is absent, start it only after confirming its adb server exposes the intended devices.
+**You should see:**
 
-## 2. Submission says `no_matching_devices`
+```text
+List of devices attached
+YOUR_DEVICE_SERIAL    device
+```
 
-No available or busy device matches the selector and APK minimum SDK. Check the device list, serial spelling, all requested **device tags**, model, SDK bounds, reservations and disabled state. In the New run form, use the preview count before submitting.
+**If it looks different:** follow [Connect a device](connect-a-device.md). Stop before starting the agent if an unintended device appears.
 
-![Device conditions selector marked](../assets/new-run-conditions.png)
+### 1.3 Check the Device page
 
-**Screenshot callouts:** (1) conditions option; (2) tags/model/SDK inputs; (3) eligible count.
+Open `http://localhost:8700/devices`. **You should see:** your device row with **Available**, **Reserved**, or **Running** rather than **Offline**.
 
-**You should see:** The device selector preview becomes nonzero after a matching device is available.
+![Device state on the dashboard](../assets/devices.png)
 
-**If it looks different:** Check SDK bounds, app minimum SDK, serial, model, tags, disabled state, and reservations one at a time.
+**Callouts:** (1) visible text **Device**; (2) your device row; (3) state label.
 
-## 3. Submission says `no_flows` or `flow_not_found`
+**If it looks different:** start the agent using the same data directory as the API and wait for a heartbeat.
 
-`no_flows` means no YAML matched the tag filters. Include tags match **any** named flow tag, while exclude tags remove matching flows. `flow_not_found` means an explicit path does not exist relative to the flow root. Open the editor file tree and copy the relative path exactly.
+## Case 2: `no_matching_devices`
 
-![Flow paths and tags area](../assets/new-run-tags.png)
+### 2.1 Open device selection
 
-**Screenshot callouts:** (1) include tags; (2) exclude tags; (3) Specify test file directly.
+Open `http://localhost:8700/runs/new`. **You should see:** **New run** and device selection. **If it looks different:** check the API URL.
 
-**You should see:** The flow file appears under **Files**, and its relative path matches the form exactly.
+### 2.2 Check all available devices
 
-**If it looks different:** Remove tag filters temporarily to test selection; explicit paths bypass tag filtering.
+Click **All available devices**. **You should see:** a nonzero eligible count. **If it looks different:** check the device state, APK minimum SDK, reservation, and model/tag conditions.
 
-## 4. Workspace registration says `repo_unreachable` or `branch_not_found`
+![Device conditions and count](../assets/new-run-conditions.png)
 
-Check the `owner/name`, branch and network access. For private repositories, configure `FARM_GITHUB_TOKEN` or a secure remote transport. The registration command fetches the branch immediately; an invalid path inside the repository does not by itself prevent registration.
+**Callouts:** (1) visible text **Choose based on conditions**; (2) Android API level inputs; (3) eligible count.
 
-![Workspace list and registration area](../assets/workspaces.png)
+## Case 3: `no_flows` or `flow_not_found`
 
-**Screenshot callouts:** (1) Workspace navigation; (2) Register workspace; (3) workspace row.
+### 3.1 Clear the tag filter
 
-**You should see:** The workspace row displays a reachable branch and commit.
+In **New run**, clear **Only tests with at least one of these tags**. **You should see:** the flow selection restriction disappear. **If it looks different:** inspect the workspace tree; an explicit path must be relative to the flow root.
 
-**If it looks different:** Check repository spelling, branch, network, and private repository access on the API host.
+![Flow filter fields](../assets/new-run-tags.png)
 
-## 5. A task says `install_failed`, `timeout` or `no_junit`
+**Callouts:** (1) include tag input; (2) exclude tag input; (3) visible text **Specify test file directly**.
 
-`install_failed` means the APK could not be installed, often because package/signature, SDK or device storage differ. `timeout` means the task exceeded `FARM_TASK_TIMEOUT_SEC` or its per-run override. `no_junit` means Maestro ended without a usable JUnit report. Inspect the task result and available artifacts, then rerun after correcting the cause. These infrastructure errors can automatically get one retry; assertion failures do not.
+## Case 4: `repo_unreachable` or `branch_not_found`
 
-![Run detail and task area](../assets/run-detail.png)
+### 4.1 Open the workspace form
 
-**Screenshot callouts:** (1) run status; (2) selected task; (3) task output and Artifacts.
+Open `http://localhost:8700/workspaces`. **You should see:** **Workspace Management** and **Register workspace**. **If it looks different:** check the API URL.
 
-**You should see:** The task detail explains the failure and lists any available artifacts.
+### 4.2 Check the repository name
 
-**If it looks different:** Check device storage and APK compatibility for install errors; increase a task timeout only after investigating the slow step.
+Compare **repo** with your Git host's `owner/repository` name. **You should see:** the same value in both places. **If it looks different:** correct the spelling or arrange private repository access on the API host.
 
-## 6. A live screen does not connect
+### 4.3 Check the branch
 
-Check the agent heartbeat and stream port. Native defaults are `127.0.0.1:8701`; Compose uses the internal `agent` hostname. A stream requires a connected device and a running agent.
+Compare **branch** with the branch holding your flow. **You should see:** an existing branch such as `main`. **If it looks different:** enter the branch shown on your Git host.
 
-![Live board filter controls](../assets/live-screen-and-recording.gif)
+![Workspace registration fields](../assets/workspaces.png)
 
-**Screenshot callouts:** (1) status filter; (2) empty-state message; (3) tile size control.
+**Callouts:** (1) **Register workspace**; (2) **repo**; (3) **branch**; (4) **path**; (5) **Register**.
 
-**You should see:** The live tile connects after agent and device return to available state.
+## Case 5: `install_failed`, `timeout`, or `no_junit`
 
-**If it looks different:** Check browser support, agent stream host/port, reservation for control, and device availability.
+### 5.1 Open task output
+
+On the failed run page, click the failed task row. **You should see:** the error code and any **Artifacts**.
+
+![Failed task detail](../assets/run-detail.png)
+
+**Callouts:** (1) **Failed** in the selected task row; (2) **task output**; (3) **Artifacts**.
+
+**If it looks different:** check that the run has finished. For `install_failed`, check APK package, SDK, and storage; for `timeout`, inspect the slow step; for `no_junit`, inspect the available text output.
+
+## Case 6: Live screen will not connect
+
+### 6.1 Check the live board
+
+Open `http://localhost:8700/live`. **You should see:** a connected device tile. **If it looks different:** check agent heartbeat, browser support, device state, and the API-to-agent stream address.
+
+![Live board connection state](../assets/live-board.png)
+
+**Callouts:** (1) **Device Live Grid**; (2) visible emulator serial; (3) **Available** on the tile.
 
 ## Recap
 
-You can match an error to the relevant device, flow, workspace, task, or stream check before trying again.
+You have checked the API, device, flow, workspace, task, or stream related to your error. **Next:** [Run tests](running-tests.md) after correcting it.
 
-**Next:** [Run tests](running-tests.md) after fixing the cause.
+## Troubleshooting table
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Dashboard cannot load | API is stopped or wrong port | Check the API terminal or `docker compose ps` |
+| Every device is **Offline** | Agent heartbeat missing | Start the agent with the shared data directory |
+| `no_matching_devices` | Device or app SDK does not match selector | Use **All available devices** and check **Device** |
+| `no_flows` | Tag filter matched nothing | Clear tags or check YAML `tags` |
+| `flow_not_found` | Explicit path is wrong | Copy the path relative to the workspace root |
+| `repo_unreachable` | Repository access or name is wrong | Check `owner/repository` and server access |
+| `branch_not_found` | Branch does not exist | Use a branch visible on the Git host |
+| `install_failed` | APK is incompatible or storage is low | Check APK package, min SDK, and device storage |
+| `timeout` | One task exceeded its limit | Inspect the slow step before increasing the timeout |
+| `no_junit` | Maestro did not produce a usable report | Inspect task output and retry after fixing the cause |
+| Live screen is blank | Agent stream or browser cannot connect | Check stream settings and use Chrome/Edge |

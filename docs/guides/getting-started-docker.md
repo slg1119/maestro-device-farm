@@ -1,89 +1,165 @@
 # Getting started with Docker
 
-## Before you begin
+**What you'll have at the end:** an API and English dashboard open at `http://localhost:8700/`. The agent and Android device come next.
 
-Docker runs the API and dashboard in containers (small, isolated application environments). Docker Compose reads `docker-compose.yml` and starts the services together. This first session needs [Git](https://git-scm.com/downloads), a web browser, and [Docker Desktop for macOS](https://docs.docker.com/desktop/setup/install/mac-install/), [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/), or [Docker Engine](https://docs.docker.com/engine/install/) plus the [Compose plugin](https://docs.docker.com/compose/install/linux/) on Linux. Start Docker Desktop before opening a terminal. On Windows, use PowerShell; on macOS, use Terminal; on Linux, use your terminal app. Copy a command block, paste it, and press Enter. Run each block from the directory named above it.
+## Copy-paste quick path
 
-An **agent** is the process that controls Android devices and executes tests. This guide first starts the dashboard without an agent. An **artifact** is an output file from a test, such as a screenshot or JUnit report. JUnit is an XML test result format used by CI systems.
-
-This guide gets the API and dashboard running. A real test also needs an Android device, an APK, flows, and an agent. The images show the controls to look for; your own devices and run IDs will differ.
-
-## 1. Install Docker and verify it
-
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) on macOS or Windows, or Docker Engine plus the Compose plugin on Linux. Open a terminal and run:
-
-```sh
-docker version
-docker compose version
-```
-
-You should see both a Client and Server version and a Compose version. Your version numbers will differ. If the Server line is missing, start Docker Desktop or the Docker daemon. The dashboard you will reach is shown below.
-
-**You should see:** `docker version` prints Client and Server sections, and `docker compose version` prints a version.
-
-**If it looks different:** If `docker` is not recognized, finish the installation and reopen the terminal. If Server is unavailable, launch Docker Desktop or the Linux daemon.
-
-## 2. Clone and set up the environment file
+After [Docker](https://docs.docker.com/get-docker/) and [Git](https://git-scm.com/downloads) are installed, copy this repository's HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`:
 
 ```sh
 git clone PASTE_REPOSITORY_URL maestro-device-farm
 cd maestro-device-farm
 cp .env.example .env
+docker compose up -d --build
 ```
 
-On this repository page, click **Code**, copy the HTTPS URL, and replace `PASTE_REPOSITORY_URL` with it before pressing Enter. Leave the commented defaults alone for a first launch. `.env` is ignored by Git; add `FARM_HOST_PORT=8710` and `FARM_PUBLIC_URL=http://localhost:8710` only if port 8700 is occupied. The image below shows the first page after these steps and startup.
+Open `http://localhost:8700/`. The steps below explain each command.
 
-**You should see:** Your prompt is inside the `maestro-device-farm` folder; `.env` is a local configuration copy.
+## Before you begin
 
-**If it looks different:** Replace the example clone URL with the repository URL from the project page. If Git asks for credentials, check repository access; do not paste credentials into the command.
+Use [Docker Desktop for macOS](https://docs.docker.com/desktop/setup/install/mac-install/), [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/), or [Docker Engine](https://docs.docker.com/engine/install/) with the [Compose plugin](https://docs.docker.com/compose/install/linux/) on Linux. Docker runs the API in a **container**, an isolated application environment. **Compose** reads `docker-compose.yml` and starts it. Open Terminal (macOS), PowerShell (Windows), or your terminal app (Linux). Paste one command and press Enter. An **agent** is the separate process that controls Android devices; this guide starts the API only.
 
-## 3. Build and start
+## Install and start
+
+### 1.1 Start Docker
+
+On macOS or Windows, open **Docker Desktop**. On Linux, start your Docker service using your distribution's instructions. **You should see:** Docker Desktop says it is running, or the Linux service is active. **If it looks different:** finish the OS-specific installer above and restart the app.
+
+### 1.2 Check Docker
+
+In a terminal, run:
 
 ```sh
-docker compose build
-docker compose up -d
+docker version
+```
+
+**You should see:** both of these headings:
+
+```text
+Client:
+Server:
+```
+
+**If it looks different:** if `Server:` is absent, Docker is not running yet.
+
+### 1.3 Check Compose
+
+Run:
+
+```sh
+docker compose version
+```
+
+**You should see:** a version line beginning:
+
+```text
+Docker Compose version
+```
+
+**If it looks different:** install the Compose plugin or update Docker Desktop.
+
+### 1.4 Copy the repository URL
+
+On this repository's web page, click **Code > HTTPS > Copy**. **You should see:** the repository URL on your clipboard. **If it looks different:** use your Git host's HTTPS clone control.
+
+### 1.5 Clone the repository
+
+Replace `PASTE_REPOSITORY_URL` with that URL, then run:
+
+```sh
+git clone PASTE_REPOSITORY_URL maestro-device-farm
+```
+
+**You should see:** output containing:
+
+```text
+Cloning into 'maestro-device-farm'...
+```
+
+**If it looks different:** install [Git](https://git-scm.com/downloads) and reopen the terminal, or check repository access.
+
+### 1.6 Enter the project folder
+
+Run:
+
+```sh
+cd maestro-device-farm
+```
+
+**You should see:** no error; your terminal prompt may now end in `maestro-device-farm`. **If it looks different:** run the clone command from the same terminal, or locate the folder you cloned.
+
+### 1.7 Copy local settings
+
+Run:
+
+```sh
+cp .env.example .env
+```
+
+**You should see:** no output. **If it looks different:** confirm you are in the folder containing `.env.example`. The defaults are enough for the first launch.
+
+### 1.8 Start the API
+
+Run:
+
+```sh
+docker compose up -d --build
+```
+
+**You should see:** Compose build messages ending with the API container starting. **If it looks different:** check Docker's disk space and run `docker compose logs --tail=100 api`.
+
+### 1.9 Check the container
+
+Run:
+
+```sh
 docker compose ps
 ```
 
-You should see `api` in the service list. The API container should become `healthy`. The agent is an optional profile and stays stopped until you deliberately connect adb.
+**You should see:** an `api` service with `healthy` in its status, for example:
 
-![Overview in the running API container](../assets/docker-overview.png)
+```text
+NAME                         SERVICE   STATUS
+maestro-device-farm-api-1    api       Up (healthy)
+```
 
-**Screenshot callouts:** (1) Overview navigation; (2) agent status; (3) summary cards.
+**If it looks different:** wait a few seconds and retry. If it never becomes healthy, inspect `docker compose logs --tail=100 api`.
 
-**You should see:** `docker compose ps` lists an `api` service and eventually reports it healthy.
+### 1.10 Open the dashboard
 
-**If it looks different:** A first build can take several minutes. If it fails, inspect `docker compose logs --tail=100 api` and confirm Docker has enough disk space.
+Open `http://localhost:8700/` in your browser. **You should see:** **Overview** in the sidebar and an agent status that may say **Agent not responding**.
 
-## 4. Open the dashboard
+![Docker dashboard after the API becomes healthy](../assets/docker-overview.png)
 
-Visit `http://localhost:8700/` (or your chosen host port). Confirm that `curl http://localhost:8700/api/v1/healthz` returns JSON containing `"status":"ok"`. The footer will say the agent is not responding until you enable one.
+**Callouts:** (1) **Overview**; (2) **Agent not responding**; (3) **Available devices**.
 
-![Overview page and first navigation target](../assets/docker-overview.png)
+**If it looks different:** check the container in step 1.9. If port 8700 is occupied, follow [Docker port settings](../docker.md#troubleshooting).
 
-**Screenshot callouts:** (1) Overview navigation; (2) agent status; (3) summary cards.
+### 1.11 Check the API
 
-**You should see:** The **Overview** page opens at `http://localhost:8700/`; the health endpoint contains `"status":"ok"`.
+Run:
 
-**If it looks different:** If the browser cannot connect, run `docker compose ps`. For a port conflict, set `FARM_HOST_PORT` and `FARM_PUBLIC_URL` in `.env` as described in the [Docker reference](../docker.md).
+```sh
+curl http://localhost:8700/api/v1/healthz
+```
 
-## 5. Prepare a first run
+**You should see:** JSON containing:
 
-Follow [Connect a device](connect-a-device.md), [Your first flow](your-first-flow.md), and [Running tests](running-tests.md). Upload an Android APK for the flow's package before submitting. The GIF points out the navigation and source form.
+```text
+"status":"ok"
+```
 
-![Opening the run area in the Compose dashboard](../assets/getting-started-docker.gif)
-
-**Screenshot callouts:** (1) Runs navigation; (2) New run action; (3) source form.
-
-
-For adb networking, backup, upgrades, and the optional agent profile, read [Docker operations](../docker.md).
-
-**You should see:** You have a working dashboard. **Device** may be empty until an agent and device are connected.
-
-**If it looks different:** An empty device list is expected at this stage. Continue with the linked device guide before trying a real run.
+**If it looks different:** use the same port that you opened in the browser and check `docker compose ps`.
 
 ## Recap
 
-The API and dashboard are running in Docker. The agent stays optional until you connect Android devices deliberately.
+Your dashboard is running. The agent is optional until you connect an Android device. **Next:** [Connect a device](connect-a-device.md), then [write a flow](your-first-flow.md).
 
-**Next:** [Connect an Android device](connect-a-device.md) or read [Docker operations](../docker.md).
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `docker` is not recognized | Docker is not installed or terminal PATH is stale | Install Docker and reopen the terminal |
+| `Server:` is missing | Docker daemon is stopped | Start Docker Desktop or the Linux service |
+| `api` never becomes healthy | Build or startup error | Run `docker compose logs --tail=100 api` |
+| Browser cannot open port 8700 | API stopped or port is occupied | Check `docker compose ps`; see [Docker ports](../docker.md#troubleshooting) |

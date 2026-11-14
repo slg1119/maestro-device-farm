@@ -1,87 +1,98 @@
 # Run tests
 
+**What you'll have at the end:** a run ID and a run detail page showing your flow being executed on an eligible Android device.
+
+## Copy-paste quick path
+
+Open this URL after your workspace, APK, agent, and device are ready:
+
+```text
+http://localhost:8700/runs/new
+```
+
+Choose a repository, an app build, **Split**, **All available devices**, then **Start run**. The detailed steps below explain each choice.
+
 ## Before you begin
 
-You need a running API and agent, an available Android device, an APK (Android application package), and a flow whose `appId` equals the APK package. Follow [Connect a device](connect-a-device.md) and [Your first flow](your-first-flow.md). A **run** is a submitted test request; a **task** is one unit assigned to a device. A **tag** is a flow label used to include or exclude tests. A **workspace** supplies versioned flows from Git. An uploaded ZIP is a one-off flow source. A JUnit report is an XML summary for test tools.
+Follow [Connect a device](connect-a-device.md) and [Your first flow](your-first-flow.md). An **APK** is the Android installation file. Its package must equal the flow's `appId`. A **workspace** holds versioned YAML flows. A **tag** labels a flow. **Split** makes one task per flow; **Matrix** repeats the selected flow set on each device. A **task** is one unit of work assigned to a device.
 
-A run selects flows, an APK build and eligible Android devices. The UI shows a preview before submission. The images show example states; your run will move beyond queued when an agent executes its tasks.
+## Create the run
 
-## 1. Choose flow source and app
+### 1.1 Open New run
 
-Open **Runs**, then **New run**. Choose **Registered repository** and a workspace, or upload a ZIP of YAML flows. Choose an uploaded app build or upload an APK. The `appId` in your YAML must match the APK package. A registered workspace may use a branch or commit ref; leaving it blank selects its configured branch head.
+In the browser, open `http://localhost:8700/runs/new`. **You should see:** **New run** and **Run Settings**. **If it looks different:** start the API and check the URL and port.
 
-![New run source, app and summary](../assets/new-run.png)
+### 1.2 Choose the flow source
 
-**Screenshot callouts:** (1) flow source selector; (2) app build selector; (3) Run summary.
+Under **Where to get test files**, click **registered repository**. **You should see:** a repository selector. **If it looks different:** register a [workspace](workspaces-and-git.md) first. A ZIP upload is a separate option for one-off runs.
 
-**You should see:** **Run summary** names the chosen flow source and app build.
+### 1.3 Open the repository selector
 
-**If it looks different:** If no workspace appears, register one. If no app appears, use **Upload your APK file** or the **App** page.
+Click **Choose a repository**. **You should see:** a list of registered workspaces. **If it looks different:** register or sync your workspace.
 
-## 2. Choose split or matrix
+### 1.4 Choose your repository
 
-**Split** creates one task for each selected flow. Each task can be claimed by an eligible device; a flow runs once. **Matrix** creates one pinned task for each eligible device; that task runs the selected flow set on its device. With flows A and B and devices D1 and D2:
+Click the workspace containing your flow. **You should see:** its name in the source field and in **Run summary**.
 
-| Mode | Tasks created |
+![New run with flow source and app controls](../assets/new-run.png)
+
+**Callouts:** (1) visible text **Choose a repository**; (2) visible text **Choose your app version**; (3) visible text **Run summary**.
+
+**If it looks different:** click **Workspace > Sync** and confirm your `.yaml` file is in its configured path.
+
+### 1.5 Choose the app build
+
+Under **App build**, select the uploaded APK build for the flow's package. **You should see:** the package and version in **Run summary**. **If it looks different:** use **Upload your APK file** or the **App** page to upload a compatible APK.
+
+### 1.6 Choose the mode
+
+Under **Run mode**, click **Split** for your first run. **You should see:** the **Split** card selected. **If it looks different:** **Matrix** runs the selected flow set once on every eligible device.
+
+![Run mode choices](../assets/new-run-matrix.png)
+
+**Callouts:** (1) **Split**; (2) **Matrix**; (3) **Run mode**.
+
+### 1.7 Choose devices
+
+Under **Device to run on**, click **All available devices**. **You should see:** a nonzero eligible device count in **Run summary**. **If it looks different:** return to the [device guide](connect-a-device.md) and check agent health, app minimum SDK, and reservations.
+
+### 1.8 Choose a flow filter
+
+For a first run, leave **Only tests with at least one of these tags** empty. **You should see:** no tag restriction in the summary. **If it looks different:** clear earlier tag entries. Later, enter `smoke` to include flows with that tag; explicit file paths bypass tag filters.
+
+![Flow tag and path inputs](../assets/new-run-tags.png)
+
+**Callouts:** (1) visible text **Only tests with at least one of these tags**; (2) visible text **Tests with this tag are excluded**; (3) visible text **Specify test file directly**.
+
+### 1.9 Start the run
+
+Click **Start run**. **You should see:** a run detail URL ending in `/runs/` and a new ID, initially **Queued** or **Running**.
+
+![Submitting and opening a run](../assets/running-tests.gif)
+
+**Callouts:** (1) visible text **Start run**; (2) new run ID; (3) current run status.
+
+**If it looks different:** read the form error. `no_matching_devices` means the device selector or app SDK rule excluded every device; `no_flows` means no flow matched.
+
+## Optional choices
+
+| Choice | Meaning |
 | --- | --- |
-| Split | A → one of D1/D2; B → one of D1/D2. |
-| Matrix | D1 → A+B; D2 → A+B. |
-
-The matrix mode can run all flows through Maestro's directory/tag selection, while split enumerates the files before creating tasks. Select the mode card and check the summary on the right.
-
-![Matrix choice marked in the running new run page](../assets/new-run-matrix.png)
-
-**Screenshot callouts:** (1) Matrix mode card; (2) Split mode card; (3) Run summary.
-
-**You should see:** The selected **Run mode** card is highlighted; **Split** distributes flow tasks and **Matrix** repeats the set per device.
-
-**If it looks different:** Use Split for a first run. Matrix intentionally increases the number of executions.
-
-## 3. Select devices
-
-Choose **All available devices**, **Pick your own** by serial, or **Choose based on conditions**. Conditions include device tags, model and SDK range; the device must have **all** requested device tags. The app build's minimum SDK is also enforced. The count preview is your final check before submission.
-
-![Manual serial choice](../assets/new-run-manual.png)
-
-**Screenshot callouts:** (1) Pick your own option; (2) device selector; (3) eligible count.
-
-![Conditions choice](../assets/new-run-conditions.png)
-
-**Screenshot callouts:** (1) conditions option; (2) tags/model/SDK inputs; (3) eligible count.
-
-**You should see:** The preview counts at least one eligible device and shows its state.
-
-**If it looks different:** A count of zero means you must connect an agent/device or loosen the selector. Do not submit until the intended device matches.
-
-## 4. Select flows
-
-The **include tags** field matches a flow with **any** listed tag. Exclude tags remove matching flows. For example, `smoke,search` includes a flow tagged `smoke` **or** `search`. An explicit relative flow path such as `smoke.yaml` selects that path directly and bypasses tag filtering. For nested files, use paths relative to the workspace root. A flow named in an explicit path must exist or submission fails.
-
-![Include tags field marked](../assets/new-run-tags.png)
-
-**Screenshot callouts:** (1) include tags; (2) exclude tags; (3) Specify test file directly.
-
-**You should see:** The tag or explicit file field contains your selection, and the summary reflects it.
-
-**If it looks different:** Leave both empty to run all flows. An explicit path must be relative to the flow root and bypasses tag filtering.
-
-## 5. Set timeout and submit
-
-The optional timeout is in seconds **per task**. The default is `FARM_TASK_TIMEOUT_SEC=1800` (30 minutes). Optional `KEY=VALUE` entries are passed to Maestro and are hidden on run detail; avoid putting secrets in browser forms or shell history. Click **Start run** and follow the new run detail page.
-
-![Submitting a new run to the example](../assets/running-tests.gif)
-
-**Screenshot callouts:** (1) source and app; (2) device preview; (3) Start run and queued status.
-
-
-Infrastructure errors (`device_disconnected`, `install_failed`, `timeout`, `agent_restarted`, `no_junit`) are retried once, with `FARM_RETRY_BACKOFF_SEC` delay (default 15 seconds). A normal assertion failure does not get an automatic retry. Use **Rerun** or **Rerun only on failure** on run detail for a deliberate rerun.
-
-**You should see:** A run detail page opens with a run ID and initial queued state, then task updates.
-
-**If it looks different:** If submission fails, read the error and check source, APK, and device preview. A queued run needs a running agent.
+| **Matrix** | Every eligible device runs the selected flow set |
+| **Pick your own** | Select specific device serials |
+| **Choose based on conditions** | Filter by device tags, model, or Android API level |
+| **Specify test file directly** | Use an exact path relative to the workspace root instead of tags |
+| **Timeout (seconds)** | Override the default per-task timeout of 1800 seconds |
 
 ## Recap
 
-You selected a flow source, app build, run mode, devices, and flow filters, then submitted a run.
+You selected a flow source, APK, mode, and device, then started a run. **Next:** [Read run results](reading-results.md).
 
-**Next:** [Read run results](reading-results.md).
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| No repository in the selector | Workspace not registered or synced | Open **Workspace**, register or sync it |
+| No app build | APK has not been uploaded | Use **Upload your APK file** |
+| Eligible device count is zero | Agent, SDK, selector, or reservation mismatch | Check **Device** and choose **All available devices** |
+| `no_flows` | Tags selected no files | Clear tag filters or inspect the workspace tree |

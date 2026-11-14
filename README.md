@@ -6,6 +6,30 @@ Run [Maestro](https://maestro.dev/) Android UI tests on a device you control, th
 
 **Callouts:** (1) **Overview** in the navigation; (2) **Runs** and **New run**; (3) the run status and task area.
 
+## Quick start in 3 commands
+
+Copy this repository's HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`. Install the tools for your path first. The [Docker guide](docs/guides/getting-started-docker.md) and [native guide](docs/guides/getting-started-native.md) explain every action and expected result.
+
+**Docker** (macOS, Windows, or Linux):
+
+```sh
+git clone PASTE_REPOSITORY_URL maestro-device-farm
+cd maestro-device-farm
+docker compose up -d --build
+```
+
+Open `http://localhost:8700/` when `docker compose ps` reports `api` healthy.
+
+**Native** (macOS or Linux):
+
+```sh
+git clone PASTE_REPOSITORY_URL maestro-device-farm
+cd maestro-device-farm
+(cd server && uv sync) && (cd web && pnpm install --frozen-lockfile && pnpm build) && (cd server && uv run farm api)
+```
+
+Keep the last terminal open and visit `http://localhost:8700/`.
+
 ## Pick your path
 
 | Your computer and goal | Start here | What starts first |
@@ -17,47 +41,15 @@ For both paths, you need [Git](https://git-scm.com/downloads) to copy the reposi
 
 ## Five-minute dashboard walkthrough
 
-The **terminal** is the text window where you paste a command and press Enter. Open Terminal on macOS, PowerShell on Windows, or your terminal app on Linux. These steps start the Docker dashboard. If you chose native installation, use the [native guide](docs/guides/getting-started-native.md) instead.
+After the quick start above, use these single clicks to find the main areas. The [Docker](docs/guides/getting-started-docker.md) and [native](docs/guides/getting-started-native.md) guides show setup checks and fixes.
 
-1. On this repository's web page, click **Code** and copy the HTTPS clone URL. In the terminal, replace `PASTE_REPOSITORY_URL` with that URL and run:
+1. Open `http://localhost:8700/`. **You should see:** **Overview** and agent status. **If it looks different:** check that the API process is running.
+2. Click **Runs** in the sidebar. **You should see:** **Run history**. **If it looks different:** use the browser's back button and check the API URL.
+3. Click **New run**. **You should see:** **Run Settings**. **If it looks different:** open `http://localhost:8700/runs/new` directly.
+4. Click **App** in the sidebar. **You should see:** the APK library and **Upload APK**. **If it looks different:** refresh after the API starts.
+5. Click **Workspace** in the sidebar. **You should see:** **Workspace Management** and **Register workspace**. **If it looks different:** open `http://localhost:8700/workspaces` directly.
 
-   ```sh
-   git clone PASTE_REPOSITORY_URL maestro-device-farm
-   cd maestro-device-farm
-   ```
-
-   **You should see:** Git finishes copying files, and the terminal is in the new `maestro-device-farm` folder. **If it looks different:** Install Git, reopen the terminal, and check that the copied URL is for this repository.
-
-2. Start Docker Desktop, then run:
-
-   ```sh
-   docker version
-   docker compose version
-   ```
-
-   **You should see:** A Docker Client and Server version, plus a Compose version. **If it looks different:** Wait until Docker Desktop says it is running; on Linux start the Docker daemon.
-
-3. Copy the example settings and start the API:
-
-   ```sh
-   cp .env.example .env
-   docker compose up -d --build
-   docker compose ps
-   ```
-
-   **You should see:** An `api` service that becomes healthy. The first build may take several minutes. **If it looks different:** Read [Docker troubleshooting](docs/docker.md#troubleshooting) and inspect `docker compose logs --tail=100 api`.
-
-4. Open [http://localhost:8700/](http://localhost:8700/) in a browser. Then run:
-
-   ```sh
-   curl http://localhost:8700/api/v1/healthz
-   ```
-
-   **You should see:** The **Overview** page and JSON containing `"status":"ok"`. The agent may say it is not responding because you have not started it. **If it looks different:** Check `docker compose ps` and whether another program uses port 8700.
-
-5. Click **Runs**, then **New run**. Look through the flow source, app build, mode, and device controls. You need your own APK and a connected device before submitting a real run. **You should see:** The **Run summary** panel updates as you choose options. **If it looks different:** The [run guide](docs/guides/running-tests.md) describes each field and the required inputs.
-
-To stop the dashboard later, run `docker compose down` in the repository folder. The named data volume remains. The [Docker guide](docs/docker.md) covers starting the optional agent and backing up data.
+A real test needs a compatible APK, a flow, and a connected Android device. Follow the guides below for each part.
 
 ## Feature tour
 
@@ -71,7 +63,7 @@ To stop the dashboard later, run `docker compose down` in the repository folder.
 | **Editor** | YAML flow editing, validation, history, and optional AI proposals | ![Flow editor](docs/assets/flow-editor.png) |
 | **Live board** | Connected Android screens and recording controls | ![Live board](docs/assets/live-board.png) |
 
-**Callouts in each tour image:** (1) the page name or selected navigation item; (2) its primary table, form, or panel; (3) its main action or status.
+The [shot list](docs/guides/SHOTLIST.md) names the numbered callouts for every image.
 
 ## Learn one task at a time
 

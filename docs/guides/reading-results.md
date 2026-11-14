@@ -1,68 +1,84 @@
 # Read run results
 
+**What you'll have at the end:** the result of your run, the output of one task, and a downloaded JUnit report when the run has finished.
+
+## Copy-paste quick path
+
+Open the run history:
+
+```text
+http://localhost:8700/runs
+```
+
+Select your run ID, select a task, then click **Download JUnit** after the run finishes.
+
 ## Before you begin
 
-Submit a run using [Run tests](running-tests.md). A **task** is one device assignment. An **artifact** is a saved output file, such as a screenshot or text summary. **JUnit** is an XML test result format used by continuous integration (CI) tools. The API and browser can show a queued run before a device finishes it.
+Submit a run using [Run tests](running-tests.md). A **task** is one device assignment. An **artifact** is a saved output file such as a screenshot or log. **JUnit** is an XML test report format used by CI systems. **Queued** means waiting; **Running** means an agent is executing; **Passed**, **Failed**, **Error**, and **Canceled** are final results.
 
-The dashboard shows queued, running, passed, failed, error and cancelled states. The images show sample history; your run IDs and output will differ.
+## Inspect your run
 
-## 1. Open the runs list
+### 1.1 Open run history
 
-Click **Runs** in the sidebar. The list can be filtered by status and links each run ID to detail. Passed means all tasks passed; failed means an assertion or case failed; error means an infrastructure or execution error; cancelled means cancellation was requested or completed.
+Open `http://localhost:8700/runs`. **You should see:** **Run history** and a row for your run ID.
 
-![Runs list from the example API](../assets/runs.png)
+![Run history](../assets/runs.png)
 
-**Screenshot callouts:** (1) Runs navigation; (2) search or filter; (3) run row and status.
+**Callouts:** (1) visible text **Run history**; (2) search field; (3) your run row and status.
 
-**You should see:** **Run history** lists the run ID and a status such as Queued, Running, Passed, Failed, Error, or Canceled.
+**If it looks different:** if the list is empty, submit a run first. Search for your run ID if many runs exist.
 
-**If it looks different:** If it is empty, submit a run first. Use the search/filter controls if a known ID is hidden.
+### 1.2 Open the run
 
-## 2. Open a run and select a task
+Click your run ID. **You should see:** the run detail with its status and a task list. **If it looks different:** wait for the API to load or confirm the ID in the URL.
 
-Select the run ID you submitted. The detail page shows the run mode, source revision, APK build, options and task distribution. Select a task row to see its per-task results and artifacts on the right. A matrix run has a device-by-flow grid.
+### 1.3 Select a task
 
-![Failed run detail from the example](../assets/run-detail.png)
+Click a task row. **You should see:** that task's output, status, and available **Artifacts**.
 
-**Screenshot callouts:** (1) run status; (2) selected task; (3) task output and Artifacts.
+![Selected task on run detail](../assets/run-detail.png)
 
-**You should see:** The detail shows a task list; selecting a task changes the output panel.
+**Callouts:** (1) **Failed** in the selected task row; (2) **task output**; (3) **Artifacts**.
 
-**If it looks different:** A queued task has no output yet. Refresh after the agent claims it, or check agent health on Overview.
+**If it looks different:** a queued task has no output yet; check the agent status on **Overview**.
 
-## 3. Read artifacts and JUnit
+### 1.4 Open an artifact
 
-The task panel lists files under that task's artifact directory, such as JUnit XML and summaries. A real Maestro run may also produce logs, screenshots and other captures. Click a file to inspect or download it. Use **Download JUnit** at the top for the merged report from all tasks.
+Under **Artifacts**, click one listed file. **You should see:** the file preview or a browser download. **If it looks different:** some tasks have no screenshot or log; inspect the task status and available filenames.
 
-Replace `RUN_ID` and `TASK_ID` below with the IDs shown in your run detail before pasting the commands.
+### 1.5 Download merged JUnit
+
+After the run finishes, click **Download JUnit**. **You should see:** an XML file in your browser's downloads.
+
+![JUnit download on a finished run](../assets/run-junit.png)
+
+**Callouts:** (1) visible text **Download JUnit**; (2) final run status; (3) task list.
+
+**If it looks different:** wait until every task reaches a final state, then retry.
+
+### 1.6 Rerun a failure
+
+For a failed run, click **Rerun only on failure**. **You should see:** a new run ID linked to the original run. **If it looks different:** the action is only useful when a task failed or errored. **Rerun** starts the complete selection again.
+
+## Command-line download
+
+Replace `RUN_ID` with the ID shown in the run URL, then run:
 
 ```sh
 curl -o report.xml http://localhost:8700/api/v1/runs/RUN_ID/junit
-curl http://localhost:8700/api/v1/tasks/TASK_ID/artifacts
 ```
 
-![JUnit download button marked](../assets/run-junit.png)
-
-**Screenshot callouts:** (1) Download JUnit; (2) run status; (3) task list.
-
-**You should see:** **Artifacts** lists available files and **Download JUnit** offers the merged XML after results exist.
-
-**If it looks different:** A task can have no screenshot. If a download is unavailable, wait for completion and inspect the task status.
-
-## 4. Retry or cancel
-
-Use **Rerun only on failure** for a new run containing failed or errored tasks, or **Rerun** for the complete selection. Queued and running runs expose **Cancel**. The GIF follows the runs list into a failed run's detail.
-
-![Navigating to a failed run and its task area](../assets/reading-results.gif)
-
-**Screenshot callouts:** (1) run row; (2) task selector; (3) task output.
-
-**You should see:** A rerun creates a new run; Cancel requests a stop for queued or active work.
-
-**If it looks different:** Use **Rerun only on failure** only when failed tasks exist. The original run remains in history.
+**You should see:** curl finish and a `report.xml` file containing a `<testsuites` or `<testsuite` element. **If it looks different:** confirm the run ID and that the API is running.
 
 ## Recap
 
-You can find a run, inspect a task and its artifacts, download JUnit, and create a deliberate rerun.
+You can open history, inspect a task, read artifacts, download JUnit, and rerun failed work. **Next:** [Troubleshooting](troubleshooting.md) if a result needs investigation.
 
-**Next:** [Troubleshooting](troubleshooting.md) when a result needs investigation.
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Run row is missing | Search or filter hides it | Search for the exact run ID |
+| Task has no output | Task is still queued | Check agent health and wait for execution |
+| JUnit download is unavailable | Run has not finished | Wait for every task to reach a final status |
+| Rerun action is unavailable | Run state does not allow it | Open a finished run with a failed task |

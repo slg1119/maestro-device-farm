@@ -1,36 +1,10 @@
 # Getting started natively
 
-## Before you begin
+**What you'll have at the end:** the API and built English dashboard running on your macOS or Linux computer. A separate agent can run Android tests afterward.
 
-Native means the API, dashboard build, and agent run directly on the computer. Install [Git](https://git-scm.com/downloads), [Python 3.12+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [Node.js](https://nodejs.org/en/download), and [pnpm](https://pnpm.io/installation). For Android execution also install [Android Studio and SDK Platform Tools](https://developer.android.com/studio), [Java 17+](https://adoptium.net/), and the [Maestro CLI](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli). These pages provide macOS, Windows, and Linux installers; the native agent instructions here cover macOS and Linux. Use Docker Desktop for the API on Windows. Open Terminal on macOS or your terminal app on Linux. A **terminal** is the text window where you paste each command and press Enter.
+## Copy-paste quick path
 
-**adb** (Android Debug Bridge) is the Android tool the agent uses to communicate with devices. An **AVD** (Android Virtual Device) is a saved emulator profile; an **emulator** runs it on your computer. The agent is the process that notices devices and runs Maestro tests. Do not start the agent until you have checked which devices your adb server exposes.
-
-This path runs Python and the web UI on your host. It is the simplest route when adb and an Android emulator already work on your machine. The screenshots show an isolated example; the instructions below start your own instance.
-
-## 1. Install the tools
-
-Install Python 3.12 or newer, [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js, pnpm, Android SDK platform-tools (`adb`), Java 17+, and [Maestro CLI](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli). Verify:
-
-```sh
-python3 --version
-uv --version
-node --version
-pnpm --version
-adb version
-java -version
-maestro --version
-```
-
-You should see a version for each command. The project uses `uv` for Python and `pnpm` for the dashboard. This screenshot shows the destination after startup.
-
-**You should see:** Every command prints a version, with Python at least 3.12 and Java at least 17.
-
-**If it looks different:** If one command is missing, finish that tool’s installer and reopen the terminal. On Windows, use the Docker path for the API.
-
-## 2. Install dependencies and build the dashboard
-
-On this repository page, click **Code**, copy its HTTPS URL, and replace `PASTE_REPOSITORY_URL` in the first command before pressing Enter.
+After installing the tools listed below, copy the repository HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`:
 
 ```sh
 git clone PASTE_REPOSITORY_URL maestro-device-farm
@@ -39,67 +13,182 @@ uv sync
 cd ../web
 pnpm install --frozen-lockfile
 pnpm build
-```
-
-A successful web build ends with a build summary and generates `web/dist`. Return to `server/` before the next command.
-
-**You should see:** `uv sync` finishes without an error and `pnpm build` creates `web/dist`.
-
-**If it looks different:** If `pnpm` is missing, install it from the link above. If `uv sync` rejects Python, install Python 3.12+ and rerun.
-
-## 3. Start the API
-
-In terminal A, continue from `web/` after step 2:
-
-```sh
 cd ../server
 uv run farm api
 ```
 
-`farm api` applies database migrations and listens on port 8700. Open `http://localhost:8700/` and `http://localhost:8700/api/v1/healthz`. The health JSON should include `"status":"ok"` and may have `"agent":null` at this stage.
+Keep the last terminal open; visit `http://localhost:8700/`.
 
-![Health and overview navigation in the real dashboard](../assets/overview.png)
+## Before you begin
 
-**Screenshot callouts:** (1) Overview navigation; (2) agent health indicator; (3) device and run summary cards.
+Install [Git](https://git-scm.com/downloads), [Python 3.12+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/getting-started/installation/), [Node.js](https://nodejs.org/en/download), and [pnpm](https://pnpm.io/installation). For Android tests, also install [Android Studio/SDK Platform Tools](https://developer.android.com/studio), [Java 17+](https://adoptium.net/), and [Maestro CLI](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli). On Windows, follow the [Docker path](getting-started-docker.md) for the API. A **terminal** is the text window where you paste one command and press Enter. **adb** (Android Debug Bridge) lets the agent communicate with Android; an **AVD** is a virtual device profile run by an emulator.
 
-**You should see:** The terminal keeps running; the browser shows **Overview** and `/api/v1/healthz` includes `"status":"ok"`.
+## Install and start
 
-**If it looks different:** Keep terminal A open. If port 8700 is busy, stop the conflicting process or change `FARM_API_PORT` and `FARM_PUBLIC_URL` before restarting.
+### 1.1 Check Python
 
-## 4. Connect a device and start the agent
+Run `python3 --version` in Terminal (macOS) or your Linux terminal. **You should see:** a line like this, with version 3.12 or newer:
 
-First run `adb devices` and confirm only devices you intend this farm to control are visible. In a new terminal B, open the cloned repository folder first:
+```text
+Python 3.12.7
+``` **If it looks different:** install Python 3.12+ and reopen the terminal.
+
+### 1.2 Check uv
+
+Run `uv --version`. **You should see:** a line like:
+
+```text
+uv 0.10.4
+``` **If it looks different:** install uv from the link above.
+
+### 1.3 Check Node.js
+
+Run `node --version`. **You should see:** a line like:
+
+```text
+v22.18.0
+``` **If it looks different:** install Node.js and reopen the terminal.
+
+### 1.4 Check pnpm
+
+Run `pnpm --version`. **You should see:** a version number, for example:
+
+```text
+10.29.1
+``` **If it looks different:** install pnpm from the link above.
+
+### 1.5 Copy the repository URL
+
+On this repository page, click **Code > HTTPS > Copy**. **You should see:** an HTTPS clone URL on your clipboard. **If it looks different:** use your Git host's clone control.
+
+### 1.6 Clone the repository
+
+Replace `PASTE_REPOSITORY_URL` with the copied URL and run:
 
 ```sh
-cd maestro-device-farm/server
-uv run farm agent
+git clone PASTE_REPOSITORY_URL maestro-device-farm
 ```
 
-The device list should move from offline to available or busy after a heartbeat. The agent may prepare, install APKs, and run Maestro on devices exposed by adb. Use [Connect a device](connect-a-device.md) before this step.
+**You should see:**
 
-![Device list in the example after a simulated heartbeat](../assets/devices.png)
+```text
+Cloning into 'maestro-device-farm'...
+```
 
-**Screenshot callouts:** (1) Device navigation; (2) device state and model; (3) battery, SDK and tags.
+**If it looks different:** check Git installation and repository access.
 
-**You should see:** Only devices you chose appear in adb, then the dashboard **Device** page changes from offline to available after an agent heartbeat.
+### 1.7 Enter the server folder
 
-**If it looks different:** If the list is empty, follow [Connect a device](connect-a-device.md). If an unexpected device appears, do not start the agent.
+Run `cd maestro-device-farm/server`. **You should see:** no error and a prompt inside `server`. **If it looks different:** return to the terminal where you cloned the repository.
 
-## 5. Optional web development server
+### 1.8 Install Python packages
 
-The API already serves `web/dist`. For frontend editing, open terminal C in the repository root, run `cd web && pnpm dev`, and visit `http://localhost:5173/`; Vite proxies `/api` to port 8700. Set `FARM_API_URL` if your API uses another port.
+Run:
 
-![A live dashboard navigation from the native demo](../assets/getting-started-native.gif)
+```sh
+uv sync
+```
 
-**Screenshot callouts:** (1) Overview navigation; (2) Device navigation; (3) device state.
+**You should see:** uv end with lines like:
 
+```text
+Resolved 73 packages
+Installed 73 packages
+```
 
-**You should see:** Vite displays a local URL ending in `:5173`, and the same dashboard opens there.
+The counts can differ by platform and cache. **If it looks different:** check Python 3.12+ and network access.
 
-**If it looks different:** This is optional for UI development. For normal use, stay on port 8700; it serves the built dashboard.
+### 1.9 Enter the web folder
+
+Run `cd ../web`. **You should see:** no error and a prompt inside `web`. **If it looks different:** confirm the preceding directory was `server`.
+
+### 1.10 Install web packages
+
+Run:
+
+```sh
+pnpm install --frozen-lockfile
+```
+
+**You should see:** a completed install summary containing a line like:
+
+```text
+Done in 3.2s
+```
+
+The time will differ. **If it looks different:** check Node.js, pnpm, and network access.
+
+### 1.11 Build the dashboard
+
+Run:
+
+```sh
+pnpm build
+```
+
+**You should see:** a Vite line like:
+
+```text
+✓ built in 2.3s
+```
+
+The time will differ; the build creates `web/dist`. **If it looks different:** read the first TypeScript or Vite error above the summary.
+
+### 1.12 Return to the server folder
+
+Run `cd ../server`. **You should see:** no error. **If it looks different:** confirm you were in `web` after step 1.11.
+
+### 1.13 Start the API
+
+Run:
+
+```sh
+uv run farm api
+```
+
+**You should see:** a line like this and the terminal remaining open:
+
+```text
+Uvicorn running on http://0.0.0.0:8700 (Press CTRL+C to quit)
+```
+
+**If it looks different:** check the error in this terminal and whether port 8700 is in use.
+
+### 1.14 Open the dashboard
+
+Open `http://localhost:8700/` in a browser. **You should see:** **Overview** and the navigation sidebar.
+
+![Native dashboard after API startup](../assets/overview.png)
+
+**Callouts:** (1) **Overview**; (2) **Agent not responding**; (3) **Available devices**.
+
+**If it looks different:** keep the API terminal open and visit `http://localhost:8700/api/v1/healthz` to check the server.
+
+### 1.15 Check the health response
+
+In a second terminal, run:
+
+```sh
+curl http://localhost:8700/api/v1/healthz
+```
+
+**You should see:** JSON containing:
+
+```json
+"status":"ok"
+```
+
+**If it looks different:** return to the API terminal to read its startup error.
 
 ## Recap
 
-You have a native API and dashboard build. After checking the adb device list, you can start an agent for Android execution.
+Your API and dashboard are running. Keep the API terminal open. **Next:** [Connect an Android device](connect-a-device.md), then start the agent only after confirming which device adb sees.
 
-**Next:** [Your first flow](your-first-flow.md).
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `uv sync` cannot find Python | Python is too old or not on PATH | Install Python 3.12+ and reopen the terminal |
+| `pnpm` is missing | Package manager not installed | Follow the pnpm install link above |
+| Build fails | TypeScript or Vite error | Read the first error from `pnpm build` |
+| Browser cannot connect | API terminal closed or port occupied | Restart `uv run farm api` and check port 8700 |
