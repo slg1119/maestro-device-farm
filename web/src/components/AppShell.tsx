@@ -24,7 +24,7 @@ function readCollapsed() { try { return localStorage.getItem("farm.sidebar") ===
 function Brand({ rail = false }: { rail?: boolean }) {
   return <div className={cx("flex h-16 shrink-0 items-center gap-3", rail ? "justify-center" : "px-5")}>
     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-white"><Smartphone size={18} aria-hidden="true" /></span>
-    {!rail && <div><div className="text-sm font-bold text-fg">Device Farm</div><div className="text-[11px] tracking-[0.06em] text-fg-subtle">sample · 사내</div></div>}
+    {!rail && <div><div className="text-sm font-bold text-fg">Device Farm</div><div className="text-[11px] tracking-[0.06em] text-fg-subtle">Maestro · OSS</div></div>}
   </div>;
 }
 

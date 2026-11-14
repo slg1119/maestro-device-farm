@@ -1,0 +1,9 @@
+appId: com.android.settings
+tags:
+  - smoke
+  - search
+---
+- launchApp
+- tapOn: "Search settings"
+- inputText: "display"
+- assertVisible: "Display"

@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Run lifecycle",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      930,
+      850
+    ],
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "UI / CLI",
+      "sublabel": "run request"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "FastAPI",
+      "sublabel": "run routes"
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "Scheduler + DB",
+      "sublabel": "tasks and state"
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "Agent",
+      "sublabel": "device worker"
+    },
+    {
+      "id": "maestro",
+      "type": "external",
+      "label": "Maestro",
+      "sublabel": "Android flow"
+    }
+  ],
+  "messages": [
+    {
+      "from": "client",
+      "to": "api",
+      "y": 190,
+      "label": "POST /runs",
+      "variant": "emphasis"
+    },
+    {
+      "from": "api",
+      "to": "store",
+      "y": 250,
+      "label": "select flows; create split or matrix tasks"
+    },
+    {
+      "from": "agent",
+      "to": "store",
+      "y": 320,
+      "label": "claim matching task"
+    },
+    {
+      "from": "store",
+      "to": "agent",
+      "y": 380,
+      "label": "task + device"
+    },
+    {
+      "from": "agent",
+      "to": "maestro",
+      "y": 450,
+      "label": "execute flow with timeout",
+      "variant": "emphasis"
+    },
+    {
+      "from": "maestro",
+      "to": "agent",
+      "y": 510,
+      "label": "exit + JUnit",
+      "variant": "return"
+    },
+    {
+      "from": "agent",
+      "to": "store",
+      "y": 570,
+      "label": "save status and artifact paths"
+    },
+    {
+      "from": "client",
+      "to": "api",
+      "y": 650,
+      "label": "GET /runs/{id}/junit"
+    },
+    {
+      "from": "api",
+      "to": "client",
+      "y": 710,
+      "label": "merged JUnit + run detail",
+      "variant": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Task creation",
+      "items": [
+        "Explicit flow paths take precedence over tags",
+        "Split and matrix define task distribution"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Retry",
+      "items": [
+        "Failed tasks may be retried with backoff",
+        "The API exposes run status, JUnit and artifacts"
+      ]
+    }
+  ]
+}

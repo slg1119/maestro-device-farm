@@ -1,80 +1,51 @@
-# maestro-device-farm server
+# Server
 
-`farm-api` (FastAPI) and `farm-agent` share `$FARM_DATA_DIR/farm.db`. Design: `docs/superpowers/specs/2026-10-20-maestro-device-farm-design.md`.
+The `farm` package contains the FastAPI control plane, SQLite models, scheduler, Android agent, Maestro runner, and two command-line entry points. The API and agent share one data directory. Start with the [root guide](../README.md) for a complete installation, or [Docker Compose](../docs/docker.md) if you do not need a native development environment.
 
-## Setup
+## Install and run
 
-```bash
+Requirements: Python 3.12 or later, [uv](https://docs.astral.sh/uv/), and, for device execution, adb, Java 17 or later, Maestro CLI, and an Android device or emulator.
+
+```sh
+cd server
 uv sync
 uv run farm db upgrade
+uv run farm api
 ```
 
-The farm is meant for the internal network, so writes need no token by default. To require one, start
-`farm api` with `FARM_REQUIRE_TOKEN=true` and create tokens with `uv run farm token create <name>`.
+The API listens on `http://localhost:8700/` by default. In a second terminal, after verifying that the host adb server exposes only devices intended for this farm, start `uv run farm agent`. For API development without adb, `uv run farm agent --fake 3` creates simulated devices; it does not execute real Maestro flows.
 
-Workspaces on GitHub can use this host's SSH key instead of a PAT:
-`FARM_GIT_REMOTE_TEMPLATE='git@github.com:{repo}.git'` (or a `~/.ssh/config` host alias).
-
-## Run
-
-```bash
-uv run farm api                    # http://localhost:8700/api/v1/healthz
-uv run farm agent                  # real devices over adb + maestro
-uv run farm agent --fake 3         # three simulated devices, no adb needed
-```
+The API and agent must use the same `FARM_DATA_DIR` and database. The default is `~/maestro-device-farm/data`. See [configuration](../docs/configuration.md) for every setting and the stream networking requirements.
 
 ## Submit a run
 
-```bash
-export FARM_URL=http://localhost:8700 FARM_USER=ci   # FARM_TOKEN=<token> only with FARM_REQUIRE_TOKEN=true
-uv run farmctl run --flows ../path/to/.maestro --apk app.apk --mode split --wait --junit farm-junit.xml
+```sh
+cd server
+uv run farmctl --server http://localhost:8700 --user ci run \
+  --flows ../path/to/.maestro --apk ../path/to/app.apk \
+  --mode split --wait --junit ./farm-junit.xml
 ```
 
-실행이 끝나면 attempt 폴더의 모든 UTF-8 텍스트 산출물에서 run `env` 값을 `***`로 가립니다.
-`maestro.log`, 중첩 `commands.json`과 `logs/`, `junit.xml`, `logcat.txt`도 포함하며,
-JUnit 분류와 단계·AI 실패 컨텍스트 파싱 전에 적용합니다. JSON/XML로 이스케이프된 값도 가립니다.
-오탐 방지를 위해 빈 값과 **4자 미만의 값은 산출물 마스킹에서 제외**합니다.
-스크린샷·영상 등 바이너리는 변경하지 않습니다. 기존 산출물은 단계 조회·파일 다운로드·AI
-실패 컨텍스트를 읽을 때 메모리에서만 가리며, 저장된 원본을 다시 쓰지 않습니다.
+`farmctl` also accepts a registered workspace, stored app build, tags, explicit flow paths, and matrix mode. See the [CLI reference](../docs/cli.md) and [REST API reference](../docs/api.md).
 
-## AI
+When `FARM_REQUIRE_TOKEN=true`, create an API token with `uv run farm token create <name>` and pass it to `farmctl` through `FARM_TOKEN` or `--token`. The default is `false`, which is suitable only on a trusted network.
 
-Codex CLI에 로그인돼 있으면 키 없이 켜짐; `FARM_OPENAI_API_KEY`가 있으면 OpenAI 사용.
-먼저 호스트에서 `codex login`으로 로그인하고 `codex login status`로 확인합니다.
-API 시작 시 공급자를 한 번 선택하고 로그에 표시합니다.
+## Sensitive values in artifacts
 
-`FARM_AI_PROVIDER=auto`가 기본값이며 `openai` 또는 `codex`로 공급자를 지정할 수 있습니다.
-`FARM_CODEX_BIN`은 기본 `codex`, `FARM_CODEX_MODEL`은 미설정 시 Codex 기본 모델,
-`FARM_AI_TIMEOUT_SEC`은 기본 300초입니다. OpenAI 모델은 `FARM_OPENAI_MODEL`로 설정합니다.
-키도 없고 로그인된 Codex도 없으면 AI가 비활성화됩니다.
+After a task, the runner masks run environment values in UTF-8 text artifacts before classifying JUnit and extracting failure context. This includes nested Maestro text output and escaped JSON/XML forms. Empty values and values shorter than four characters are excluded to reduce false positives. Binary screenshots and video are unchanged. When older artifacts are read through the API, masking happens in memory; stored originals are not rewritten. Restrict access to the data directory and avoid passing secrets through browser forms or shell history.
 
-`GET /api/v1/ai/status`의 `provider`는 `openai`, `codex` 또는 `null`입니다.
-주입한 테스트 클라이언트가 공급자 정보를 제공하지 않으면 `null`로 표시합니다.
-Codex는 임시 폴더에서 읽기 전용 샌드박스로 실행되며, 이미지와 스키마는 호출 후 삭제됩니다.
-`FARM_*` 환경 변수는 Codex 프로세스에 전달하지 않습니다.
+## AI editor
 
-## Tests
+The optional editor assistant selects a provider at API startup. `FARM_AI_PROVIDER=auto` chooses a configured OpenAI key or an authenticated local Codex CLI; `openai` and `codex` select explicitly. Supply `FARM_OPENAI_API_KEY` only to the API process environment, or authenticate the Codex CLI on the API host. `GET /api/v1/ai/status` reports the active provider. The editor returns proposals for review; it does not commit them automatically. See [the editor guide](../docs/guides/flow-editor-and-ai.md).
 
-```bash
+## Maintenance and development
+
+```sh
+cd server
+uv run farm doctor
+uv run farm retention run --dry-run
 uv run pytest -q
-uv run pytest -q -W error::ResourceWarning
-FARM_TEST_APK=/path/to/real.apk uv run pytest tests/apps -q   # also checks androguard on a real APK
+uv run ruff check .
 ```
 
-## 운영
-
-```bash
-uv run farm doctor                # OK / WARN / FAIL 점검, FAIL이 있으면 종료 코드 1
-uv run farm retention run         # 설정된 데이터 경로의 보관 기간이 지난 파일 정리
-uv run farm retention run --dry-run # 파일·DB 변경 없이 범주별 예정 수와 경로(최대 50줄) 확인
-```
-
-agent는 시작 60초 후, 이후 24시간마다 보관 정리를 실행합니다. 기본값은 완료 run 30일
-(`FARM_RETENTION_DAYS`), 패키지별 최신 APK 20개(`FARM_APP_KEEP_PER_PACKAGE`)이며 pinned와 미정리
-run이 참조하는 APK는 유지합니다. inspect는 1일, events는 7일, 만료 stream ticket은 만료 후 1일,
-AI 작업 원문은 30일 뒤 정리하고 DB 이력은 남깁니다.
-
-Mac·기기 준비, GitHub/AI 접근, launchd 설치와 해제, 업그레이드, 로그 경로는
-[호스트 설정](../docs/host-setup.md)을 참고하세요. launchd 렌더링은 저장소 루트에서
-`ops/launchd/install.sh --dry-run`으로 확인할 수 있습니다. CI 예제는
-[device-farm.yml](../ops/github-actions/device-farm.yml)에 있습니다.
+`farm retention run` applies the configured retention policy; review its dry-run before running it on important data. The agent also schedules retention after startup and periodically. On macOS, [host setup](../docs/host-setup.md) covers the launchd templates. The [example CI workflow](../ops/github-actions/device-farm.yml) shows a run submission.

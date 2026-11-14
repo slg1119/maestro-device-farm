@@ -1,0 +1,8 @@
+appId: com.android.settings
+tags:
+  - navigation
+  - settings
+---
+- launchApp
+- tapOn: "Display"
+- assertVisible: "Display"

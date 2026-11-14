@@ -1,0 +1,7 @@
+appId: com.android.settings
+tags:
+  - smoke
+  - settings
+---
+- launchApp
+- assertVisible: "Settings"

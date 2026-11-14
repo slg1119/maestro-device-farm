@@ -7,7 +7,7 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run) dry_run=true ;;
     --uninstall) uninstall=true ;;
-    *) printf '사용법: %s [--uninstall] [--dry-run]\n' "$0" >&2; exit 2 ;;
+    *) printf 'Usage: %s [--uninstall] [--dry-run]\n' "$0" >&2; exit 2 ;;
   esac
 done
 
@@ -20,7 +20,7 @@ if "$uninstall"; then
   for service in api agent; do
     label="io.github.maestro-device-farm.$service"
     if "$dry_run"; then
-      printf '제거 예정: launchctl bootout %s/%s · %s/%s.plist\n' "$domain" "$label" "$agents_dir" "$label"
+      printf 'Would remove: launchctl bootout %s/%s · %s/%s.plist\n' "$domain" "$label" "$agents_dir" "$label"
     else
       launchctl bootout "$domain/$label" 2>/dev/null || true
       rm -f -- "$agents_dir/$label.plist"
@@ -29,8 +29,8 @@ if "$uninstall"; then
   exit 0
 fi
 
-uv_bin=$(command -v uv) || { printf 'uv를 설치하고 PATH에 추가하세요.\n' >&2; exit 1; }
-python_bin=$(command -v python3) || { printf 'Python 3가 필요합니다.\n' >&2; exit 1; }
+uv_bin=$(command -v uv) || { printf 'Install uv and add it to PATH.\n' >&2; exit 1; }
+python_bin=$(command -v python3) || { printf 'Python 3 is required.\n' >&2; exit 1; }
 
 render() {
   "$python_bin" -B - "$1" "$repo_dir" "$uv_bin" "$HOME" <<'PY'
@@ -61,6 +61,6 @@ for service in api agent; do
     chmod 600 "$destination"
     launchctl bootout "$domain/$label" 2>/dev/null || true
     launchctl bootstrap "$domain" "$destination"
-    printf '설치됨: %s\n' "$destination"
+    printf 'Installed: %s\n' "$destination"
   fi
 done

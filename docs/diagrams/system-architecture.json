@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Maestro Device Farm system",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      760
+    ]
+  },
+  "components": [
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "Web dashboard",
+      "sublabel": "React + Vite",
+      "pos": [
+        60,
+        290
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "FastAPI API",
+      "sublabel": "REST + SSE",
+      "pos": [
+        315,
+        290
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "database",
+      "type": "database",
+      "label": "SQLite data",
+      "sublabel": "runs, tasks, devices",
+      "pos": [
+        570,
+        290
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "split, matrix, claim",
+      "pos": [
+        825,
+        290
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "Agent",
+      "sublabel": "poll + execute",
+      "pos": [
+        1080,
+        290
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "workspace",
+      "type": "external",
+      "label": "Git workspaces",
+      "sublabel": "versioned YAML flows",
+      "pos": [
+        315,
+        90
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "ai",
+      "type": "backend",
+      "label": "AI editor",
+      "sublabel": "optional assistant",
+      "pos": [
+        60,
+        90
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "external",
+      "label": "adb + Maestro",
+      "sublabel": "Android execution",
+      "pos": [
+        1080,
+        490
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "devices",
+      "type": "external",
+      "label": "Android devices",
+      "sublabel": "USB or emulator",
+      "pos": [
+        825,
+        490
+      ],
+      "size": [
+        170,
+        72
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "dashboard",
+      "to": "api",
+      "label": "HTTP + SSE"
+    },
+    {
+      "from": "api",
+      "to": "database",
+      "label": "SQL"
+    },
+    {
+      "from": "database",
+      "to": "scheduler"
+    },
+    {
+      "from": "scheduler",
+      "to": "agent",
+      "label": "claim task"
+    },
+    {
+      "from": "workspace",
+      "to": "api",
+      "label": "sync flows",
+      "labelDy": 24
+    },
+    {
+      "from": "ai",
+      "to": "dashboard"
+    },
+    {
+      "from": "agent",
+      "to": "runner",
+      "label": "execute",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "from": "runner",
+      "to": "devices",
+      "label": "adb",
+      "fromSide": "left",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Control plane",
+      "items": [
+        "Dashboard submits runs to FastAPI",
+        "SQLite stores scheduling and history"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Execution",
+      "items": [
+        "Agent claims work and invokes Maestro",
+        "adb connects to Android devices"
+      ]
+    }
+  ]
+}
