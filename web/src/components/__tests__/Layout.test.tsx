@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router";
 
-import { getSettings } from "../../lib/settings";
+import { getSettings, saveSettings } from "../../lib/settings";
 import { routes } from "../../router";
 import { healthBody, mockApi } from "../../test/api";
 
@@ -95,4 +95,20 @@ test("switches the dashboard language and persists the choice", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Switch to Korean" }));
   expect(localStorage.getItem("farm.language")).toBe("ko");
   expect(screen.getByRole("link", { name: "개요" })).toBeInTheDocument();
+});
+
+test("keeps the author control on its own full-width footer row", async () => {
+  saveSettings({ token: "", authorName: "Sample Operator", authorEmail: "" });
+  mockApi({});
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/"] })} />
+    </QueryClientProvider>,
+  );
+  const footer = screen.getByRole("complementary", { name: "사이드바" });
+  const author = within(footer).getByRole("button", { name: "설정" });
+  expect(author).toHaveClass("w-full");
+  expect(within(author).getByText("Sample Operator")).toBeVisible();
+  await userEvent.click(within(footer).getByRole("button", { name: "영어로 전환" }));
+  expect(within(footer).getByRole("button", { name: "Settings" })).toHaveClass("w-full");
 });

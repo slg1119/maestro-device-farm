@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import type { Device } from "../../api/types";
 import { DeviceStateBadge } from "../../components/StatusBadge";
 import { Button, Empty, Field, Input, Segmented, StatusDot, cx } from "../../components/ui";
@@ -60,7 +60,7 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
       </div> : <Empty>{t("m_4f3f72e98a")}</Empty>}
       {!!unavailable.length && <details>
         <summary className="w-fit cursor-pointer py-2 text-xs text-fg-subtle focus-visible:outline-2 focus-visible:outline-accent">
-          {t("m_c402a63ac4")} {unavailable.length}{t("m_8cbb379d24")}
+          {tp("device.unavailableCount", unavailable.length)}
         </summary>
         <div className="grid min-w-0 grid-cols-1 gap-x-3 sm:grid-cols-2">
           {unavailable.map(device => <DeviceRow key={device.serial} device={device} selected={false} unavailable onChange={() => {}} />)}
@@ -97,9 +97,9 @@ export function DeviceConditions({ devices, form, mode, onModeChange, update, ma
     </div>}
     <p role="status" aria-live="polite" aria-atomic="true"
       className={cx("break-all text-xs leading-5", matches.length ? "text-fg-muted" : "text-warning-fg")}>
-      <span className="font-medium">{t("m_9bd4a9d512")} {matches.length}{t("m_8cbb379d24")}</span>
-      {!!matches.length && <> · {matches.slice(0, 5).map(device => device.serial).join(", ")}{matches.length > 5 && t("m_7ce9b61fdc", [matches.length - 5])}</>}
-      {sdkExcluded > 0 && <> {t("m_735d71f783")} {sdkExcluded}{t("m_39b315fdf3")}</>}
+      <span className="font-medium">{tp("device.matchesCount", matches.length)}</span>
+      {!!matches.length && <> · {matches.slice(0, 5).map(device => device.serial).join(", ")}{matches.length > 5 && tp("device.moreCount", matches.length - 5)}</>}
+      {sdkExcluded > 0 && <> {t("m_735d71f783")} {tp("device.excludedCount", sdkExcluded)}</>}
       {!matches.length && <> {t("m_8a7a9cb26d")}</>}
     </p>
   </>;

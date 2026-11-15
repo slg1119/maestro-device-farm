@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { RecordingLiveView } from "./screen/RecordingLiveView";
 import { Camera, Copy, List, Smartphone } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -104,7 +104,7 @@ function ReservedScreen({ reservation }: { reservation: Reservation }) {
   return <div className="min-w-0 space-y-4 p-3 text-fg">
     <header className="space-y-3">
       <div className="flex min-w-0 items-start gap-2"><Smartphone aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-muted" /><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{device?.model || reservation.device_serial}</h2><p className="truncate font-mono text-[11px] text-fg-subtle">{reservation.device_serial}</p></div><Badge tone="reserved"><StatusDot tone="reserved" />{t("m_69692a2a38")}</Badge></div>
-      <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs text-fg-muted">{snapshot ? <><time dateTime={snapshot.time}>{formatTime(snapshot.time)}</time><span className="ml-2">{t("m_a2314fdb82")} {nodes.length}{t("m_11600c9ada")}</span></> : t("m_00dbdab3d4")}</div></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div className="text-xs text-fg-muted">{snapshot ? <><time dateTime={snapshot.time}>{formatTime(snapshot.time)}</time><span className="ml-2">{tp("editor.elementCount", nodes.length)}</span></> : t("m_00dbdab3d4")}</div></div>
       <div className="flex flex-wrap gap-2"><Button size="sm" icon={<List />} aria-pressed={showList} aria-controls="screen-elements" onClick={() => setShowList(!showList)}>{t("m_38d3de4301")}</Button><Button size="sm" variant="primary" icon={<Camera />} disabled={!canWrite || capturing} onClick={() => { void takeSnapshot(); }}>{capturing ? t("m_05c94074ef") : t("m_6e794da935")}</Button></div>
     </header>
     <ErrorBox error={error} />

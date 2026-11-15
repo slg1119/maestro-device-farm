@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -55,7 +55,7 @@ export function LiveBoardPage() {
       actions={<Button icon={paused ? <Play /> : <Pause />} aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? t("m_bca5ad6952") : t("m_cd190cedf1")}</Button>} />
     <Card className="mb-5 space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-fg-muted">{t("m_72f3fcd3f3")} {connected.length}{t("m_9a2f9e5f55")}</p>
+        <p className="text-xs text-fg-muted">{tp("live.connectedCount", connected.length)}</p>
         <label className="flex w-full items-center gap-3 text-xs text-fg-muted sm:w-auto">
           <span className="shrink-0">{t("m_356a0bad18")}</span>
           <input type="range" aria-label={t("m_356a0bad18")} aria-valuetext={t("m_0ab06b19c0", [tileSize])} min={MIN_SIZE} max={MAX_SIZE} step={10} value={tileSize} className="min-h-8 min-w-0 flex-1 accent-accent sm:w-40"
@@ -89,7 +89,7 @@ export function LiveBoardPage() {
           onOpen={() => setSelected(device.serial)} />)}
       </section>
       {offline.length > 0 && <details className="mt-6 rounded-lg border border-border bg-surface-2 p-3 text-xs text-fg-subtle">
-        <summary className="cursor-pointer">{t("m_7e422cfc63")} {offline.length}{t("m_958674fa48")}</summary>
+        <summary className="cursor-pointer">{tp("live.offlineCount", offline.length)}</summary>
         <ul className="mt-3 space-y-2">{offline.map((device) => <li key={device.serial} className="flex flex-wrap gap-x-3 gap-y-1"><span className="break-words">{device.model}</span><span className="break-all font-mono">{device.serial}</span></li>)}</ul>
       </details>}
     </>}

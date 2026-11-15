@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { getLocale, t, tp } from "../../lib/i18n";
 import { Activity, ArrowRight, CircleCheck, FileCode2, GitBranch, Play, Smartphone, TriangleAlert } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { Link } from "react-router";
@@ -127,9 +127,9 @@ export function OverviewPage() {
   const occupied = allDevices.filter((device) => device.state === "busy" || device.state === "reserved").length;
   const unavailable = allDevices.length - available - occupied;
   const deviceLabel = t("m_e944a734e8", [available, occupied, unavailable]);
-  const date = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "long" }).format(now);
-  const deviceCount = devices.data ? t("m_f17e3d9c88", [allDevices.length]) : "—";
-  const workspaceCount = workspaces.data ? t("m_b1166a37e1", [allWorkspaces.length]) : "—";
+  const date = new Intl.DateTimeFormat(getLocale(), { month: "long", day: "numeric", weekday: "long" }).format(now);
+  const deviceCount = devices.data ? tp("overview.deviceCount", allDevices.length) : "—";
+  const workspaceCount = workspaces.data ? tp("overview.workspaceCount", allWorkspaces.length) : "—";
 
   return <div className="min-w-0">
     <PageHeader title={t("m_476966c5a8")} description={t("m_6ecf0e090e", [date, deviceCount, workspaceCount])} actions={<>
@@ -145,11 +145,11 @@ export function OverviewPage() {
         ]} />
       </SummaryCard>
       <SummaryCard title={t("m_80804602c0")} label={t("m_99162a686d")} icon={<Activity />} value={running}
-        detail={t("m_e2cc359e04", [queuedTasks])} pending={runs.isPending} error={runs.error} />
+        detail={tp("overview.queuedTasks", queuedTasks)} pending={runs.isPending} error={runs.error} />
       <SummaryCard title={t("m_4ca78a63ae")} label={t("m_4ca78a63ae")} icon={<CircleCheck />} value={finished.length ? `${Math.round(passed / finished.length * 100)}%` : "—"}
         detail={t("m_c96fc6ed45", [finished.length, passed])} pending={runs.isPending} error={runs.error} tone="text-passed-fg" />
       <SummaryCard title={t("m_dc253f937e")} label={t("m_31893ce9a9")} icon={<TriangleAlert />} value={today.reduce((sum, run) => sum + run.counts.failed, 0)}
-        detail={t("m_00d795cb49", [failed])} pending={runs.isPending} error={runs.error} tone="text-failed-fg" />
+        detail={tp("overview.failedRuns", failed)} pending={runs.isPending} error={runs.error} tone="text-failed-fg" />
     </div>
 
     <div className="grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
@@ -172,10 +172,10 @@ export function OverviewPage() {
         </DataCard>
       </div>
       <div className="min-w-0 space-y-5">
-        <DataCard title={t("m_d79c455f9b")} href="/devices" pending={devices.isPending} error={devices.error} empty={!allDevices.length} emptyText={t("m_8dd97028f7")}>
+        <DataCard title={t("nav.devices")} href="/devices" pending={devices.isPending} error={devices.error} empty={!allDevices.length} emptyText={t("m_8dd97028f7")}>
           <ul className="divide-y divide-border">{allDevices.map((device) => <DeviceRow key={device.serial} device={device} />)}</ul>
         </DataCard>
-        <DataCard title={t("m_3291059946")} href="/workspaces" pending={workspaces.isPending} error={workspaces.error} empty={!allWorkspaces.length} emptyText={t("m_b264129a9e")}>
+        <DataCard title={t("nav.workspaces")} href="/workspaces" pending={workspaces.isPending} error={workspaces.error} empty={!allWorkspaces.length} emptyText={t("m_b264129a9e")}>
           <ul className="divide-y divide-border">{allWorkspaces.map((workspace) => <li key={workspace.id} className="min-w-0 space-y-1.5 px-5 py-4">
             <div className="flex items-center gap-2 text-fg"><GitBranch aria-hidden="true" className="size-4 shrink-0 text-fg-subtle" /><h3 className="break-all text-sm font-medium">{workspace.name}</h3></div>
             <p className="break-all font-mono text-[11px] leading-5 text-fg-subtle">{workspace.repo} · {workspace.branch} · {shortSha(workspace.head_sha)}</p>

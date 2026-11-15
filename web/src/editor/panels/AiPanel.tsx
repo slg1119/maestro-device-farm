@@ -1,4 +1,5 @@
-import { localizeServerText, t } from "../../lib/i18n";
+import { localizeServerText, t, tp } from "../../lib/i18n";
+import { formatNumber } from "../../lib/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -76,10 +77,10 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
       include_screen: Boolean(screen && hasReservation), auto_repair: Boolean(repair && hasReservation && hasApp), reservation_id: hasReservation ? api.reservation!.id : null,
       ...app, author_name: settings.authorName });
   };
-  const tokens = ((status.month_input_tokens + status.month_output_tokens) / 1000).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  const tokens = formatNumber((status.month_input_tokens + status.month_output_tokens) / 1000, { maximumFractionDigits: 1 });
   const resetJob = (applied?: boolean) => { setJob(null); setNotice(applied ? t("m_fc45d9b139") : t("m_424cea13b9")); };
   return <div className="min-w-0 space-y-5 p-4 text-fg">
-    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{localizeServerText(status.model)}</span> {t("m_47093b9caa")} {tokens}{t("m_997b0fc4f2")}</p>
+    <header className="flex flex-wrap items-center justify-between gap-2"><p className="min-w-0 break-all text-[11px] text-fg-subtle"><span className="font-mono">{localizeServerText(status.model)}</span> {t("ai.monthlyTokens", [tokens])}</p>
       <Menu label={t("m_f2d8b5d8b5")} icon={<ChevronDown />} items={recent.data?.length ? recent.data.map(item => ({ label: <span className="block max-w-60 truncate" title={item.prompt}>{states[item.status].label} · {item.prompt || item.options.target_path || item.id.slice(0, 8)}</span>, disabled: submit.isPending, onClick: () => { submit.reset(); cancel.reset(); setJob(item.id); } })) : [{ label: recent.isLoading ? t("m_c78656b445") : t("m_34504dd1e0"), disabled: true, onClick: () => {} }]} />
     </header>
     {recent.error && <ErrorBox error={recent.error} />}
@@ -89,10 +90,10 @@ function EnabledAiPanel({ status }: { status: PanelStatus }) {
       <Field label={t("m_841964364c")}><Textarea required value={prompt} onChange={event => setPrompt(event.target.value)} placeholder={t("m_48fd719227")} className="min-h-32 font-sans" /></Field>
       <div className="space-y-1">
         <Checkbox label={<span className="min-w-0 break-words text-xs">{t("m_7074c53853")}{hasReservation ? ` · ${deviceName}` : t("m_b29a878e7c")}</span>} disabled={!hasReservation || !canWrite} checked={screen && hasReservation} onChange={event => setScreen(event.target.checked)} />
-        <div><Checkbox label={<span className="text-xs">{t("m_d57c1e8f32")}</span>} disabled={!hasReservation || !hasApp || !canWrite} checked={repair && hasReservation && hasApp} onChange={event => setRepair(event.target.checked)} /><p className="ml-6 text-[11px] leading-5 text-fg-subtle">{t("m_686ae45f55")} {maxRepairs}{t("m_2fc05c02be")}{!hasReservation || !hasApp ? t("m_7906ad3680") : ""}</p></div>
+        <div><Checkbox label={<span className="text-xs">{t("m_d57c1e8f32")}</span>} disabled={!hasReservation || !hasApp || !canWrite} checked={repair && hasReservation && hasApp} onChange={event => setRepair(event.target.checked)} /><p className="ml-6 text-[11px] leading-5 text-fg-subtle">{tp("ai.repairLimit", maxRepairs)}{!hasReservation || !hasApp ? t("m_7906ad3680") : ""}</p></div>
       </div>
       {!canWrite && <p className="text-xs text-warning-fg">{t("m_8813d1f103")}</p>}
-      <Button type="submit" variant="ai" icon={<Sparkles />} disabled={!canSubmit} className="w-full">{submit.isPending ? t("m_5449e1a686") : t("m_d1a2d3a223")}</Button>
+      <Button type="submit" variant="ai" icon={<Sparkles />} disabled={!canSubmit} className="w-full">{submit.isPending ? t("m_5449e1a686") : t("ai.generate")}</Button>
       {submit.error && <ErrorBox error={submit.error} />}
     </form>
     {id && <section aria-label={t("m_d92068b48a")} className="space-y-4 border-t border-border pt-4">

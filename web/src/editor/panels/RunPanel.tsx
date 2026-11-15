@@ -1,4 +1,5 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
+import { formatClock } from "../../lib/format";
 import { Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -90,7 +91,7 @@ export function RunPanel({ onShowScreen }: { onShowScreen?: () => void } = {}) {
       {editor.reservation ? <div className="space-y-2 rounded-xl border border-reserved/30 bg-reserved-bg p-3">
         <div className="flex min-w-0 items-center justify-between gap-2"><span className="truncate font-medium">{reserved?.model ?? editor.reservation.device_serial}</span><Button size="sm" disabled={!canWrite || pending || submitting} onClick={() => void changeReservation()}>{t("m_a7abea5bbb")}</Button></div>
         <p className="break-all font-mono text-xs text-fg-muted">{editor.reservation.device_serial}</p>
-        <p className="text-xs text-reserved-fg">{t("m_3173ef71a4")} {new Date(editor.reservation.expires_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}{t("m_e16d220551")}</p>
+        <p className="text-xs text-reserved-fg">{t("m_3173ef71a4")} {formatClock(new Date(editor.reservation.expires_at), { hour: "2-digit", minute: "2-digit", hour12: false })}{t("m_e16d220551")}</p>
       </div> : <>
         {devices.isLoading && <Loading />}
         <ErrorBox error={devices.error} />
@@ -117,7 +118,7 @@ export function RunPanel({ onShowScreen }: { onShowScreen?: () => void } = {}) {
         <summary className="min-h-9 cursor-pointer px-3 py-2 text-xs font-medium text-fg-muted focus-visible:outline-accent max-md:min-h-11">{t("m_e82c01609e")}</summary>
         <div className="space-y-2 px-3 pb-3"><Textarea aria-label={t("m_e82c01609e")} placeholder={t("e_5626d54413")} value={envText} onChange={event => setEnvText(event.target.value)} spellCheck={false} autoComplete="off" autoCapitalize="off" /><p className="text-xs text-fg-subtle">{t("m_c114a025c9")}</p></div>
       </details>
-      {draftCount > 0 && <p className="text-xs text-warning-fg">{t("m_b73d9bffbc")} {draftCount}{t("m_ee63b83597")}</p>}
+      {draftCount > 0 && <p className="text-xs text-warning-fg">{tp("editor.draftRunCount", draftCount)}</p>}
       <ErrorBox error={error} />
       <Button variant="primary" icon={<Play />} className="w-full min-w-0" disabled={!canRun} onClick={() => void submit()} aria-keyshortcuts="Meta+Enter Control+Enter"><span className="truncate">{submitting ? t("m_5449e1a686") : target === "current" ? t("m_80177e818f", [editor.activePath?.split("/").at(-1)]) : t("m_8ac7d6201d")}</span><Kbd className="ml-auto shrink-0">⌘↵</Kbd></Button>
       {!editor.reservation && <p className="text-xs text-fg-subtle">{t("m_c84e353411")}</p>}

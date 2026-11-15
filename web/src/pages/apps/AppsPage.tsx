@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Package, Upload } from "lucide-react";
 import { useRef, useState } from "react";
@@ -101,7 +101,7 @@ export function AppsPage() {
 
   return (
     <>
-      <PageHeader title={t("m_053d5241c7")} description={t("m_48a19ae3df")} actions={
+      <PageHeader title={t("nav.apps")} description={t("m_48a19ae3df")} actions={
         <>
           <input
             ref={fileInput}
@@ -179,7 +179,7 @@ export function AppsPage() {
                   <h2 className="break-all font-mono text-sm font-semibold text-fg">{packageName}</h2>
                   <div className="mt-1 break-all text-xs text-fg-muted">{builds[0]?.label}</div>
                 </div>
-                <Badge>{builds.length}{t("m_821f1f43fc")}</Badge>
+                <Badge>{tp("apps.buildCount", builds.length)}</Badge>
               </div>
               <div className="overflow-x-auto">
                 <table aria-label={t("m_e2e3ead219", [packageName])} className="w-full min-w-[880px] text-left text-sm text-fg-muted">

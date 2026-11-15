@@ -2,6 +2,7 @@ import en from "./locales/en.json";
 import ko from "./locales/ko.json";
 
 export type Language = "en" | "ko";
+export function getLocale(): "en-US" | "ko-KR" { return getLanguage() === "ko" ? "ko-KR" : "en-US"; }
 export const LANGUAGE_KEY = "farm.language";
 let sessionLanguage: Language = "en";
 let storageUnavailable = false;
@@ -30,8 +31,12 @@ export function t(key: string, values: readonly unknown[] = []): string {
   const template = catalog[key] ?? ko[key as keyof typeof ko] ?? key;
   return template.replace(/\{(\d+)\}/g, (match, index: string) => {
     const value = values[Number(index)];
-    return value === undefined || value === null ? match : String(value);
+    return value === undefined || value === null ? match : typeof value === "number" && getLanguage() === "en" ? new Intl.NumberFormat(getLocale()).format(value) : String(value);
   });
+}
+
+export function tp(key: string, count: number): string {
+  return t(`${key}.${new Intl.PluralRules(getLocale()).select(count)}`, [count]);
 }
 
 /** Known API and agent messages keep the Korean UI's original wording. */

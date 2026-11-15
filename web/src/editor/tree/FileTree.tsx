@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { ChevronDown, ChevronRight, FileCode2, FilePlus2, Folder, FolderPlus, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Badge, Button, ErrorBox, Field, IconButton, Input, Menu, Modal, cx } from "../../components/ui";
@@ -37,7 +37,7 @@ export function FileTree({ onOpen }: { onOpen?: () => void }) {
     <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2"><span className="text-[11px] font-semibold tracking-[0.06em] text-fg-subtle">{t("m_d90c18245f")}</span><div className="flex"><IconButton aria-label={t("m_109392667d")} onClick={() => show("new")}><FilePlus2 /></IconButton><IconButton aria-label={t("m_754afbd639")} onClick={() => show("folder")}><FolderPlus /></IconButton><IconButton aria-label={t("m_c07d2317b0")} onClick={() => upload.current?.click()}><Upload /></IconButton></div></div>
     <input ref={upload} type="file" className="hidden" accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.mp3,.wav" onChange={event => { const file = event.target.files?.[0]; if (file) void api.uploadMedia(`${folder ? `${folder}/` : ""}${file.name}`, file).catch(setError); event.target.value = ""; }} />
     <div className="min-h-0 flex-1 overflow-auto py-2"><ErrorBox error={error} />{runtime.treeLoading ? <p className="p-3 text-xs text-fg-muted">{t("m_fe9557a8d4")}</p> : <ul role="tree" aria-label={t("m_68b8eecb19")}>{render(nodes(api.files.map(f => f.path)))}</ul>}</div>
-    <div className="border-t border-border p-3 text-xs text-fg-subtle">{api.files.length}{t("m_c124e220d1")}</div>
+    <div className="border-t border-border p-3 text-xs text-fg-subtle">{tp("editor.savedFiles", api.files.length)}</div>
     {dialog && <Modal title={dialog.kind === "rename" ? t("m_73e5a894f7") : dialog.kind === "folder" ? t("m_754afbd639") : t("m_109392667d")} onClose={() => setDialog(null)}><form onSubmit={event => { event.preventDefault(); run(() => { const target = path.trim(); if (dialog.kind === "rename") api.renameFile(dialog.from!, target); else api.createFile(target); setDialog(null); onOpen?.(); }); }} className="space-y-4"><Field label={t("m_e4b4b5eacf")} hint={dialog.kind === "folder" ? t("m_82cb9d6c0c") : t("m_68f3ec22d2")}><Input aria-label={t("m_e4b4b5eacf")} autoFocus value={path} onChange={event => setPath(event.target.value)} required /></Field><ErrorBox error={error} /><div className="flex justify-end gap-2"><Button onClick={() => setDialog(null)}>{t("m_19b2d19bc1")}</Button><Button type="submit" variant="primary" icon={<FilePlus2 />}>{dialog.kind === "rename" ? t("m_73e5a894f7") : t("m_f839ef88bd")}</Button></div></form></Modal>}
   </div>;
 }

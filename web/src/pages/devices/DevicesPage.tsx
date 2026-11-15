@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { LiveView } from "../../components/live/LiveView";
 import { LIVE_DRAWER_STORAGE_KEY } from "../../components/live/useResizableSize";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -214,7 +214,7 @@ function DeviceCard({ device, hidden }: { device: Device; hidden: boolean }) {
     </Card>
     {liveOpen && <Drawer title={t("m_bdd0003871", [device.model])} onClose={() => setLiveOpen(false)} resizable storageKey={LIVE_DRAWER_STORAGE_KEY}><LiveView serial={device.serial} /></Drawer>}
     {modalOpen && snapshot && <Modal title={t("m_6bb7bdc3f2", [device.model])} onClose={() => setModalOpen(false)}>
-      <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? t("m_f28acc0d99") : t("m_bcaaf0ccd9", [snapshot.count])}</p>
+      <p className="mb-3 text-xs text-fg-muted">{snapshot.count === null ? t("m_f28acc0d99") : tp("device.hierarchyCount", snapshot.count)}</p>
       <img src={snapshot.src} alt={t("m_a487e1b0a0", [device.model])} className="mx-auto max-h-[65dvh] max-w-full rounded-lg border border-border object-contain" />
     </Modal>}
   </article>;
@@ -232,7 +232,7 @@ export function DevicesPage() {
   const tags = [...new Set(data?.flatMap((device) => device.tags) ?? [])].sort();
 
   return <>
-    <PageHeader title={t("m_d79c455f9b")}>{summary}</PageHeader>
+    <PageHeader title={t("nav.devices")}>{summary}</PageHeader>
     <TokenNotice />
     <div className="mb-5 flex flex-wrap items-center gap-3">
       <Segmented label={t("m_793a2ba251")} options={FILTERS} value={filter} onChange={setFilter} />

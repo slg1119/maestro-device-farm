@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { ArrowLeft, Circle, Maximize2, Minimize2, Square } from "lucide-react";
 import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCanWrite } from "../Layout";
@@ -107,7 +107,7 @@ export function LiveView({ serial, control = "auto", compact = false, workspace,
     </div>
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-fg-muted" aria-live="polite">
       <span className="inline-flex items-center gap-1.5"><StatusDot tone={stream.phase === "connected" ? "passed" : "neutral"} />{stream.phase === "connected" ? t("m_ca3372f3bc") : stream.phase === "ended" ? t("m_6eaa84e039") : t("m_1ed5386f93")}</span>
-      <span>{t("m_b058262fca")} {stream.status?.viewers ?? 0}{t("m_5a62fd50d2")}</span><span className="break-all">{t("m_faa27e9eec")} {stream.status?.controller ?? t("m_d58fa73adc")}</span>
+      <span>{tp("live.viewerCount", stream.status?.viewers ?? 0)}</span><span className="break-all">{t("m_faa27e9eec")} {stream.status?.controller ?? t("m_d58fa73adc")}</span>
       {stream.status?.recording && <span className="inline-flex items-center gap-1.5 text-failed-fg"><StatusDot tone="failed" />{t("m_44457015d2")}</span>}
       {!stream.canControl && <span>{t("m_005c11b79a")}</span>}
     </div>

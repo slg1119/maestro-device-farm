@@ -119,7 +119,7 @@ export function RunsPage() {
   }));
 
   return <div className="min-w-0 text-fg">
-    <PageHeader title={t("m_74a23ff796")} description={t("m_13ea8c2e60")}
+    <PageHeader title={t("nav.runs")} description={t("m_13ea8c2e60")}
       actions={<Button variant="primary" icon={<Plus size={16} strokeWidth={1.8} />} onClick={() => navigate("/runs/new")}>{t("m_fbdfd04fb8")}</Button>} />
     <TokenNotice />
     <div className="mb-5 space-y-4">

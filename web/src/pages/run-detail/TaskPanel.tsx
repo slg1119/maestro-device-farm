@@ -53,8 +53,8 @@ export function TaskPanel({ task, results, run, devices, selectedFlow }: { task:
   const visibleFiles = files.filter((file) => tab === "files" || (tab === "maestro" ? /(^|\/)maestro\.log$/.test(file.path) : tab === "logcat" && /(^|\/)logcat(\.txt|\.log)?$/.test(file.path)));
   return <Card className="min-w-0 space-y-4 p-4">
     <div className="flex flex-wrap items-center gap-2">
-      <h2 className="min-w-0 break-all font-mono text-sm font-semibold">{t("e_7fbb727db4")} {task.id} {t("m_dc5e190147")}</h2>
-      <StatusBadge status={task.status} /><span className="text-xs text-fg-subtle">{task.attempt}{t("m_2626a8b182")}</span>
+      <h2 className="min-w-0 break-all font-mono text-sm font-semibold">{t("task.artifactsTitle", [task.id])}</h2>
+      <StatusBadge status={task.status} /><span className="text-xs text-fg-subtle">{t("task.attemptLabel", [task.attempt])}</span>
     </div>
     <div className="space-y-1 text-xs text-fg-muted"><p className="break-words">{t("e_025f87132d")} {flowPaths.join(", ") || "-"}</p><p className="break-all">{t("m_aac7f93aec")} {deviceLabel(task.device_serial, devices)}</p></div>
     {taskError && <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-warning-bg p-3 font-mono text-xs text-warning-fg">{taskError}</pre>}

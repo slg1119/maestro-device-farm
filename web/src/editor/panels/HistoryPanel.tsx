@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GitCompareArrows, History, RotateCcw } from "lucide-react";
 import { useState } from "react";
@@ -73,7 +73,7 @@ function HistoryContent({ path, head, onSuccess }: { path: string | null; head: 
       <p className="text-xs text-fg-subtle">{t("m_046caa2b14")}</p>
       <ol className="space-y-2">{commits.map(commit => <li key={commit.sha} className="rounded-lg border border-border bg-surface p-3">
         <div className="flex items-start gap-2"><Checkbox aria-label={t("m_b417607e30", [commit.sha.slice(0, 7), commit.message.split("\n")[0]])} checked={selected.includes(commit.sha)} onChange={() => select(commit.sha)} />
-          <div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-accent">{commit.sha.slice(0, 7)}</span><Badge>{t("m_68b8eecb19")} {commit.files_changed}{t("m_11600c9ada")}</Badge></div>
+          <div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-accent">{commit.sha.slice(0, 7)}</span><Badge>{tp("editor.fileCount", commit.files_changed)}</Badge></div>
             <p className="break-words text-sm font-medium text-fg">{commit.message.split("\n")[0]}</p>
             <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-fg-muted"><span>{humanAuthor(commit)}</span><time dateTime={commit.authored_at} title={formatTime(commit.authored_at)}>{timeAgo(commit.authored_at)}</time></div>
           </div>
@@ -87,11 +87,11 @@ function HistoryContent({ path, head, onSuccess }: { path: string | null; head: 
         {preview.isLoading ? <Loading /> : preview.error ? <ErrorBox error={preview.error} /> : preview.data && <DiffView file={preview.data} fromLabel={from.slice(0, 7)} toLabel={to.slice(0, 7)} />}</>}
     </section>}
     {restore && <Modal title={t("m_73f5749aad")} onClose={() => { if (!busy) setRestore(null); }}>
-      <div className="space-y-4"><p className="break-all text-sm">{path ? path : t("m_1723749118")}{t("m_943d1aff4e")} {restore.sha.slice(0, 7)} {t("m_59d0f2445c")} {api.workspace.branch}{t("m_6d850c4eb9")}</p>
+      <div className="space-y-4"><p className="break-all text-sm">{t("history.restorePrompt", [path || t("m_1723749118"), restore.sha.slice(0, 7), api.workspace.branch])}</p>
         {api.changes().length > 0 && <p className="rounded-lg bg-warning-bg p-3 text-xs text-warning-fg">{t("m_0bbed61d02")}</p>}
         {!author && <div className="space-y-2 text-xs text-warning-fg"><p>{t("m_826980af8a")}</p><Button onClick={openSettings}>{t("m_9009d31193")}</Button></div>}
         <ErrorBox error={error} />
-        {restoredSha && <p className="text-xs text-warning-fg">{t("m_fbfb707c8c")}{restoredSha.slice(0, 7)}{t("m_8354c5bf55")}</p>}
+        {restoredSha && <p className="text-xs text-warning-fg">{t("history.restoreSaved", [restoredSha.slice(0, 7)])}</p>}
         <div className="flex flex-wrap justify-end gap-2"><Button disabled={busy} onClick={() => setRestore(null)}>{t("m_19b2d19bc1")}</Button><Button variant="primary" disabled={busy || !canWrite || !author} onClick={() => { void submitRestore(); }}>{busy ? t("m_3cc225b1c3") : restoredSha ? t("m_11c742fd1a") : t("m_8bd9b45e7a")}</Button></div>
       </div>
     </Modal>}
