@@ -1,3 +1,5 @@
+English | [한국어](ko/host-setup.md)
+
 # macOS launchd service setup
 
 This page is for macOS after the [native setup](guides/getting-started-native.md) works interactively. **launchd** is the macOS service manager; a **LaunchAgent** starts a process for your signed-in user. The API and agent templates share one data directory. Open Terminal in the repository root before using the commands. The agent can access every device visible to its adb (Android Debug Bridge) server.

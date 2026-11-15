@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/live-screen-and-recording.md)
+
 # Live screen and recording
 
 **What you'll have at the end:** a live view of a connected Android device and, if you reserve it, a reviewed draft YAML flow from recorded actions.

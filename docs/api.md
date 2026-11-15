@@ -1,3 +1,5 @@
+English | [한국어](ko/api.md)
+
 # REST API
 
 The **REST API** lets programs use the same farm as the browser. A URL path after `/api/v1` names a resource; an HTTP method such as GET reads it and POST creates or changes it. Open `http://localhost:8700/docs` for interactive schemas. A **token** is an access credential required for writes only when `FARM_REQUIRE_TOKEN=true`. Start with the [Docker](guides/getting-started-docker.md) or [native](guides/getting-started-native.md) setup so a local API is running.

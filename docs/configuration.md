@@ -1,3 +1,5 @@
+English | [한국어](ko/configuration.md)
+
 # Configuration reference
 
 A configuration value changes how the API or agent starts. Open Terminal on macOS, PowerShell on Windows, or your terminal app on Linux. A process **environment variable** is a name/value setting the program reads at startup. In Compose, copy `.env.example` to `.env` and edit only the setting you need; on a native host, set the value in the environment used to launch each process. Never paste a real credential into an issue, screenshot, or committed file.

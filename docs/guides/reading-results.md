@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/reading-results.md)
+
 # Read run results
 
 **What you'll have at the end:** the result of your run, the output of one task, and a downloaded JUnit report when the run has finished.
@@ -58,7 +60,7 @@ After the run finishes, click **Download JUnit**. **You should see:** an XML fil
 
 ### 1.6 Rerun a failure
 
-For a failed run, click **Rerun only on failure**. **You should see:** a new run ID linked to the original run. **If it looks different:** the action is only useful when a task failed or errored. **Rerun** starts the complete selection again.
+For a failed run, click **Rerun failures only**. **You should see:** a new run ID linked to the original run. **If it looks different:** the action is only useful when a task failed or errored. **Rerun** starts the complete selection again.
 
 ## Command-line download
 
