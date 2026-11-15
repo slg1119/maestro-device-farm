@@ -146,7 +146,8 @@ def demo_env(s: dict) -> dict[str, str]:
         "FARM_PUBLIC_URL": s["api_url"],
         "FARM_GIT_REMOTE_TEMPLATE": "file://" + str(Path(s["data_dir"], "remotes", "{repo}.git")),
         "FARM_GIT_POLL_SEC": "0",
-        "FARM_CODEX_BIN": "mdf-demo-ai-disabled",
+        "FARM_CODEX_BIN": (shutil.which("codex") or "mdf-demo-ai-disabled")
+        if env.get("DEMO_ENABLE_AI") == "1" else "mdf-demo-ai-disabled",
         "FARM_API_URL": s["api_url"],
     })
     return env
@@ -257,6 +258,28 @@ def stop() -> None:
     print("Demo services stopped; AVD retained")
 
 
+def agent_stop() -> None:
+    s = state()
+    stop_pid(s.get("guard_pid"))
+    s["guard_pid"] = None
+    save_state(s)
+    print("Demo agent stopped")
+
+
+def agent_start() -> None:
+    s = state()
+    assert_isolated()
+    if alive(s.get("guard_pid")):
+        return
+    s["guard_pid"] = spawn([sys.executable, str(Path(__file__).resolve()), "guard"],
+                           demo_env(s), Path(s["data_dir"]) / "guard.out")
+    save_state(s)
+    time.sleep(2)
+    if not alive(s["guard_pid"]):
+        raise RuntimeError("Agent supervisor exited; see guard.out")
+    print("Demo agent started")
+
+
 def refresh() -> None:
     """Reload merged server and dashboard code without discarding demo history."""
     s = state()
@@ -330,6 +353,7 @@ def seed() -> None:
         for name in ("smoke.yaml", "navigation.yaml", "search.yaml"):
             shutil.copyfile(ROOT / "examples/flows" / name, flows / name)
         (flows / "smoke.yaml").write_text("appId: com.android.settings\n---\n- launchApp\n")
+        (flows / "my-flow.yaml").write_text("appId: com.android.settings\n---\n- launchApp\n")
         (flows / "expected-failure.yaml").write_text(
             "appId: com.android.settings\n---\n- launchApp\n"
             "- assertVisible: 'This screen intentionally does not exist'\n")
@@ -337,10 +361,18 @@ def seed() -> None:
         git("commit", "-m", "Add Android Settings examples", cwd=work)
         git("remote", "add", "origin", str(remote), cwd=work)
         git("push", "origin", "main", cwd=work)
+    elif work.exists() and not (work / "flows/my-flow.yaml").exists():
+        (work / "flows/my-flow.yaml").write_text("appId: com.android.settings\n---\n- launchApp\n")
+        git("add", ".", cwd=work)
+        git("commit", "-m", "Add an editable example flow", cwd=work)
+        git("push", "origin", "main", cwd=work)
     existing = api("GET", "/workspaces")
-    if not any(row["name"] == "settings-demo" for row in existing):
-        api("POST", "/workspaces", json.dumps({"name": "settings-demo", "repo": "demo/settings",
-             "branch": "main", "path": "flows", "default_app_package": "com.android.settings"}).encode())
+    for name in ("settings-demo", "example-app"):
+        if not any(row["name"] == name for row in existing):
+            api("POST", "/workspaces", json.dumps({"name": name, "repo": "demo/settings",
+                 "branch": "main", "path": "flows", "default_app_package": "com.android.settings"}).encode())
+        else:
+            api("POST", f"/workspaces/{name}/sync", b"{}")
     apps = api("GET", "/apps?package=com.android.settings")
     if apps:
         app = apps[0]
@@ -356,7 +388,7 @@ def seed() -> None:
         apk.unlink()
     s["app_id"] = app["id"]
     save_state(s)
-    print(json.dumps({"workspace": "settings-demo", "app_id": s["app_id"]}))
+    print(json.dumps({"workspace": "example-app", "app_id": s["app_id"]}))
 
 
 def submit(flow: str) -> dict:
@@ -429,7 +461,8 @@ def verify() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("start", "stop", "refresh", "seed", "verify", "status", "guard"))
+    parser.add_argument("command", choices=("start", "stop", "refresh", "agent-stop", "agent-start",
+                                            "seed", "verify", "status", "guard"))
     args = parser.parse_args()
     try:
         if args.command == "start":
@@ -438,6 +471,10 @@ def main() -> None:
             stop()
         elif args.command == "refresh":
             refresh()
+        elif args.command == "agent-stop":
+            agent_stop()
+        elif args.command == "agent-start":
+            agent_start()
         elif args.command == "seed":
             seed()
         elif args.command == "verify":

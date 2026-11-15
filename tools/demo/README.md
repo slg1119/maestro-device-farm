@@ -29,6 +29,12 @@ device is listed.
 After merging dashboard or server changes, run `python3 tools/demo/manage.py
 refresh` to rebuild and restart the services while retaining the same demo
 history. It checks the adb inventory again before restarting the agent.
+Set `DEMO_ENABLE_AI=1` for that refresh only when the local Codex CLI is
+already authenticated and you need to capture the idle AI panel. The harness
+does not send an AI request.
+Use `agent-stop` and `agent-start` to capture the dashboard's offline and
+connected states without discarding the run history. `agent-start` enforces
+the same adb inventory rule as a full start.
 
 `seed` creates a local Git remote with the Android Settings example flows,
 registers it as `settings-demo`, and uploads the Settings APK from the demo
@@ -45,3 +51,21 @@ Selectors must match the visible dashboard at the 1440 × 900 viewport. The
 capture script fails if a selector is missing, a live canvas has no distinct
 device pixels, or a GIF reaches 6 MB. GIFs are converted from Playwright
 video using an ffmpeg palette at 1200 pixels wide and 12 fps.
+
+`shotlist.json` contains the full documentation capture set. Capture the
+connected screenshots and GIFs while the agent runs, then stop only the agent
+for the offline screenshots:
+
+```sh
+DEMO_CAPTURE_BATCH=connected node tools/demo/capture.mjs tools/demo/shotlist.json docs/assets
+DEMO_CAPTURE_BATCH=gifs node tools/demo/capture.mjs tools/demo/shotlist.json docs/assets
+python3 tools/demo/manage.py agent-stop
+DEMO_CAPTURE_BATCH=offline node tools/demo/capture.mjs tools/demo/shotlist.json docs/assets
+```
+
+Set `DEMO_LANG=ko` and change the output directory to `docs/assets/ko` to
+capture the Korean set. The script sets the dashboard language and browser
+locale in a fresh light-theme context. `DEMO_CAPTURE_NAMES` accepts a
+comma-separated list of filenames for a targeted retry. Restart the agent
+with `python3 tools/demo/manage.py agent-start` after confirming that
+`adb devices` lists only `emulator-5560`.
