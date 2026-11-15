@@ -1,3 +1,5 @@
+English | [한국어](ko/docker.md)
+
 # Docker Compose setup
 
 Before running any command, open Terminal (macOS), PowerShell (Windows), or your terminal app (Linux), paste one command block at a time, and press Enter. Docker Compose reads `docker-compose.yml` from the repository folder. An **agent** is the process that controls Android devices through adb (Android Debug Bridge). A named volume keeps the SQLite database and test artifacts (saved output files) between container restarts. The [Docker beginner walkthrough](guides/getting-started-docker.md) covers the first launch with screenshots.

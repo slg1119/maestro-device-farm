@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/running-tests.md)
+
 # Run tests
 
 **What you'll have at the end:** a run ID and a run detail page showing your flow being executed on an eligible Android device.
@@ -24,7 +26,7 @@ In the browser, open `http://localhost:8700/runs/new`. **You should see:** **New
 
 ### 1.2 Choose the flow source
 
-Under **Where to get test files**, click **registered repository**. **You should see:** a repository selector. **If it looks different:** register a [workspace](workspaces-and-git.md) first. A ZIP upload is a separate option for one-off runs.
+Under **Flow source**, click **Registered repository**. **You should see:** a repository selector. **If it looks different:** register a [workspace](workspaces-and-git.md) first. A ZIP upload is a separate option for one-off runs.
 
 ### 1.3 Open the repository selector
 
@@ -54,15 +56,15 @@ Under **Run mode**, click **Split** for your first run. **You should see:** the 
 
 ### 1.7 Choose devices
 
-Under **Device to run on**, click **All available devices**. **You should see:** a nonzero eligible device count in **Run summary**. **If it looks different:** return to the [device guide](connect-a-device.md) and check agent health, app minimum SDK, and reservations.
+Under **Devices to run on**, click **All available devices**. **You should see:** a nonzero eligible device count in **Run summary**. **If it looks different:** return to the [device guide](connect-a-device.md) and check agent health, app minimum SDK, and reservations.
 
 ### 1.8 Choose a flow filter
 
-For a first run, leave **Only tests with at least one of these tags** empty. **You should see:** no tag restriction in the summary. **If it looks different:** clear earlier tag entries. Later, enter `smoke` to include flows with that tag; explicit file paths bypass tag filters.
+For a first run, leave **Include flows with any of these tags** empty. **You should see:** no tag restriction in the summary. **If it looks different:** clear earlier tag entries. Later, enter `smoke` to include flows with that tag; explicit file paths bypass tag filters.
 
 ![Flow tag and path inputs](../assets/new-run-tags.png)
 
-**Callouts:** (1) visible text **Only tests with at least one of these tags**; (2) visible text **Tests with this tag are excluded**; (3) visible text **Specify test file directly**.
+**Callouts:** (1) visible text **Include flows with any of these tags**; (2) visible text **Exclude flows with these tags**; (3) visible text **Explicit flow paths**.
 
 ### 1.9 Start the run
 
@@ -81,7 +83,7 @@ Click **Start run**. **You should see:** a run detail URL ending in `/runs/` and
 | **Matrix** | Every eligible device runs the selected flow set |
 | **Pick your own** | Select specific device serials |
 | **Choose based on conditions** | Filter by device tags, model, or Android API level |
-| **Specify test file directly** | Use an exact path relative to the workspace root instead of tags |
+| **Explicit flow paths** | Use an exact path relative to the workspace root instead of tags |
 | **Timeout (seconds)** | Override the default per-task timeout of 1800 seconds |
 
 ## Recap

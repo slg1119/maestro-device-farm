@@ -1,10 +1,12 @@
+English | [한국어](README.ko.md)
+
 # Maestro Device Farm
 
 Run [Maestro](https://maestro.dev/) Android UI tests on a device you control, then see each run in a browser. Maestro Device Farm connects a dashboard, API, test scheduler, and host-side **agent**. The agent is the program that sees Android devices through **adb** (Android Debug Bridge), installs your APK, and starts Maestro. You can begin by opening the dashboard without a device, then connect one when you are ready to run a test.
 
 ![Open the dashboard and follow a run](docs/assets/hero.gif)
 
-**Callouts:** (1) **Overview** in the navigation; (2) **Runs** and **New run**; (3) the run status and task area.
+**Callouts:** (1) **Overview** in the navigation; (2) **New run**; (3) the run status and task area.
 
 ## Quick start in 3 commands
 

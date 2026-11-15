@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/getting-started-native.md)
+
 # Getting started natively
 
 **What you'll have at the end:** the API and built English dashboard running on your macOS or Linux computer. A separate agent can run Android tests afterward.
@@ -31,7 +33,9 @@ Run `python3 --version` in Terminal (macOS) or your Linux terminal. **You should
 
 ```text
 Python 3.12.7
-``` **If it looks different:** install Python 3.12+ and reopen the terminal.
+```
+
+**If it looks different:** install Python 3.12+ and reopen the terminal.
 
 ### 1.2 Check uv
 
@@ -39,7 +43,9 @@ Run `uv --version`. **You should see:** a line like:
 
 ```text
 uv 0.10.4
-``` **If it looks different:** install uv from the link above.
+```
+
+**If it looks different:** install uv from the link above.
 
 ### 1.3 Check Node.js
 
@@ -47,7 +53,9 @@ Run `node --version`. **You should see:** a line like:
 
 ```text
 v22.18.0
-``` **If it looks different:** install Node.js and reopen the terminal.
+```
+
+**If it looks different:** install Node.js and reopen the terminal.
 
 ### 1.4 Check pnpm
 
@@ -55,7 +63,9 @@ Run `pnpm --version`. **You should see:** a version number, for example:
 
 ```text
 10.29.1
-``` **If it looks different:** install pnpm from the link above.
+```
+
+**If it looks different:** install pnpm from the link above.
 
 ### 1.5 Copy the repository URL
 

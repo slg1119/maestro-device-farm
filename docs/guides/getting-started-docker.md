@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/getting-started-docker.md)
+
 # Getting started with Docker
 
 **What you'll have at the end:** an API and English dashboard open at `http://localhost:8700/`. The agent and Android device come next.
