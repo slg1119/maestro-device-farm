@@ -90,7 +90,7 @@
       "batch": "connected", "name": "runs.png", "path": "/runs", "ready": "text=Run history",
       "callouts": [
         {"number": 1, "selector": "text=Run history"},
-        {"number": 2, "selector": "input[placeholder^='Search by ID']"},
+        {"number": 2, "selector": "main input[placeholder]"},
         {"number": 3, "selector": "tr:has-text('Passed')"}
       ]
     },
@@ -138,7 +138,7 @@
       ],
       "callouts": [
         {"number": 1, "selector": "button:has-text('Validate')"},
-        {"number": 2, "selector": "button[role=tab]:has-text('Problem')"},
+        {"number": 2, "selector": "button[role=tab]:has-text('Problems')"},
         {"number": 3, "selector": "button:has-text('Commit…')"}
       ]
     },
