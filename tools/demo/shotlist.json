@@ -168,6 +168,7 @@
     },
     {
       "batch": "offline", "name": "overview.png", "path": "/", "ready": "main h1",
+      "actions": [{"waitFor": "text=Offline"}],
       "callouts": [
         {"number": 1, "selector": "main h1"},
         {"number": 2, "selector": "text=Agent not responding"},
@@ -176,6 +177,7 @@
     },
     {
       "batch": "offline", "name": "docker-overview.png", "path": "/", "ready": "main h1",
+      "actions": [{"waitFor": "text=Offline"}],
       "callouts": [
         {"number": 1, "selector": "main h1"},
         {"number": 2, "selector": "text=Agent not responding"},
