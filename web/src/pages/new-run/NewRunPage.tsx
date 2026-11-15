@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
@@ -242,7 +242,7 @@ function NewRunForm({ workspaces, apps, devices }: { workspaces: Workspace[]; ap
           </dl>
           <div role="status" aria-live="polite" className={cx("rounded-lg px-3 py-3 text-sm",
             count ? "bg-passed-bg text-passed-fg" : "bg-warning-bg text-warning-fg")}>
-            <p className="flex items-center gap-2"><StatusDot tone={count ? "passed" : "warning"} />{t("m_9bd4a9d512")} {count}{t("m_8cbb379d24")}</p>
+            <p className="flex items-center gap-2"><StatusDot tone={count ? "passed" : "warning"} />{tp("device.matchesCount", count)}</p>
             {!count && <p className="mt-1 text-xs">{t("m_f9532eff6e")}</p>}
           </div>
           <ErrorBox error={validationError ?? submitRun.error} />

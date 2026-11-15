@@ -82,7 +82,7 @@ export function WorkspacesPage() {
 
   return (
     <>
-      <PageHeader title={t("m_3291059946")} description={t("m_3fb0264b80")} actions={<Button variant="primary" icon={<Plus />} disabled={!canWrite} onClick={() => setForm("create")}>{t("m_1ac11e9b41")}</Button>} />
+      <PageHeader title={t("nav.workspaces")} description={t("m_3fb0264b80")} actions={<Button variant="primary" icon={<Plus />} disabled={!canWrite} onClick={() => setForm("create")}>{t("m_1ac11e9b41")}</Button>} />
       <TokenNotice />
       {workspaces.isPending ? <Loading /> : workspaces.isError ? <ErrorBox error={workspaces.error} /> : workspaces.data.length === 0 ? (
         <Empty>{t("m_b264129a9e")}</Empty>

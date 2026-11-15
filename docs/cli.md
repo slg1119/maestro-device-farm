@@ -1,3 +1,5 @@
+English | [한국어](ko/cli.md)
+
 # CLI reference
 
 A **CLI** (command-line interface) runs commands in a terminal. Open Terminal on macOS, PowerShell on Windows, or your terminal app on Linux. Install [Python 3.12+](https://www.python.org/downloads/) and [uv](https://docs.astral.sh/uv/getting-started/installation/), then clone this repository and change into its `server/` folder. Run `uv sync` once before the commands below. `farm` administers the local server; `farmctl` talks to the HTTP API. An **artifact** is a saved run output, and JUnit is an XML test report format.

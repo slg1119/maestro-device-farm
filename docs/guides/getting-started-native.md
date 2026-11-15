@@ -1,13 +1,15 @@
+English | [한국어](../ko/guides/getting-started-native.md)
+
 # Getting started natively
 
 **What you'll have at the end:** the API and built English dashboard running on your macOS or Linux computer. A separate agent can run Android tests afterward.
 
 ## Copy-paste quick path
 
-After installing the tools listed below, copy the repository HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`:
+After installing the tools listed below, clone the repository:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm/server
 uv sync
 cd ../web
@@ -31,7 +33,9 @@ Run `python3 --version` in Terminal (macOS) or your Linux terminal. **You should
 
 ```text
 Python 3.12.7
-``` **If it looks different:** install Python 3.12+ and reopen the terminal.
+```
+
+**If it looks different:** install Python 3.12+ and reopen the terminal.
 
 ### 1.2 Check uv
 
@@ -39,7 +43,9 @@ Run `uv --version`. **You should see:** a line like:
 
 ```text
 uv 0.10.4
-``` **If it looks different:** install uv from the link above.
+```
+
+**If it looks different:** install uv from the link above.
 
 ### 1.3 Check Node.js
 
@@ -47,7 +53,9 @@ Run `node --version`. **You should see:** a line like:
 
 ```text
 v22.18.0
-``` **If it looks different:** install Node.js and reopen the terminal.
+```
+
+**If it looks different:** install Node.js and reopen the terminal.
 
 ### 1.4 Check pnpm
 
@@ -55,18 +63,26 @@ Run `pnpm --version`. **You should see:** a version number, for example:
 
 ```text
 10.29.1
-``` **If it looks different:** install pnpm from the link above.
+```
 
-### 1.5 Copy the repository URL
+**If it looks different:** install pnpm from the link above.
 
-On this repository page, click **Code > HTTPS > Copy**. **You should see:** an HTTPS clone URL on your clipboard. **If it looks different:** use your Git host's clone control.
+### 1.5 Check Git
+
+Run `git --version`. **You should see:** a version line like this:
+
+```text
+git version 2.49.0
+```
+
+**If it looks different:** install [Git](https://git-scm.com/downloads) and reopen the terminal.
 
 ### 1.6 Clone the repository
 
-Replace `PASTE_REPOSITORY_URL` with the copied URL and run:
+Run this clone command:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 ```
 
 **You should see:**

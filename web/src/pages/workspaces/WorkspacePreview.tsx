@@ -5,7 +5,7 @@ import { useState } from "react";
 import { apiJson } from "../../api/client";
 import type { Workspace, WorkspaceHistory, WorkspaceTree } from "../../api/types";
 import { Empty, ErrorBox, Loading } from "../../components/ui";
-import { formatBytes, githubCommitUrl, shortSha } from "../../lib/format";
+import { formatBytes, formatTime, githubCommitUrl, shortSha } from "../../lib/format";
 
 export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
   const [open, setOpen] = useState(false);
@@ -58,7 +58,7 @@ export function WorkspacePreview({ workspace }: { workspace: Workspace }) {
                   </div>
                   <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-fg-subtle">
                     <span className="break-all">{commit.author_name === "maestro-device-farm" ? commit.co_authors[0]?.name ?? commit.author_name : commit.author_name}</span>
-                    <time dateTime={commit.authored_at}>{new Date(commit.authored_at).toLocaleString("ko-KR", { hour12: false })}</time>
+                    <time dateTime={commit.authored_at}>{formatTime(commit.authored_at)}</time>
                   </div>
                 </li>
               ))}

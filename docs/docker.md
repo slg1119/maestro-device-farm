@@ -1,3 +1,5 @@
+English | [한국어](ko/docker.md)
+
 # Docker Compose setup
 
 Before running any command, open Terminal (macOS), PowerShell (Windows), or your terminal app (Linux), paste one command block at a time, and press Enter. Docker Compose reads `docker-compose.yml` from the repository folder. An **agent** is the process that controls Android devices through adb (Android Debug Bridge). A named volume keeps the SQLite database and test artifacts (saved output files) between container restarts. The [Docker beginner walkthrough](guides/getting-started-docker.md) covers the first launch with screenshots.
@@ -20,10 +22,10 @@ The host also needs Android SDK platform-tools (`adb`) and an Android emulator o
 
 ## 2. Configure and start
 
-Copy the HTTPS URL from this repository page’s **Code** menu and replace `PASTE_REPOSITORY_URL` before pressing Enter.
+Clone the repository with the command below, then start Docker Compose.
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 cp .env.example .env
 docker compose build

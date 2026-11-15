@@ -7,7 +7,7 @@ import { useRun, useTaskSteps } from "../../../api/queries";
 import type { RunDetail, Task } from "../../../api/types";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { Badge, Button, Empty, ErrorBox, Loading, StatusDot } from "../../../components/ui";
-import { elapsed } from "../../../lib/format";
+import { elapsed, formatNumber } from "../../../lib/format";
 
 export interface SessionRun { id: string; createdAt: string }
 export function readSessionRuns(key: string): SessionRun[] {
@@ -54,7 +54,7 @@ function FinishedTask({ task, run, onShowScreen }: { task: Task; run: RunDetail;
         {flow.steps.map((step, i) => <li key={`${step.seq}:${i}`} className="flex min-w-0 items-start gap-2" style={{ paddingLeft: Math.min(4, Math.max(0, step.depth)) * 8 }}>
           <StatusDot tone={STEP_STATUS[step.status].tone} className="mt-1.5" />
           <span className="min-w-0 flex-1 break-all font-mono text-[11px] leading-5">{step.label}</span>
-          <span className="shrink-0 text-right"><Badge tone={STEP_STATUS[step.status].tone}>{STEP_STATUS[step.status].label}</Badge><span className="mt-0.5 block font-mono text-[11px] text-fg-subtle">{step.duration_ms < 1000 ? `${step.duration_ms}ms` : `${(step.duration_ms / 1000).toFixed(1)}s`}</span></span>
+          <span className="shrink-0 text-right"><Badge tone={STEP_STATUS[step.status].tone}>{STEP_STATUS[step.status].label}</Badge><span className="mt-0.5 block font-mono text-[11px] text-fg-subtle">{step.duration_ms < 1000 ? `${formatNumber(step.duration_ms)}ms` : `${formatNumber(step.duration_ms / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}s`}</span></span>
         </li>)}
       </ol>
     </section>)}

@@ -1,4 +1,4 @@
-import { t } from "../../lib/i18n";
+import { t, tp } from "../../lib/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Circle, Copy, FileCode2, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -80,7 +80,7 @@ export function RecordingControls({ serial, canControl, workspace, appPackage, o
   const error = change.error ?? detail.error ?? (canControl ? active.error : null) ?? copyError;
   return <div className="min-w-0 space-y-3 border-t border-border pt-3">
     {running && recording ? <>
-      <div className="flex flex-wrap items-center justify-between gap-2"><span role="status" className="inline-flex items-center gap-2 text-xs text-failed-fg"><StatusDot tone="failed" />{t("m_a0fced240b")} {recording.steps.length}{t("m_0e685c7cf4")}</span><Button size="sm" icon={<Square />} disabled={!canControl || busy} onClick={() => { change.reset(); setDialog("stop"); }}>{t("m_9cb606b22d")}</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><span role="status" className="inline-flex items-center gap-2 text-xs text-failed-fg"><StatusDot tone="failed" />{tp("recording.stepsCount", recording.steps.length)}</span><Button size="sm" icon={<Square />} disabled={!canControl || busy} onClick={() => { change.reset(); setDialog("stop"); }}>{t("m_9cb606b22d")}</Button></div>
       <ol aria-label={t("m_28bdd4eccb")} className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-border bg-surface-2 p-2">{recording.steps.map((step, index) => <li key={`${index}:${step.ts}`}><code className="block whitespace-pre-wrap break-all text-[11px]">{stepYamlLine(step)}</code></li>)}</ol>
       {!canControl && <p className="text-xs text-fg-muted">{t("m_bf5bc90067")}</p>}
     </> : canControl && <Button size="sm" icon={<Circle className="text-failed-fg" />} disabled={busy || active.isLoading || Boolean(active.error) || recording?.status === "stopping"} onClick={openStart}>{t("m_88c19997fc")}</Button>}

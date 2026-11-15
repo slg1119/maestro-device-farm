@@ -52,4 +52,22 @@ describe("dashboard language", () => {
     setLanguage("en");
     expect(localizeServerText("Recording not found.")).toBe("Recording not found.");
   });
+
+  test("uses natural count labels in English and preserves Korean counts", async () => {
+    vi.resetModules();
+    const { setLanguage, t, tp } = await import("../i18n");
+    setLanguage("en");
+    expect(t("nav.devices")).toBe("Devices");
+    expect(t("m_d1a2d3a223")).toBe("Created");
+    expect(tp("live.connectedCount", 1)).toBe("1 device connected · view only");
+    expect(tp("live.connectedCount", 2)).toBe("2 devices connected · view only");
+    expect(tp("overview.workspaceCount", 1)).toBe("1 workspace");
+    expect(t("ai.attemptLabel", [1])).toBe("Attempt 1 ·");
+    expect(t("overview.workspaceCount.other", [1000])).toBe("1,000 workspaces");
+    setLanguage("ko");
+    expect(tp("live.connectedCount", 1)).toBe("연결된 기기 1대 · 보기 전용");
+    expect(tp("overview.workspaceCount", 2)).toBe("2개");
+    expect(t("ai.attemptLabel", [1])).toBe("1회차 ·");
+    expect(t("overview.workspaceCount.other", [1000])).toBe("1000개");
+  });
 });

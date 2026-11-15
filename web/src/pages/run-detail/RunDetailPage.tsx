@@ -10,7 +10,7 @@ import type { RunDetail, RunSummary, Workspace } from "../../api/types";
 import { TokenNotice, useCanWrite } from "../../components/Layout";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Badge, Button, Card, Empty, ErrorBox, Loading, PageHeader, ProgressBar, StatusDot } from "../../components/ui";
-import { elapsed, formatTime, githubCommitUrl, shortSha } from "../../lib/format";
+import { elapsed, formatSeconds, formatTime, githubCommitUrl, shortSha } from "../../lib/format";
 import { useTicker } from "../../lib/useTicker";
 import { MatrixGrid } from "./MatrixGrid";
 import { TaskList } from "./TaskList";
@@ -66,7 +66,7 @@ function RunOptions({ run }: { run: RunDetail }) {
           <Detail label={t("m_20180117bf")}>{run.include_tags.join(", ") || "-"}</Detail>
           <Detail label={t("m_10ca43e627")}>{run.exclude_tags.join(", ") || "-"}</Detail>
           <Detail label={t("m_300285376c")}>{Object.keys(run.env).length ? Object.keys(run.env).sort().map((key) => <div key={key} className="break-all font-mono text-xs">{key}=***</div>) : "-"}</Detail>
-          <Detail label={t("m_62f4dc3d59")}>{run.task_timeout_sec}{t("m_3845248e28")}</Detail>
+          <Detail label={t("m_62f4dc3d59")}>{formatSeconds(run.task_timeout_sec)}</Detail>
         </dl>
       </details>
     </Card>

@@ -68,7 +68,7 @@ export function AppShell({ children, stream, canWrite, onOpenSettings }: {
     <div className={cx(compact ? "flex flex-col items-center gap-3" : "space-y-2 rounded-[10px] border border-border bg-surface p-3")}>
       <div title={agentLabel} className="flex items-center gap-2 text-xs text-fg-muted"><StatusDot tone={healthy ? "passed" : "warning"} /><span className={compact ? "sr-only" : ""}>{agentLabel}</span></div>
       <div title={liveLabel} className="flex items-center gap-2 text-xs text-fg-subtle"><StatusDot tone={stream === "open" ? "passed" : "warning"} /><span className={compact ? "sr-only" : ""}>{liveLabel}</span></div>
-      <div className={cx("flex items-center gap-1", compact ? "flex-col" : "border-t border-border pt-2")}>
+      <div className={cx("flex items-center gap-1", compact ? "flex-col" : "flex-wrap border-t border-border pt-2")}>
         <IconButton aria-label={themeLabel[nextTheme[preference]]} title={themeLabel[nextTheme[preference]]} onClick={() => setPreference(nextTheme[preference])}><ThemeIcon /></IconButton>
         <button type="button" aria-label={language === "en" ? t("language.switchToKorean") : t("language.switchToEnglish")}
           title={language === "en" ? t("language.switchToKorean") : t("language.switchToEnglish")} onClick={switchLanguage}
@@ -76,7 +76,7 @@ export function AppShell({ children, stream, canWrite, onOpenSettings }: {
           <Languages size={15} aria-hidden="true" /><span>{language.toUpperCase()}</span>
         </button>
         <button type="button" aria-label={canWrite ? t("m_c14a567ea9") : t("m_884c11a6d1")} title={authorName || t("m_c14a567ea9")} onClick={() => { setMobileOpen(false); onOpenSettings(); }}
-          className={cx("flex min-h-9 min-w-0 items-center gap-2 rounded-lg text-sm text-fg-muted outline-none hover:bg-neutral-bg focus-visible:ring-2 focus-visible:ring-accent max-md:min-h-11", compact ? "size-8 justify-center" : "flex-1 px-1")}>
+          className={cx("flex min-h-9 min-w-0 items-center gap-2 rounded-lg text-sm text-fg-muted outline-none hover:bg-neutral-bg focus-visible:ring-2 focus-visible:ring-accent max-md:min-h-11", compact ? "size-8 justify-center" : "w-full px-1")}>
           <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-soft-fg">{authorName ? Array.from(authorName)[0] : <UserRound size={14} />}</span>
           {!compact && <><span className="min-w-0 flex-1 truncate text-left">{authorName || t("m_c14a567ea9")}</span><Settings size={14} className="shrink-0" aria-hidden="true" /></>}
         </button>

@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/troubleshooting.md)
+
 # Troubleshooting
 
 **What you'll have at the end:** the exact failing layer identified and one corrective action to try before repeating a run.
@@ -67,11 +69,11 @@ Click **All available devices**. **You should see:** a nonzero eligible count. *
 
 ### 3.1 Clear the tag filter
 
-In **New run**, clear **Only tests with at least one of these tags**. **You should see:** the flow selection restriction disappear. **If it looks different:** inspect the workspace tree; an explicit path must be relative to the flow root.
+In **New run**, clear **Include flows with any of these tags**. **You should see:** the flow selection restriction disappear. **If it looks different:** inspect the workspace tree; an explicit path must be relative to the flow root.
 
 ![Flow filter fields](../assets/new-run-tags.png)
 
-**Callouts:** (1) include tag input; (2) exclude tag input; (3) visible text **Specify test file directly**.
+**Callouts:** (1) include tag input; (2) exclude tag input; (3) visible text **Explicit flow paths**.
 
 ## Case 4: `repo_unreachable` or `branch_not_found`
 

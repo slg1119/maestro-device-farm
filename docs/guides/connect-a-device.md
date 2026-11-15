@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/connect-a-device.md)
+
 # Connect an Android device
 
 **What you'll have at the end:** one Android emulator **or** phone visible to adb and listed on the dashboard's **Device** page.

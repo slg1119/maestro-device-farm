@@ -1,3 +1,5 @@
+English | [한국어](../ko/guides/flow-editor-and-ai.md)
+
 # Flow editor and AI assistant
 
 **What you'll have at the end:** a validated YAML change committed to your workspace, plus a way to review optional AI suggestions before applying them.
@@ -24,7 +26,7 @@ Open `http://localhost:8700/editor`. **You should see:** **Select workspace** or
 
 ### 1.2 Select a workspace
 
-Use **Select workspace** to choose your registered repository. **You should see:** the workspace name and **Files** tree. **If it looks different:** register or sync it from **Workspace**.
+Use **Select workspace** to choose your Registered repository. **You should see:** the workspace name and **Files** tree. **If it looks different:** register or sync it from **Workspace**.
 
 ### 1.3 Open a file
 
@@ -94,17 +96,17 @@ curl http://localhost:8700/api/v1/ai/status
 
 ### 2.4 Open the AI panel
 
-In the editor, click **AI**. **You should see:** **AI creation mode**, **Description**, and **Generate**.
+In the editor, click **AI**. **You should see:** **AI generation mode**, **Description**, and **Generate**.
 
 ![AI panel before generation](../assets/editor-ai.png)
 
-**Callouts:** (1) visible text **AI creation mode**; (2) visible text **Description**; (3) visible text **Generate**.
+**Callouts:** (1) visible text **AI generation mode**; (2) visible text **Description**; (3) visible text **Generate**.
 
 **If it looks different:** the provider may be disabled; check `/api/v1/ai/status`.
 
 ### 2.5 Enter a request
 
-In **Description**, type one behavior to test and the visible text to check. **You should see:** your request in the field. **If it looks different:** select a workspace and the correct AI creation mode first.
+In **Description**, type one behavior to test and the visible text to check. **You should see:** your request in the field. **If it looks different:** select a workspace and the correct AI generation mode first.
 
 ### 2.6 Generate a proposal
 

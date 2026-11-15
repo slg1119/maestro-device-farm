@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTaskSteps } from "../../api/queries";
 import type { RunStep } from "../../api/types";
 import { Badge, Empty, ErrorBox, Loading, StatusDot, cx } from "../../components/ui";
+import { formatNumber, formatSeconds } from "../../lib/format";
 import { LINK, artifactUrl } from "./links";
 
 const STATUS = {
@@ -21,7 +22,7 @@ function Step({ step, taskId }: { step: RunStep; taskId: string }) {
       className={cx("flex min-h-11 w-full items-start gap-2 py-3 pr-3 text-left focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]", expandable && "hover:bg-surface-2")}>
       <StatusDot tone={status.tone} className="mt-2" />
       <span className="min-w-0 flex-1 break-words font-mono text-xs leading-5">{step.label}</span>
-      <span className="flex shrink-0 flex-col items-end gap-1"><Badge tone={status.tone}>{status.label}</Badge><span className="text-[11px] text-fg-subtle">{step.duration_ms < 1000 ? `${step.duration_ms}ms` : t("m_ed2dcdb1c5", [Number((step.duration_ms / 1000).toFixed(1))])}</span></span>
+      <span className="flex shrink-0 flex-col items-end gap-1"><Badge tone={status.tone}>{status.label}</Badge><span className="text-[11px] text-fg-subtle">{step.duration_ms < 1000 ? `${formatNumber(step.duration_ms)}ms` : formatSeconds(step.duration_ms / 1000)}</span></span>
     </button>
     {expandable && open && <div className="space-y-2 bg-surface-2 px-3 pb-3 pt-1">
       {step.screenshot && <a href={artifactUrl(taskId, step.screenshot)} target="_blank" rel="noreferrer" className={`block ${LINK}`}>

@@ -58,7 +58,7 @@ export function AiFix({ run, task }: { run: RunDetail; task: Task }) {
     <ErrorBox error={create.error ?? job.error} />
     {jobId && job.isPending && <Loading label={t("m_dbea57088b")} />}
     {active && <p role="status" className="text-sm text-ai-fg">{t("m_33b070f517")}</p>}
-    {!!job.data?.attempts.length && <ol className="space-y-1 text-xs text-fg-muted">{job.data.attempts.map((attempt, i) => <li key={i} className="break-words">{attempt.n}{t("m_f4626e6e17")} {attempt.kind === "validation" ? t("m_d2a74d7785") : attempt.kind === "run" ? t("m_74a23ff796") : t("m_d1a2d3a223")} · {attempt.status === "ok" ? t("m_8d8680373c") : t("m_732fe33ab1")} — {attempt.detail}</li>)}</ol>}
+    {!!job.data?.attempts.length && <ol className="space-y-1 text-xs text-fg-muted">{job.data.attempts.map((attempt, i) => <li key={i} className="break-words">{t("ai.attemptLabel", [attempt.n])} {attempt.kind === "validation" ? t("m_d2a74d7785") : attempt.kind === "run" ? t("m_74a23ff796") : t("ai.generated")} · {attempt.status === "ok" ? t("m_8d8680373c") : t("m_732fe33ab1")} — {attempt.detail}</li>)}</ol>}
     {job.data?.status === "failed" && <ErrorBox error={job.data.error_message || t("m_058d6c2ae6")} />}
     {job.data?.status === "cancelled" && <p className="text-sm text-fg-muted">{t("m_0eac5b62b8")}</p>}
     {job.data?.status === "succeeded" && job.data.result && <>
