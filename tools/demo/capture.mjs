@@ -22,18 +22,25 @@ const chrome = process.env.DEMO_CHROME || '/Applications/Google Chrome.app/Conte
 const browser = await chromium.launch({ headless: true, ...(existsSync(chrome) ? { executablePath: chrome } : {}) });
 const en = JSON.parse(await readFile(new URL('../../web/src/lib/locales/en.json', import.meta.url)));
 const ko = JSON.parse(await readFile(new URL('../../web/src/lib/locales/ko.json', import.meta.url)));
-const translations = Object.entries(en).filter(([key, value]) => typeof value === 'string' && ko[key])
-  .map(([key, value]) => [value, ko[key]]).sort((a, b) => b[0].length - a[0].length);
+const translations = new Map();
+for (const [key, value] of Object.entries(en)) {
+  if (typeof value === 'string' && ko[key] && !translations.has(value)) translations.set(value, ko[key]);
+}
 
-function expand(value) {
+function interpolate(value) {
   if (typeof value !== 'string') return value;
-  let result = value.replaceAll('{passedRun}', state.passed_run || '')
+  return value.replaceAll('{passedRun}', state.passed_run || '')
     .replaceAll('{failedRun}', state.failed_run || '')
     .replaceAll('{workspace}', 'example-app');
-  if (language === 'ko') for (const [source, target] of translations) result = result.replaceAll(source, target);
-  return result;
 }
-function url(path) { return new URL(expand(path), baseUrl).toString(); }
+function expand(value) {
+  const result = interpolate(value);
+  if (language !== 'ko' || typeof result !== 'string') return result;
+  if (result.startsWith('text=')) return `text=${translations.get(result.slice(5)) || result.slice(5)}`;
+  return result.replace(/(['"])(.*?)\1/g, (match, quote, content) =>
+    `${quote}${translations.get(content) || content}${quote}`);
+}
+function url(path) { return new URL(interpolate(path), baseUrl).toString(); }
 async function context(options = {}) {
   const created = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT },
     colorScheme: 'light', locale: language === 'ko' ? 'ko-KR' : 'en-US', deviceScaleFactor: 1, ...options });
