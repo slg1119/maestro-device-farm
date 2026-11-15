@@ -131,12 +131,32 @@ async function actions(page, steps = []) {
     if (step.zoom) await page.evaluate((scale) => { document.body.style.zoom = String(scale); }, step.zoom);
     if (step.scrollY) await page.evaluate((distance) => window.scrollBy(0, distance), step.scrollY);
     if (step.click) await page.locator(expand(step.click)).first().click();
+    if (step.clickIfPresent) {
+      const target = page.locator(expand(step.clickIfPresent)).first();
+      if (await target.isVisible()) await target.click();
+    }
     if (step.fill) await page.locator(expand(step.fill)).first().fill(expand(step.value || ''));
     if (step.focus) await page.locator(expand(step.focus)).first().click();
     if (step.press) await page.keyboard.press(step.press);
     if (step.type) await page.keyboard.type(expand(step.type));
     if (step.scroll) await page.locator(expand(step.scroll)).first().scrollIntoViewIfNeeded();
-    if (step.waitFor) await page.locator(expand(step.waitFor)).first().waitFor();
+    if (step.waitFor) await page.locator(expand(step.waitFor)).first().waitFor({ timeout: step.timeoutMs || 45000 });
+    if (step.waitForReload) {
+      const end = Date.now() + (step.timeoutMs || 90000);
+      while (!(await page.locator(expand(step.waitForReload)).first().isVisible())) {
+        if (Date.now() >= end) throw new Error(`Timed out waiting for ${step.waitForReload}`);
+        await page.waitForTimeout(2000);
+        await page.reload({ waitUntil: 'domcontentloaded' });
+      }
+    }
+    if (step.waitPixels) {
+      let pixels = false;
+      for (let attempt = 0; attempt < 60 && !pixels; attempt++) {
+        pixels = await canvasHasPixels(page, expand(step.waitPixels));
+        if (!pixels) await page.waitForTimeout(1000);
+      }
+      if (!pixels) throw new Error(`Canvas contains no real pixels: ${step.waitPixels}`);
+    }
     if (step.callouts) await callouts(page, step.callouts);
     if (step.waitMs) await page.waitForTimeout(step.waitMs);
   }
@@ -183,13 +203,21 @@ try {
       if (batch && spec.batch !== batch) continue;
       if (names && !names.has(spec.name)) continue;
       const ctx = await context();
+      if (spec.demoAuthor) await ctx.addInitScript(() => localStorage.setItem('farm.settings',
+        JSON.stringify({ token: '', authorName: 'Demo', authorEmail: '' })));
       const page = await ctx.newPage();
-      await ready(page, spec);
-      await actions(page, spec.actions);
-      await callouts(page, spec.callouts);
-      await page.screenshot({ path: join(output, spec.name), animations: 'disabled' });
+      let failure;
+      try {
+        await ready(page, spec);
+        await actions(page, spec.actions);
+        await callouts(page, spec.callouts);
+        await page.screenshot({ path: join(output, spec.name), animations: 'disabled' });
+      } catch (error) { failure = error; }
+      try { await actions(page, spec.cleanupActions); }
+      catch (error) { failure ||= error; }
       await page.close();
       await ctx.close();
+      if (failure) throw failure;
       console.log(`Captured ${spec.name}`);
     }
     for (const spec of list.gifs || []) {

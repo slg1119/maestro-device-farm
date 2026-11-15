@@ -271,6 +271,7 @@ def agent_start() -> None:
     assert_isolated()
     if alive(s.get("guard_pid")):
         return
+    (Path(s["data_dir"]) / "guard.alert").unlink(missing_ok=True)
     s["guard_pid"] = spawn([sys.executable, str(Path(__file__).resolve()), "guard"],
                            demo_env(s), Path(s["data_dir"]) / "guard.out")
     save_state(s)

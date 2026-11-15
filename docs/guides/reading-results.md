@@ -22,11 +22,11 @@ Submit a run using [Run tests](running-tests.md). A **task** is one device assig
 
 ### 1.1 Open run history
 
-Open `http://localhost:8700/runs`. **You should see:** **Run history** and a row for your run ID.
+Open `http://localhost:8700/runs`. **You should see:** **Runs** and a row for your run ID.
 
 ![Run history](../assets/runs.png)
 
-**Callouts:** (1) visible text **Run history**; (2) search field; (3) your run row and status.
+**Callouts:** (1) **Runs** heading; (2) search field; (3) your run row and status.
 
 **If it looks different:** if the list is empty, submit a run first. Search for your run ID if many runs exist.
 

@@ -21,75 +21,75 @@
       "actions": [{"click": "button:has-text('Register')", "waitFor": "[role=dialog]"}],
       "callouts": [
         {"number": 1, "selector": "[role=dialog] h2"},
-        {"number": 2, "selector": "[role=dialog] label:has-text('repo')"},
-        {"number": 3, "selector": "[role=dialog] label:has-text('branch')"},
-        {"number": 4, "selector": "[role=dialog] label:has-text('path')"},
+        {"number": 2, "selector": "[role=dialog] label", "nth": 1},
+        {"number": 3, "selector": "[role=dialog] label", "nth": 2},
+        {"number": 4, "selector": "[role=dialog] label", "nth": 3},
         {"number": 5, "selector": "[role=dialog] button:has-text('Register')"}
       ]
     },
     {
       "batch": "connected", "name": "workspace-open.png", "path": "/workspaces", "ready": "h2:has-text('example-app')",
-      "actions": [{"click": "details summary:has-text('Files and recent commits')", "waitFor": "text=my-flow.yaml"}],
+      "actions": [{"click": "details summary:has-text('Files and Recent Commits')", "waitFor": "text=my-flow.yaml"}],
       "callouts": [
         {"number": 1, "selector": "h2:has-text('example-app')"},
         {"number": 2, "selector": "text=main"},
-        {"number": 3, "selector": "details summary:has-text('Files and recent commits')"}
+        {"number": 3, "selector": "details summary:has-text('Files and Recent Commits')"}
       ]
     },
     {
-      "batch": "connected", "name": "new-run.png", "path": "/runs/new", "ready": "text=Run summary",
+      "batch": "connected", "name": "new-run.png", "path": "/runs/new", "ready": "text=Run Summary",
       "callouts": [
-        {"number": 1, "selector": "legend:has-text('Flow source')"},
-        {"number": 2, "selector": "legend:has-text('App')"},
-        {"number": 3, "selector": "text=Run summary"}
+        {"number": 1, "selector": "main select", "nth": 0},
+        {"number": 2, "selector": "main select", "nth": 2},
+        {"number": 3, "selector": "text=Run Summary"}
       ]
     },
     {
       "batch": "connected", "name": "new-run-matrix.png", "path": "/runs/new", "ready": "text=Run mode",
       "callouts": [
-        {"number": 1, "selector": "label:has-text('Split across devices')"},
-        {"number": 2, "selector": "label:has-text('All flows on each device')"},
+        {"number": 1, "selector": "label:has-text('Split Across Devices')"},
+        {"number": 2, "selector": "label:has-text('Run All Flows on Every Device')"},
         {"number": 3, "selector": "legend:has-text('Run mode')"}
       ]
     },
     {
-      "batch": "connected", "name": "new-run-manual.png", "path": "/runs/new", "ready": "text=Pick your own",
+      "batch": "connected", "name": "new-run-manual.png", "path": "/runs/new", "ready": "text=Select Devices",
       "actions": [
-        {"click": "button[role=radio]:has-text('Pick your own')", "waitFor": "input[aria-label*='emulator-5560']"},
+        {"click": "button[role=radio]:has-text('Select Devices')", "waitFor": "input[aria-label*='emulator-5560']"},
         {"click": "input[aria-label*='emulator-5560']"}
       ],
       "callouts": [
-        {"number": 1, "selector": "button[role=radio]:has-text('Pick your own')"},
+        {"number": 1, "selector": "button[role=radio]:has-text('Select Devices')"},
         {"number": 2, "selector": "label:has(input[aria-label*='emulator-5560'])"},
         {"number": 3, "selector": "p[role=status]:has-text('emulator-5560')"}
       ]
     },
     {
-      "batch": "connected", "name": "new-run-conditions.png", "path": "/runs/new", "ready": "text=Choose based on conditions",
+      "batch": "connected", "name": "new-run-conditions.png", "path": "/runs/new", "ready": "text=Use Conditions",
       "actions": [
-        {"click": "button[role=radio]:has-text('Choose based on conditions')"},
-        {"click": "details summary:has-text('Model/Android version')"},
+        {"click": "button[role=radio]:has-text('Use Conditions')"},
+        {"click": "details summary:has-text('Model and Android version')"},
         {"scrollY": 200}
       ],
       "callouts": [
-        {"number": 1, "selector": "button[role=radio]:has-text('Choose based on conditions')"},
-        {"number": 2, "selector": "input[aria-label='Android API level (or higher)']"},
+        {"number": 1, "selector": "button[role=radio]:has-text('Use Conditions')"},
+        {"number": 2, "selector": "input[aria-label='Android API level (minimum)']"},
         {"number": 3, "selector": "p[role=status]:has-text('emulator-5560')"}
       ]
     },
     {
-      "batch": "connected", "name": "new-run-tags.png", "path": "/runs/new", "ready": "textarea[aria-label='Explicit flow paths']",
-      "actions": [{"scroll": "textarea[aria-label='Explicit flow paths']"}],
+      "batch": "connected", "name": "new-run-tags.png", "path": "/runs/new", "ready": "textarea[aria-label='Explicit Flow Paths']",
+      "actions": [{"scroll": "textarea[aria-label='Explicit Flow Paths']"}],
       "callouts": [
         {"number": 1, "selector": "input[aria-label='Include flows with any of these tags']"},
         {"number": 2, "selector": "input[aria-label='Exclude flows with these tags']"},
-        {"number": 3, "selector": "textarea[aria-label='Explicit flow paths']"}
+        {"number": 3, "selector": "textarea[aria-label='Explicit Flow Paths']"}
       ]
     },
     {
-      "batch": "connected", "name": "runs.png", "path": "/runs", "ready": "text=Run history",
+      "batch": "connected", "name": "runs.png", "path": "/runs", "ready": "main h1",
       "callouts": [
-        {"number": 1, "selector": "text=Run history"},
+        {"number": 1, "selector": "main h1"},
         {"number": 2, "selector": "main input[placeholder]"},
         {"number": 3, "selector": "tr:has-text('Passed')"}
       ]
@@ -97,7 +97,7 @@
     {
       "batch": "connected", "name": "run-detail.png", "path": "/runs/{failedRun}", "ready": "text=Artifacts",
       "callouts": [
-        {"number": 1, "selector": "text=Failed"},
+        {"number": 1, "selector": "table tbody button[aria-pressed='true']"},
         {"number": 2, "selector": "text=Assertion is false:"},
         {"number": 3, "selector": "text=Artifacts"}
       ]
@@ -122,7 +122,7 @@
       "batch": "connected", "name": "editor-flow.png", "path": "/editor/{workspace}", "ready": "li[aria-label='my-flow.yaml']",
       "actions": [{"click": "li[aria-label='my-flow.yaml'] button", "waitFor": ".monaco-editor .view-line"}],
       "callouts": [
-        {"number": 1, "selector": "aside[aria-label='file explorer'] span:has-text('file explorer')"},
+        {"number": 1, "selector": "aside[aria-label='File Explorer'] span:has-text('File Explorer')"},
         {"number": 2, "selector": "li[aria-label='my-flow.yaml']"},
         {"number": 3, "selector": "button[role=tab]:has-text('my-flow.yaml')"},
         {"number": 4, "selector": ".monaco-editor .view-line"}
@@ -149,37 +149,48 @@
         {"click": "button[role=tab]:has-text('AI')", "waitFor": "text=Description"}
       ],
       "callouts": [
-        {"number": 1, "selector": "text=Create a new flow"},
+        {"number": 1, "selector": "text=Create a New Flow"},
         {"number": 2, "selector": "text=Description"},
         {"number": 3, "selector": "button:has-text('Generate')"}
       ]
     },
     {
-      "batch": "connected", "name": "editor-screen.png", "path": "/editor/{workspace}", "ready": "button[role=tab]:has-text('Screen')",
+      "batch": "connected", "name": "editor-screen.png", "path": "/editor/{workspace}", "ready": "button[role=tab]:has-text('Screen')", "demoAuthor": true,
       "actions": [
         {"click": "li[aria-label='my-flow.yaml'] button", "waitFor": ".monaco-editor .view-line"},
-        {"click": "button[role=tab]:has-text('Screen')", "waitFor": "text=Reserve your device to check the screen."}
+        {"click": "button[role=radio]:has-text('emulator-5560')"},
+        {"click": "button:text-is('Reserve')", "waitFor": "button:text-is('Release')"},
+        {"click": "button[role=tab]:has-text('Screen')", "waitFor": "canvas[aria-label='Live device screen']"},
+        {"waitPixels": "canvas[aria-label='Live device screen']"},
+        {"click": "section[aria-label*='emulator-5560'] button[aria-label='Home']"},
+        {"waitFor": "section[aria-label*='emulator-5560'] span:has-text('Demo')"}
       ],
       "callouts": [
         {"number": 1, "selector": "button[role=tab]:has-text('Screen')"},
-        {"number": 2, "selector": "text=Reserve your device to check the screen."},
-        {"number": 3, "selector": "button:has-text('Device reservation')"}
+        {"number": 2, "selector": "canvas[aria-label='Live device screen']"},
+        {"number": 3, "selector": "section[aria-label*='emulator-5560'] span:has-text('Controller')"}
+      ],
+      "cleanupActions": [
+        {"click": "button[role=tab]:has-text('Run')"},
+        {"clickIfPresent": "button:text-is('Release')"}
       ]
     },
     {
       "batch": "offline", "name": "overview.png", "path": "/", "ready": "main h1",
+      "actions": [{"waitForReload": "text=Offline", "timeoutMs": 90000}],
       "callouts": [
         {"number": 1, "selector": "main h1"},
         {"number": 2, "selector": "text=Agent not responding"},
-        {"number": 3, "selector": "text=Available devices"}
+        {"number": 3, "selector": "text=Available Devices"}
       ]
     },
     {
       "batch": "offline", "name": "docker-overview.png", "path": "/", "ready": "main h1",
+      "actions": [{"waitForReload": "text=Offline", "timeoutMs": 90000}],
       "callouts": [
         {"number": 1, "selector": "main h1"},
         {"number": 2, "selector": "text=Agent not responding"},
-        {"number": 3, "selector": "text=Available devices"}
+        {"number": 3, "selector": "text=Available Devices"}
       ]
     }
   ],
@@ -194,12 +205,13 @@
       ]
     },
     {
-      "batch": "gifs", "name": "running-tests.gif", "path": "/runs/new", "ready": "button:has-text('Start run')", "seconds": 3, "trimStart": 1.4,
+      "batch": "gifs", "name": "running-tests.gif", "path": "/runs/new", "ready": "button:has-text('Start Run')", "seconds": 3, "trimStart": 1.4,
       "actions": [
-        {"fill": "textarea[aria-label='Explicit flow paths']", "value": "smoke.yaml"},
-        {"click": "label:has-text('All flows on each device')"},
-        {"callouts": [{"number": 1, "selector": "button:has-text('Start run')"}], "waitMs": 1200},
-        {"click": "button:has-text('Start run')", "waitFor": "text=Running", "waitMs": 1200},
+        {"fill": "textarea[aria-label='Explicit Flow Paths']", "value": "smoke.yaml"},
+        {"click": "label:has-text('Run All Flows on Every Device')"},
+        {"scrollY": -2000, "waitMs": 300},
+        {"callouts": [{"number": 1, "selector": "button:has-text('Start Run')"}], "waitMs": 2600},
+        {"click": "button:has-text('Start Run')", "waitFor": "text=Running", "waitMs": 1200},
         {"callouts": [{"number": 2, "selector": "main h1"}, {"number": 3, "selector": "text=Running"}]}
       ]
     }

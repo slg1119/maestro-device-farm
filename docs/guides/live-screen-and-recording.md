@@ -40,39 +40,39 @@ Open `http://localhost:8700/editor` in another browser tab. **You should see:** 
 
 Choose the workspace where the recorded flow should go. **You should see:** its file tree and editor panels. **If it looks different:** sync the workspace from **Workspace**.
 
-### 1.5 Open Screen
+### 1.5 Reserve the device in Run
 
-Click the **Screen** tab. **You should see:** a device picker and screen connection controls.
+In the editor, open **Run**, select `emulator-5560` (or your own available device), and click **Reserve**. **You should see:** the selected device and a **Release** control. **If it looks different:** check that the agent is running and the device is available.
+
+### 1.6 Open Screen
+
+Click the **Screen** tab. **You should see:** live device pixels and screen controls.
 
 ![Editor Screen panel](../assets/editor-screen.png)
 
-**Callouts:** (1) visible text **Screen**; (2) device picker; (3) visible text **Reserve** or current reservation state.
+**Callouts:** (1) **Screen** tab; (2) live device screen; (3) **Controller** state.
 
 **If it looks different:** select a workspace and wait for its panels to load.
 
 ## Record a flow
 
-### 2.1 Choose the device
+### 2.1 Confirm control
 
-Select your available device in the **Screen** panel. **You should see:** its live screen or a view-only connection. **If it looks different:** check the agent and device state.
+Check the **Controller** line in **Screen**. **You should see:** your active reservation and the live screen. **If it looks different:** return to **Run** and confirm the reservation.
 
-### 2.2 Reserve it
-
-Click **Reserve**. **You should see:** a reserved or controller state. **If it looks different:** another user may hold a reservation; wait for it to end.
-
-### 2.3 Start recording
+### 2.2 Start recording
 
 Click **Start recording**. **You should see:** **Recording** and a **Stop recording** control. **If it looks different:** the reservation or stream may have ended.
 
-### 2.4 Perform one action
+### 2.3 Perform one action
 
 Tap one safe control on the device screen. **You should see:** the device react and the recording step count change. **If it looks different:** confirm you are the controller, not a view-only viewer.
 
-### 2.5 Stop recording
+### 2.4 Stop recording
 
 Click **Stop recording**. **You should see:** **Recording Results** and **Recording YAML**. **If it looks different:** wait for the recording to finish; check the stream connection.
 
-### 2.6 Review the YAML
+### 2.5 Review the YAML
 
 Open the result's YAML view. **You should see:** Maestro actions for the interaction you made. **If it looks different:** repeat a short recording with a visible tap, then inspect it before saving.
 
