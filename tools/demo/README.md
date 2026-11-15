@@ -46,7 +46,11 @@ then checks state transitions, a failure screenshot, and JUnit output.
 Pass a JSON file with `shots` and `gifs` arrays. Each entry has `name` and
 `path`; optional fields are `ready` (CSS selector), `waitMs`, `livePixels`,
 `callouts` (`selector` and `number`), and `actions` (`click`, `fill` with
-`value`, `waitFor`, or `waitMs`). GIF entries also accept `seconds`.
+`value`, `waitFor`, `waitForReload`, `waitPixels`, or `waitMs`).
+`waitForReload` refreshes the page until an agent-offline state appears.
+`cleanupActions` runs after a screenshot even if capture fails, so a
+reserved demo device is released. GIF entries also accept `seconds`.
+
 Selectors must match the visible dashboard at the 1440 × 900 viewport. The
 capture script fails if a selector is missing, a live canvas has no distinct
 device pixels, or a GIF reaches 6 MB. GIFs are converted from Playwright

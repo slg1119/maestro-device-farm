@@ -110,7 +110,7 @@ In **Description**, type one behavior to test and the visible text to check. **Y
 
 ### 2.6 Generate a proposal
 
-Click **Generate**. **You should see:** an AI job and then a proposal preview. **If it looks different:** read the AI job error. Screen context and automatic repair need a reserved device; a text-only request does not.
+Click **Generate**. **You should see:** an AI job and then a proposal preview. **If it looks different:** read the AI job error. Screen context and automatic repair need a reserved device; reserve it from **Run**, then open **Screen**. A text-only request does not need a reservation.
 
 ### 2.7 Review the proposal
 

@@ -65,8 +65,6 @@ cd maestro-device-farm
 | **에디터** | YAML 수정·검증·이력 확인, 선택적 AI 제안 | ![에디터](docs/assets/ko/flow-editor.png) |
 | **라이브 보드** | 연결된 기기 화면 보기 | ![라이브 보드](docs/assets/ko/live-board.png) |
 
-각 이미지의 번호는 [촬영 목록](docs/ko/guides/SHOTLIST.md)에 정리했습니다.
-
 ## 하나씩 따라 하기
 
 1. [Docker로 시작](docs/ko/guides/getting-started-docker.md)하거나 [직접 설치](docs/ko/guides/getting-started-native.md)하세요.

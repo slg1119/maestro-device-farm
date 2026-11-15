@@ -65,8 +65,6 @@ A real test needs a compatible APK, a flow, and a connected Android device. Foll
 | **Editor** | YAML flow editing, validation, history, and optional AI proposals | ![Flow editor](docs/assets/flow-editor.png) |
 | **Live board** | Connected Android screens and recording controls | ![Live board](docs/assets/live-board.png) |
 
-The [shot list](docs/guides/SHOTLIST.md) names the numbered callouts for every image.
-
 ## Learn one task at a time
 
 1. [Get started with Docker](docs/guides/getting-started-docker.md) or [install natively](docs/guides/getting-started-native.md).
