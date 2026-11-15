@@ -22,10 +22,10 @@ The host also needs Android SDK platform-tools (`adb`) and an Android emulator o
 
 ## 2. Configure and start
 
-Copy the HTTPS URL from this repository page’s **Code** menu and replace `PASTE_REPOSITORY_URL` before pressing Enter.
+Clone the repository with the command below, then start Docker Compose.
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 cp .env.example .env
 docker compose build

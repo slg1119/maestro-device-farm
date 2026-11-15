@@ -6,10 +6,10 @@
 
 ## 명령만 먼저 보기
 
-아래 도구를 설치한 뒤 `PASTE_REPOSITORY_URL`을 저장소 HTTPS 주소로 바꾸세요.
+아래 도구를 설치한 뒤 이 명령으로 저장소를 내려받으세요.
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm/server
 uv sync
 cd ../web
@@ -67,16 +67,22 @@ v22.18.0
 
 **다르다면:** pnpm을 설치하세요.
 
-### 1.5 주소 복사
+### 1.5 Git 확인
 
-저장소 웹 페이지에서 **Code > HTTPS > Copy**를 누르세요. **보여야 할 것:** 저장소 주소가 복사됩니다. **다르다면:** 사용 중인 Git 서비스의 HTTPS 복제 메뉴를 찾으세요.
+`git --version`을 실행하세요. **보여야 할 것:** 아래처럼 버전 한 줄이 나옵니다.
+
+```text
+git version 2.49.0
+```
+
+**다르다면:** [Git](https://git-scm.com/downloads)을 설치하고 터미널을 다시 여세요.
 
 ### 1.6 내려받기
 
-복사한 주소를 넣어 실행하세요.
+아래 복제 명령을 실행하세요.
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 ```
 
 **보여야 할 것:**

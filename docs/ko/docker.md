@@ -15,10 +15,10 @@ docker compose version
 
 ## 2. API 켜기
 
-저장소 웹 페이지에서 HTTPS 주소를 복사해 `PASTE_REPOSITORY_URL`을 바꾸세요.
+아래 명령으로 저장소를 내려받은 다음 Docker Compose를 시작하세요.
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 cp .env.example .env
 docker compose build

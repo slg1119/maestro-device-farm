@@ -10,12 +10,12 @@ Run [Maestro](https://maestro.dev/) Android UI tests on a device you control, th
 
 ## Quick start in 3 commands
 
-Copy this repository's HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`. Install the tools for your path first. The [Docker guide](docs/guides/getting-started-docker.md) and [native guide](docs/guides/getting-started-native.md) explain every action and expected result.
+Install the tools for your path first. Clone this repository with the command below. The [Docker guide](docs/guides/getting-started-docker.md) and [native guide](docs/guides/getting-started-native.md) explain every action and expected result.
 
 **Docker** (macOS, Windows, or Linux):
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 docker compose up -d --build
 ```
@@ -25,7 +25,7 @@ Open `http://localhost:8700/` when `docker compose ps` reports `api` healthy.
 **Native** (macOS or Linux):
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 (cd server && uv sync) && (cd web && pnpm install --frozen-lockfile && pnpm build) && (cd server && uv run farm api)
 ```

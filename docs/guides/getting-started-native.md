@@ -6,10 +6,10 @@ English | [한국어](../ko/guides/getting-started-native.md)
 
 ## Copy-paste quick path
 
-After installing the tools listed below, copy the repository HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`:
+After installing the tools listed below, clone the repository:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm/server
 uv sync
 cd ../web
@@ -67,16 +67,22 @@ Run `pnpm --version`. **You should see:** a version number, for example:
 
 **If it looks different:** install pnpm from the link above.
 
-### 1.5 Copy the repository URL
+### 1.5 Check Git
 
-On this repository page, click **Code > HTTPS > Copy**. **You should see:** an HTTPS clone URL on your clipboard. **If it looks different:** use your Git host's clone control.
+Run `git --version`. **You should see:** a version line like this:
+
+```text
+git version 2.49.0
+```
+
+**If it looks different:** install [Git](https://git-scm.com/downloads) and reopen the terminal.
 
 ### 1.6 Clone the repository
 
-Replace `PASTE_REPOSITORY_URL` with the copied URL and run:
+Run this clone command:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 ```
 
 **You should see:**

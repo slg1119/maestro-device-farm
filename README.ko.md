@@ -10,12 +10,12 @@
 
 ## 세 줄로 빠르게 시작하기
 
-저장소 웹 페이지에서 **Code**를 눌러 HTTPS 주소를 복사한 뒤 `PASTE_REPOSITORY_URL`을 바꿔 넣으세요. 필요한 도구의 설치부터 차근차근 따라가려면 [Docker 안내](docs/ko/guides/getting-started-docker.md) 또는 [직접 설치 안내](docs/ko/guides/getting-started-native.md)를 보세요.
+아래 명령으로 저장소를 내려받으세요. 필요한 도구의 설치부터 차근차근 따라가려면 [Docker 안내](docs/ko/guides/getting-started-docker.md) 또는 [직접 설치 안내](docs/ko/guides/getting-started-native.md)를 보세요.
 
 **Docker** (macOS, Windows, Linux):
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 docker compose up -d --build
 ```
@@ -25,7 +25,7 @@ docker compose up -d --build
 **직접 설치** (macOS, Linux):
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 (cd server && uv sync) && (cd web && pnpm install --frozen-lockfile && pnpm build) && (cd server && uv run farm api)
 ```

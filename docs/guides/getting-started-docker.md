@@ -6,10 +6,10 @@ English | [한국어](../ko/guides/getting-started-docker.md)
 
 ## Copy-paste quick path
 
-After [Docker](https://docs.docker.com/get-docker/) and [Git](https://git-scm.com/downloads) are installed, copy this repository's HTTPS URL from **Code** and replace `PASTE_REPOSITORY_URL`:
+After [Docker](https://docs.docker.com/get-docker/) and [Git](https://git-scm.com/downloads) are installed, clone the repository:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 cd maestro-device-farm
 cp .env.example .env
 docker compose up -d --build
@@ -60,16 +60,22 @@ Docker Compose version
 
 **If it looks different:** install the Compose plugin or update Docker Desktop.
 
-### 1.4 Copy the repository URL
+### 1.4 Check Git
 
-On this repository's web page, click **Code > HTTPS > Copy**. **You should see:** the repository URL on your clipboard. **If it looks different:** use your Git host's HTTPS clone control.
+Run `git --version`. **You should see:** a version line like this:
+
+```text
+git version 2.49.0
+```
+
+**If it looks different:** install [Git](https://git-scm.com/downloads) and reopen the terminal.
 
 ### 1.5 Clone the repository
 
-Replace `PASTE_REPOSITORY_URL` with that URL, then run:
+Run this clone command:
 
 ```sh
-git clone PASTE_REPOSITORY_URL maestro-device-farm
+git clone https://github.com/slg1119/maestro-device-farm.git
 ```
 
 **You should see:** output containing:
